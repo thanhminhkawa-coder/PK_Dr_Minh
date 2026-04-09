@@ -1,0 +1,1099 @@
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const mongoose = require("mongoose");
+
+loadLocalEnv();
+
+const PORT = Number(process.env.PORT || 3000);
+const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI_DIRECT = process.env.MONGODB_URI_DIRECT;
+const TIMEZONE = "Asia/Ho_Chi_Minh";
+const CORS_ORIGINS = String(process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+
+if (!MONGODB_URI) {
+  throw new Error("Missing MONGODB_URI. Add it to the local .env file.");
+}
+
+const app = express();
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  const requestPath = req.path || "";
+  if (path.basename(requestPath).startsWith(".")) {
+    return res.status(404).end();
+  }
+  return next();
+});
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin) {
+    return next();
+  }
+
+  if (CORS_ORIGINS.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  return next();
+});
+app.use(express.json({ limit: "2mb" }));
+app.use(express.static(__dirname, { dotfiles: "deny", index: false }));
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "minh.html"));
+});
+
+const patientSchema = new mongoose.Schema(
+  {
+    fullName: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true, index: true },
+    birthYear: { type: Number, min: 1900, max: 3000 },
+    gender: { type: String, trim: true, default: "Nam" },
+    address: { type: String, trim: true, default: "" },
+    province: { type: String, trim: true, default: "" },
+    notes: { type: String, trim: true, default: "" }
+  },
+  { timestamps: true }
+);
+
+patientSchema.index({ fullName: "text", phone: "text" });
+
+const drugSchema = new mongoose.Schema(
+  {
+    activeIngredient: { type: String, required: true, trim: true },
+    brandName: { type: String, required: true, trim: true },
+    unit: { type: String, trim: true, default: "Vien" },
+    usage: { type: String, trim: true, default: "" },
+    quantity: { type: Number, min: 0, default: 0 },
+    price: { type: Number, min: 0, default: 0 },
+    notes: { type: String, trim: true, default: "" }
+  },
+  { timestamps: true }
+);
+
+drugSchema.index({ activeIngredient: "text", brandName: "text" });
+
+const visitDrugSchema = new mongoose.Schema(
+  {
+    drugId: { type: mongoose.Schema.Types.ObjectId, ref: "Drug", required: true },
+    activeIngredient: { type: String, required: true, trim: true },
+    brandName: { type: String, required: true, trim: true },
+    usage: { type: String, trim: true, default: "" },
+    unit: { type: String, trim: true, default: "Vien" },
+    quantity: { type: Number, min: 1, required: true },
+    morning: { type: String, trim: true, default: "" },
+    noon: { type: String, trim: true, default: "" },
+    night: { type: String, trim: true, default: "" },
+    instruction: { type: String, trim: true, default: "" },
+    unitPrice: { type: Number, min: 0, required: true },
+    subtotal: { type: Number, min: 0, required: true }
+  },
+  { _id: false }
+);
+
+const visitSchema = new mongoose.Schema(
+  {
+    patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient", required: true, index: true },
+    patientName: { type: String, required: true, trim: true },
+    patientPhone: { type: String, required: true, trim: true },
+    doctor: { type: String, trim: true, default: "Bác sĩ phụ trách", index: true },
+    visitNo: { type: Number, required: true, min: 1 },
+    visitType: { type: String, trim: true, default: "revisit" },
+    visitDate: { type: Date, required: true, index: true },
+    symptom: { type: String, trim: true, default: "" },
+    diagnosis: { type: String, trim: true, default: "" },
+    note: { type: String, trim: true, default: "" },
+    followUpDate: { type: Date, default: null },
+    serviceFee: { type: Number, min: 0, default: 0 },
+    drugTotal: { type: Number, min: 0, default: 0 },
+    totalMoney: { type: Number, min: 0, default: 0 },
+    drugs: { type: [visitDrugSchema], default: [] },
+    printedAt: { type: Date, default: null },
+    printHistory: { type: [Date], default: [] }
+  },
+  { timestamps: true }
+);
+
+visitSchema.index({ patientId: 1, visitNo: 1 }, { unique: true });
+
+const settingsSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, unique: true, trim: true },
+    clinicInfo: {
+      name: { type: String, trim: true, default: "Phòng khám chuyên khoa tâm thần" },
+      doctor: { type: String, trim: true, default: "Bác sĩ phụ trách" },
+      address: { type: String, trim: true, default: "Chưa cập nhật địa chỉ" },
+      hours: { type: String, trim: true, default: "Chưa cập nhật giờ làm việc" },
+      phone: { type: String, trim: true, default: "Chưa cập nhật số điện thoại" }
+    },
+    clinicProfiles: {
+      type: [
+        new mongoose.Schema(
+          {
+            id: { type: String, required: true, trim: true },
+            label: { type: String, trim: true, default: "Thông tin phòng khám" },
+            name: { type: String, trim: true, default: "Phòng khám chuyên khoa tâm thần" },
+            doctor: { type: String, trim: true, default: "Bác sĩ phụ trách" },
+            address: { type: String, trim: true, default: "Chưa cập nhật địa chỉ" },
+            hours: { type: String, trim: true, default: "Chưa cập nhật giờ làm việc" },
+            phone: { type: String, trim: true, default: "Chưa cập nhật số điện thoại" }
+          },
+          { _id: false }
+        )
+      ],
+      default: []
+    },
+    activeClinicProfileId: { type: String, trim: true, default: "" },
+    icdList: {
+      type: [
+        new mongoose.Schema(
+          {
+            code: { type: String, required: true, trim: true },
+            name: { type: String, required: true, trim: true }
+          },
+          { _id: false }
+        )
+      ],
+      default: []
+    }
+  },
+  { timestamps: true }
+);
+
+const Patient = mongoose.model("Patient", patientSchema);
+const Drug = mongoose.model("Drug", drugSchema);
+const Visit = mongoose.model("Visit", visitSchema);
+const Settings = mongoose.model("Settings", settingsSchema);
+
+app.get("/api/health", async (_req, res) => {
+  const mongoState = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
+  res.json({ ok: true, mongoState });
+});
+
+app.get("/api/dashboard", async (_req, res, next) => {
+  try {
+    const doctorFilter = String(_req.query.doctor || "").trim();
+    const now = new Date();
+    const startToday = atStartOfDay(now);
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const visitMatch = buildDoctorVisitMatch(doctorFilter);
+
+    const [
+      drugCount,
+      todayRevenueAgg,
+      monthRevenueAgg,
+      recentVisits,
+      lowStockDrugs,
+      scopedVisits,
+      scopedPatientCount
+    ] = await Promise.all([
+      Drug.countDocuments(),
+      revenueTotalBetween(startToday, new Date(), visitMatch),
+      revenueTotalBetween(startMonth, new Date(), visitMatch),
+      Visit.find(visitMatch).sort({ visitDate: -1, createdAt: -1 }).limit(6).lean(),
+      Drug.find({}).sort({ quantity: 1, updatedAt: -1 }).limit(6).lean(),
+      Visit.find(visitMatch).lean(),
+      Visit.aggregate([
+        { $match: visitMatch },
+        { $group: { _id: "$patientId" } },
+        { $count: "total" }
+      ])
+    ]);
+    const patientCount = scopedPatientCount[0]?.total || 0;
+    const visitTodayCount = scopedVisits.filter((visit) => {
+      const visitDate = new Date(visit.visitDate || visit.createdAt || Date.now());
+      return visitDate >= startToday && visitDate <= now;
+    }).length;
+    const visitsThisMonthCount = scopedVisits.filter((visit) => {
+      const visitDate = new Date(visit.visitDate || visit.createdAt || Date.now());
+      return visitDate >= startMonth && visitDate <= now;
+    }).length;
+
+    res.json({
+      summary: {
+        patientCount,
+        drugCount,
+        visitTodayCount,
+        visitsThisMonthCount,
+        todayRevenue: todayRevenueAgg.totalRevenue,
+        monthRevenue: monthRevenueAgg.totalRevenue
+      },
+      recentVisits,
+      lowStockDrugs
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/quick-stats", async (_req, res, next) => {
+  try {
+    const doctorFilter = String(_req.query.doctor || "").trim();
+    const visits = await Visit.find(buildDoctorVisitMatch(doctorFilter)).sort({ visitDate: 1, createdAt: 1 }).lean();
+    const now = new Date();
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - 7);
+    const lastWeekStart = new Date(now);
+    lastWeekStart.setDate(now.getDate() - 14);
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endPrevMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    res.json({
+      weekCount: countVisitsBetween(visits, thisWeekStart, now),
+      previousWeekCount: countVisitsBetween(visits, lastWeekStart, thisWeekStart),
+      monthCount: countVisitsBetween(visits, startMonth, now),
+      previousMonthCount: countVisitsBetween(visits, startPrevMonth, endPrevMonth),
+      monthProfit: profitBetween(visits, startMonth, now),
+      previousMonthProfit: profitBetween(visits, startPrevMonth, endPrevMonth),
+      revisit: buildRevisitStats(visits)
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/patients", async (req, res, next) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const doctorFilter = String(req.query.doctor || "").trim();
+    const query = buildPatientSearch(search);
+    const patients = await Patient.find(query).sort({ updatedAt: -1, createdAt: -1 }).lean();
+    const patientIds = patients.map((patient) => patient._id);
+
+    let statsByPatient = new Map();
+    if (patientIds.length) {
+      const visitStats = await Visit.aggregate([
+        { $match: { patientId: { $in: patientIds } } },
+        { $sort: { visitDate: -1, createdAt: -1 } },
+        {
+          $group: {
+            _id: "$patientId",
+            visitCount: { $sum: 1 },
+            lastVisitAt: { $first: "$visitDate" },
+            lastDiagnosis: { $first: "$diagnosis" },
+            lastDoctor: { $first: "$doctor" },
+            lastFollowUpDate: { $first: "$followUpDate" },
+            totalRevenue: { $sum: "$totalMoney" }
+          }
+        }
+      ]);
+
+      statsByPatient = new Map(visitStats.map((item) => [String(item._id), item]));
+    }
+
+    const rows = patients.map((patient) => {
+      const stat = statsByPatient.get(String(patient._id));
+      return {
+        ...patient,
+        visitCount: stat?.visitCount || 0,
+        lastVisitAt: stat?.lastVisitAt || null,
+        lastDiagnosis: stat?.lastDiagnosis || "",
+        lastDoctor: stat?.lastDoctor || "",
+        lastFollowUpDate: stat?.lastFollowUpDate || null,
+        totalRevenue: stat?.totalRevenue || 0
+      };
+    });
+
+    const filteredRows = doctorFilter
+      ? rows.filter((item) => normalizeSearchText(item.lastDoctor).includes(normalizeSearchText(doctorFilter)))
+      : rows;
+
+    res.json(filteredRows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/patients/:id", async (req, res, next) => {
+  try {
+    const patient = await Patient.findById(req.params.id).lean();
+    if (!patient) {
+      return res.status(404).json({ error: "Khong tim thay benh nhan." });
+    }
+
+    const visits = await Visit.find({ patientId: patient._id })
+      .sort({ visitDate: -1, createdAt: -1 })
+      .lean();
+
+    res.json({
+      patient,
+      visits,
+      medicationHistory: summarizeMedicationHistory(visits)
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/patients", async (req, res, next) => {
+  try {
+    const payload = sanitizePatientPayload(req.body);
+    const patient = await Patient.create(payload);
+    res.status(201).json(patient);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/patients/:id", async (req, res, next) => {
+  try {
+    const payload = sanitizePatientPayload(req.body);
+    const patient = await Patient.findByIdAndUpdate(req.params.id, payload, {
+      new: true,
+      runValidators: true
+    }).lean();
+
+    if (!patient) {
+      return res.status(404).json({ error: "Khong tim thay benh nhan de cap nhat." });
+    }
+
+    res.json(patient);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/patients/:id", async (req, res, next) => {
+  try {
+    const patient = await Patient.findById(req.params.id).lean();
+    if (!patient) {
+      return res.status(404).json({ error: "Khong tim thay benh nhan de xoa." });
+    }
+
+    await Promise.all([
+      Patient.deleteOne({ _id: req.params.id }),
+      Visit.deleteMany({ patientId: req.params.id })
+    ]);
+
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/patients/:id/visits", async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    let createdVisit = null;
+
+    await session.withTransaction(async () => {
+      const patient = await Patient.findById(req.params.id).session(session);
+      if (!patient) {
+        throw createHttpError(404, "Khong tim thay benh nhan de tai kham.");
+      }
+
+      const payload = sanitizeVisitPayload(req.body);
+      const nextVisitNo = (await Visit.countDocuments({ patientId: patient._id }).session(session)) + 1;
+      const items = await buildVisitDrugItems(payload.drugs, session);
+      const drugTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+      const totalMoney = drugTotal + payload.serviceFee;
+
+      for (const item of items) {
+        const updated = await Drug.updateOne(
+          { _id: item.drugId, quantity: { $gte: item.quantity } },
+          { $inc: { quantity: -item.quantity } },
+          { session }
+        );
+
+        if (!updated.modifiedCount) {
+          throw createHttpError(400, `Thuoc "${item.brandName}" khong du so luong ton kho.`);
+        }
+      }
+
+      createdVisit = await Visit.create(
+        [
+          {
+            patientId: patient._id,
+            patientName: patient.fullName,
+            patientPhone: patient.phone,
+            doctor: payload.doctor,
+            visitNo: nextVisitNo,
+            visitType: payload.visitType,
+            visitDate: payload.visitDate,
+            symptom: payload.symptom,
+            diagnosis: payload.diagnosis,
+            note: payload.note,
+            followUpDate: payload.followUpDate,
+            serviceFee: payload.serviceFee,
+            drugTotal,
+            totalMoney,
+            drugs: items
+          }
+        ],
+        { session }
+      );
+
+      await Patient.updateOne(
+        { _id: patient._id },
+        {
+          $set: {
+            notes: payload.patientNote || patient.notes
+          }
+        },
+        { session }
+      );
+    });
+
+    res.status(201).json(createdVisit[0]);
+  } catch (error) {
+    next(error);
+  } finally {
+    await session.endSession();
+  }
+});
+
+app.post("/api/visits/:id/print", async (req, res, next) => {
+  try {
+    const printedAt = new Date();
+    const visit = await Visit.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: { printedAt },
+        $push: { printHistory: printedAt }
+      },
+      { new: true }
+    ).lean();
+
+    if (!visit) {
+      return res.status(404).json({ error: "Khong tim thay luot kham de in." });
+    }
+
+    res.json({ ok: true, printedAt: visit.printedAt, printHistory: visit.printHistory });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/drugs", async (req, res, next) => {
+  try {
+    const search = String(req.query.search || "").trim();
+    const query = search
+      ? {
+          $or: [
+            { activeIngredient: { $regex: escapeRegex(search), $options: "i" } },
+            { brandName: { $regex: escapeRegex(search), $options: "i" } }
+          ]
+        }
+      : {};
+
+    const drugs = await Drug.find(query).sort({ updatedAt: -1, createdAt: -1 }).lean();
+    res.json(drugs);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/drugs", async (req, res, next) => {
+  try {
+    const payload = sanitizeDrugPayload(req.body);
+    const drug = await Drug.create(payload);
+    res.status(201).json(drug);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/drugs/:id", async (req, res, next) => {
+  try {
+    const payload = sanitizeDrugPayload(req.body);
+    const drug = await Drug.findByIdAndUpdate(req.params.id, payload, {
+      new: true,
+      runValidators: true
+    }).lean();
+
+    if (!drug) {
+      return res.status(404).json({ error: "Khong tim thay thuoc de cap nhat." });
+    }
+
+    res.json(drug);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/drugs/:id", async (req, res, next) => {
+  try {
+    const drug = await Drug.findByIdAndDelete(req.params.id).lean();
+    if (!drug) {
+      return res.status(404).json({ error: "Khong tim thay thuoc de xoa." });
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/settings", async (_req, res, next) => {
+  try {
+    const settings = await getAppSettings();
+    res.json(settings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put("/api/settings", async (req, res, next) => {
+  try {
+    const payload = sanitizeSettingsPayload(req.body);
+    const settings = await Settings.findOneAndUpdate(
+      { key: "app-settings" },
+      { $set: payload },
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    ).lean();
+    res.json(settings);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/revenue", async (req, res, next) => {
+  try {
+    const { from, to } = buildRange(req.query.from, req.query.to);
+    const match = { visitDate: { $gte: from, $lte: to } };
+
+    const [overviewAgg, hourly, daily, monthly, recent] = await Promise.all([
+      Visit.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalMoney" },
+            totalDrugRevenue: { $sum: "$drugTotal" },
+            totalServiceRevenue: { $sum: "$serviceFee" },
+            totalVisits: { $sum: 1 }
+          }
+        }
+      ]),
+      aggregateRevenue(match, "%Y-%m-%d %H:00"),
+      aggregateRevenue(match, "%Y-%m-%d"),
+      aggregateRevenue(match, "%Y-%m"),
+      Visit.find(match).sort({ visitDate: -1, createdAt: -1 }).limit(12).lean()
+    ]);
+
+    const overview = overviewAgg[0] || {
+      totalRevenue: 0,
+      totalDrugRevenue: 0,
+      totalServiceRevenue: 0,
+      totalVisits: 0
+    };
+
+    res.json({
+      filters: { from, to },
+      overview,
+      hourly,
+      daily,
+      monthly,
+      recent
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+  res.sendFile(path.join(__dirname, "minh.html"));
+});
+
+app.use((error, _req, res, _next) => {
+  const statusCode = error.statusCode || 500;
+  const message = error.message || "Da co loi xay ra tren may chu.";
+  console.error(error);
+  res.status(statusCode).json({ error: message });
+});
+
+async function startServer() {
+  await connectWithFallback();
+  app.listen(PORT, () => {
+    console.log(`PK Dr. Minh is running at http://localhost:${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Cannot start server:", error);
+  process.exit(1);
+});
+
+async function revenueTotalBetween(from, to, extraMatch = {}) {
+  const result = await Visit.aggregate([
+    { $match: { ...extraMatch, visitDate: { $gte: from, $lte: to } } },
+    {
+      $group: {
+        _id: null,
+        totalRevenue: { $sum: "$totalMoney" }
+      }
+    }
+  ]);
+
+  return result[0] || { totalRevenue: 0 };
+}
+
+async function aggregateRevenue(match, format) {
+  return Visit.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format,
+            date: "$visitDate",
+            timezone: TIMEZONE
+          }
+        },
+        totalRevenue: { $sum: "$totalMoney" },
+        totalVisits: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ]);
+}
+
+async function buildVisitDrugItems(drugs, session) {
+  const requestedItems = Array.isArray(drugs) ? drugs : [];
+  if (!requestedItems.length) {
+    return [];
+  }
+
+  const uniqueDrugIds = [...new Set(requestedItems.map((item) => String(item.drugId || "")).filter(Boolean))];
+  const catalog = await Drug.find({ _id: { $in: uniqueDrugIds } }).session(session).lean();
+  const catalogMap = new Map(catalog.map((item) => [String(item._id), item]));
+
+  return requestedItems.map((item) => {
+    const drug = catalogMap.get(String(item.drugId));
+    if (!drug) {
+      throw createHttpError(400, "Co thuoc trong toa khong con ton tai trong danh muc.");
+    }
+
+    const quantity = clampNumber(item.quantity);
+    if (quantity <= 0) {
+      throw createHttpError(400, `So luong cua thuoc "${drug.brandName}" phai lon hon 0.`);
+    }
+
+    if (quantity > drug.quantity) {
+      throw createHttpError(400, `Thuoc "${drug.brandName}" khong du ton kho.`);
+    }
+
+    return {
+      drugId: drug._id,
+      activeIngredient: drug.activeIngredient,
+      brandName: drug.brandName,
+      usage: drug.usage,
+      unit: drug.unit,
+      quantity,
+      morning: String(item.morning || "").trim(),
+      noon: String(item.noon || "").trim(),
+      night: String(item.night || "").trim(),
+      instruction: String(item.instruction || "").trim(),
+      unitPrice: drug.price,
+      subtotal: drug.price * quantity
+    };
+  });
+}
+
+function sanitizePatientPayload(body = {}) {
+  const payload = {
+    fullName: String(body.fullName || "").trim(),
+    phone: String(body.phone || "").trim(),
+    birthYear: body.birthYear ? clampNumber(body.birthYear) : undefined,
+    gender: String(body.gender || "Nam").trim(),
+    address: String(body.address || "").trim(),
+    province: String(body.province || "").trim(),
+    notes: String(body.notes || "").trim()
+  };
+
+  if (!payload.fullName) {
+    throw createHttpError(400, "Ho ten benh nhan la bat buoc.");
+  }
+
+  if (!payload.phone) {
+    throw createHttpError(400, "So dien thoai la bat buoc.");
+  }
+
+  if (!payload.birthYear) {
+    delete payload.birthYear;
+  }
+
+  return payload;
+}
+
+function sanitizeDrugPayload(body = {}) {
+  const payload = {
+    activeIngredient: String(body.activeIngredient || "").trim(),
+    brandName: String(body.brandName || "").trim(),
+    unit: String(body.unit || "Vien").trim(),
+    usage: String(body.usage || "").trim(),
+    quantity: clampNumber(body.quantity),
+    price: clampNumber(body.price),
+    notes: String(body.notes || "").trim()
+  };
+
+  if (!payload.activeIngredient) {
+    throw createHttpError(400, "Hoat chat la bat buoc.");
+  }
+
+  if (!payload.brandName) {
+    throw createHttpError(400, "Ten thuong mai la bat buoc.");
+  }
+
+  return payload;
+}
+
+function sanitizeSettingsPayload(body = {}) {
+  const clinicProfiles = sanitizeClinicProfiles(body.clinicProfiles, body.clinicInfo);
+  const activeClinicProfileId = sanitizeActiveClinicProfileId(body.activeClinicProfileId, clinicProfiles);
+  const clinicInfo = clinicProfiles.find((profile) => profile.id === activeClinicProfileId) || sanitizeClinicInfo(body.clinicInfo);
+  return {
+    clinicInfo,
+    clinicProfiles,
+    activeClinicProfileId,
+    icdList: sanitizeIcdList(body.icdList)
+  };
+}
+
+function sanitizeClinicInfo(input = {}) {
+  return {
+    name: String(input.name || "Phòng khám chuyên khoa tâm thần").trim() || "Phòng khám chuyên khoa tâm thần",
+    doctor: String(input.doctor || "Bác sĩ phụ trách").trim() || "Bác sĩ phụ trách",
+    address: String(input.address || "Chưa cập nhật địa chỉ").trim() || "Chưa cập nhật địa chỉ",
+    hours: String(input.hours || "Chưa cập nhật giờ làm việc").trim() || "Chưa cập nhật giờ làm việc",
+    phone: String(input.phone || "Chưa cập nhật số điện thoại").trim() || "Chưa cập nhật số điện thoại"
+  };
+}
+
+function sanitizeClinicProfiles(input = [], fallbackClinicInfo = {}) {
+  const source = Array.isArray(input) && input.length ? input : [fallbackClinicInfo];
+  const unique = new Map();
+  source.forEach((item, index) => {
+    const clinicInfo = sanitizeClinicInfo(item);
+    const id = String(item?.id || `clinic-${index + 1}`).trim() || `clinic-${index + 1}`;
+    const label = String(item?.label || item?.doctor || item?.name || `Thông tin ${index + 1}`).trim() || `Thông tin ${index + 1}`;
+    if (!unique.has(id)) {
+      unique.set(id, { id, label, ...clinicInfo });
+    }
+  });
+  return unique.size ? [...unique.values()] : [{ id: "clinic-1", label: "Thông tin 1", ...sanitizeClinicInfo() }];
+}
+
+function sanitizeActiveClinicProfileId(input = "", clinicProfiles = []) {
+  const value = String(input || "").trim();
+  if (value && clinicProfiles.some((profile) => profile.id === value)) {
+    return value;
+  }
+  return clinicProfiles[0]?.id || "";
+}
+
+function sanitizeIcdList(input = []) {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  const unique = new Map();
+  input.forEach((item) => {
+    const code = String(item?.code || "").trim();
+    const name = String(item?.name || "").trim();
+    if (code && name) {
+      unique.set(code, { code, name });
+    }
+  });
+  return [...unique.values()];
+}
+
+async function getAppSettings() {
+  const settings = await Settings.findOne({ key: "app-settings" }).lean();
+  if (settings) {
+    const clinicProfiles = sanitizeClinicProfiles(settings.clinicProfiles, settings.clinicInfo);
+    const activeClinicProfileId = sanitizeActiveClinicProfileId(settings.activeClinicProfileId, clinicProfiles);
+    const clinicInfo = clinicProfiles.find((profile) => profile.id === activeClinicProfileId) || sanitizeClinicInfo(settings.clinicInfo);
+    if (
+      !Array.isArray(settings.clinicProfiles) || !settings.clinicProfiles.length
+      || settings.activeClinicProfileId !== activeClinicProfileId
+    ) {
+      await Settings.updateOne(
+        { key: "app-settings" },
+        { $set: { clinicInfo, clinicProfiles, activeClinicProfileId } }
+      );
+    }
+    return {
+      ...settings,
+      clinicInfo,
+      clinicProfiles,
+      activeClinicProfileId
+    };
+  }
+
+  const clinicProfiles = sanitizeClinicProfiles([], sanitizeClinicInfo());
+  const activeClinicProfileId = sanitizeActiveClinicProfileId("", clinicProfiles);
+  return Settings.create({
+    key: "app-settings",
+    clinicInfo: clinicProfiles[0],
+    clinicProfiles,
+    activeClinicProfileId,
+    icdList: []
+  }).then((doc) => doc.toObject());
+}
+
+function sanitizeVisitPayload(body = {}) {
+  const visitDate = body.visitDate ? new Date(body.visitDate) : new Date();
+  const followUpDate = body.followUpDate ? new Date(body.followUpDate) : null;
+
+  if (Number.isNaN(visitDate.getTime())) {
+    throw createHttpError(400, "Ngay gio kham khong hop le.");
+  }
+
+  if (followUpDate && Number.isNaN(followUpDate.getTime())) {
+    throw createHttpError(400, "Ngay tai kham khong hop le.");
+  }
+
+  return {
+    visitType: String(body.visitType || "revisit").trim() || "revisit",
+    visitDate,
+    doctor: String(body.doctor || "Bác sĩ phụ trách").trim() || "Bác sĩ phụ trách",
+    symptom: String(body.symptom || "").trim(),
+    diagnosis: String(body.diagnosis || "").trim(),
+    note: String(body.note || "").trim(),
+    patientNote: String(body.patientNote || "").trim(),
+    followUpDate,
+    serviceFee: clampNumber(body.serviceFee),
+    drugs: Array.isArray(body.drugs) ? body.drugs : []
+  };
+}
+
+function normalizeSearchText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0111/g, "d")
+    .replace(/\u0110/g, "d")
+    .trim();
+}
+
+function buildDoctorVisitMatch(doctorFilter = "") {
+  const normalized = normalizeSearchText(doctorFilter);
+  if (!normalized) {
+    return {};
+  }
+  return {
+    doctor: { $regex: escapeRegex(doctorFilter), $options: "i" }
+  };
+}
+
+function summarizeMedicationHistory(visits) {
+  const grouped = new Map();
+
+  visits.forEach((visit) => {
+    (visit.drugs || []).forEach((drug) => {
+      const key = `${drug.drugId}-${drug.brandName}`;
+      const current = grouped.get(key) || {
+        drugId: drug.drugId,
+        brandName: drug.brandName,
+        activeIngredient: drug.activeIngredient,
+        totalQuantity: 0,
+        timesPrescribed: 0,
+        lastVisitAt: null
+      };
+
+      current.totalQuantity += drug.quantity;
+      current.timesPrescribed += 1;
+      current.lastVisitAt = visit.visitDate;
+      grouped.set(key, current);
+    });
+  });
+
+  return [...grouped.values()].sort((a, b) => {
+    const dateA = a.lastVisitAt ? new Date(a.lastVisitAt).getTime() : 0;
+    const dateB = b.lastVisitAt ? new Date(b.lastVisitAt).getTime() : 0;
+    return dateB - dateA;
+  });
+}
+
+function buildPatientSearch(search) {
+  if (!search) {
+    return {};
+  }
+
+  const safeSearch = escapeRegex(search);
+  return {
+    $or: [
+      { fullName: { $regex: safeSearch, $options: "i" } },
+      { phone: { $regex: safeSearch, $options: "i" } }
+    ]
+  };
+}
+
+function countVisitsBetween(visits, from, to) {
+  return visits.filter((visit) => {
+    const date = new Date(visit.visitDate || visit.createdAt || Date.now());
+    return date >= from && date < to;
+  }).length;
+}
+
+function profitBetween(visits, from, to) {
+  return visits
+    .filter((visit) => {
+      const date = new Date(visit.visitDate || visit.createdAt || Date.now());
+      return date >= from && date < to;
+    })
+    .reduce((sum, visit) => sum + (Number(visit.totalMoney || 0) - Number(visit.drugTotal || 0)), 0);
+}
+
+function buildRevisitStats(visits) {
+  const byPatient = new Map();
+  visits.forEach((visit) => {
+    const key = String(visit.patientId);
+    if (!byPatient.has(key)) {
+      byPatient.set(key, []);
+    }
+    byPatient.get(key).push(visit);
+  });
+
+  let scheduled = 0;
+  let returned = 0;
+  let onTime = 0;
+  let late = 0;
+  let missed = 0;
+
+  byPatient.forEach((items) => {
+    const ordered = items.slice().sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate));
+    ordered.forEach((visit, index) => {
+      if (!visit.followUpDate) {
+        return;
+      }
+
+      scheduled += 1;
+      const follow = atStartOfDay(visit.followUpDate);
+      const later = ordered.slice(index + 1).find((nextVisit) => atStartOfDay(nextVisit.visitDate) >= follow);
+      if (!later) {
+        missed += 1;
+        return;
+      }
+
+      returned += 1;
+      const diffDays = Math.round((atStartOfDay(later.visitDate) - follow) / 86400000);
+      if (diffDays <= 0) {
+        onTime += 1;
+      } else {
+        late += 1;
+      }
+    });
+  });
+
+  return {
+    scheduled,
+    returned,
+    rate: scheduled ? Math.round((returned / scheduled) * 100) : 0,
+    onTime,
+    late,
+    missed
+  };
+}
+
+function buildRange(fromInput, toInput) {
+  const now = new Date();
+  const from = fromInput ? new Date(`${fromInput}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = toInput ? new Date(`${toInput}T23:59:59.999`) : now;
+
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw createHttpError(400, "Khoang thoi gian doanh thu khong hop le.");
+  }
+
+  if (from > to) {
+    throw createHttpError(400, "Ngay bat dau phai nho hon hoac bang ngay ket thuc.");
+  }
+
+  return { from, to };
+}
+
+function atStartOfDay(date) {
+  const clone = new Date(date);
+  clone.setHours(0, 0, 0, 0);
+  return clone;
+}
+
+function clampNumber(value) {
+  const result = Number(value || 0);
+  return Number.isFinite(result) ? result : 0;
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createHttpError(statusCode, message) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function loadLocalEnv() {
+  const envPath = path.join(__dirname, ".env");
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  const envContent = fs.readFileSync(envPath, "utf8");
+  envContent.split(/\r?\n/).forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      return;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex <= 0) {
+      return;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const value = trimmed.slice(separatorIndex + 1).trim();
+    if (key && !process.env[key]) {
+      process.env[key] = value;
+    }
+  });
+}
+
+async function connectWithFallback() {
+  try {
+    await mongoose.connect(MONGODB_URI);
+  } catch (error) {
+    if (shouldUseDirectMongoUri(error)) {
+      if (!MONGODB_URI_DIRECT) {
+        throw new Error(
+          "MongoDB SRV DNS bi loi va chua co MONGODB_URI_DIRECT de du phong."
+        );
+      }
+
+      console.warn(
+        "SRV DNS lookup failed. Falling back to direct MongoDB hosts from MONGODB_URI_DIRECT."
+      );
+      await mongoose.connect(MONGODB_URI_DIRECT);
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function shouldUseDirectMongoUri(error) {
+  if (!error) {
+    return false;
+  }
+
+  const message = String(error.message || "");
+  return (
+    error.code === "ECONNREFUSED" &&
+    error.syscall === "querySrv" &&
+    message.includes("_mongodb._tcp.")
+  );
+}

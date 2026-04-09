@@ -1,0 +1,346 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PK Dr. Minh | H&#7891; s&#417; kh&#225;m v&#224; k&#234; toa</title>
+  <link rel="stylesheet" href="minh.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="shell">
+      <header class="topbar">
+        <div class="title">
+          <h1 id="pageClinicTitle">Ph&#242;ng kh&#225;m t&#226;m th&#7847;n</h1>
+          <div class="sub">Giao di&#7879;n qu&#7843;n l&#253; b&#7879;nh nh&#226;n, kh&#225;m b&#7879;nh, k&#234; toa v&#224; th&#7889;ng k&#234;. V&#7851;n d&#249;ng k&#7871;t n&#7889;i hi&#7879;n t&#7841;i.</div>
+        </div>
+        <div class="row-actions">
+          <button class="btn" id="refreshBtn" type="button">L&#224;m m&#7899;i</button>
+          <button class="btn" id="exportBtn" type="button">Xu&#7845;t d&#7919; li&#7879;u</button>
+        </div>
+      </header>
+
+      <section class="card patient-top">
+        <div class="card-title">
+          <h2>Danh s&#225;ch b&#7879;nh nh&#226;n</h2>
+          <div class="row-actions">
+            <span class="muted" id="connectionState">&#272;ang k&#7871;t n&#7889;i...</span>
+            <span class="muted" id="patientCountText">0 h&#7891; s&#417;</span>
+          </div>
+        </div>
+
+        <div class="search-zone">
+          <input class="field" id="searchInput" placeholder="T&#236;m t&#234;n, &#273;&#7883;a ch&#7881;, s&#7889; &#273;i&#7879;n tho&#7841;i, n&#259;m sinh..." autocomplete="off" />
+          <div class="suggest-box hidden" id="searchSuggestBox"></div>
+        </div>
+
+        <div class="searchbar">
+          <button class="btn small primary" id="searchBtn" type="button">T&#236;m ki&#7871;m</button>
+          <button class="btn small" id="clearSearchBtn" type="button">X&#243;a t&#236;m</button>
+          <button class="btn small soft" id="showAllPatientsBtn" type="button">Xem t&#7845;t c&#7843;</button>
+        </div>
+
+        <div class="patient-list">
+          <div class="patient-head">
+            <div>Ng&#224;y kh&#225;m</div>
+            <div>H&#7885; t&#234;n / S&#272;T / &#272;&#7883;a ch&#7881; / Gi&#7899;i t&#237;nh / L&#7847;n kh&#225;m</div>
+            <div>Tu&#7893;i</div>
+            <div>T&#7893;ng ti&#7873;n</div>
+            <div>ICD</div>
+            <div>T&#225;i kh&#225;m</div>
+            <div>X&#243;a</div>
+          </div>
+          <div class="patient-list-viewport" id="patientListViewport">
+            <div id="patientListBody"></div>
+          </div>
+        </div>
+      </section>
+
+      <main class="main-layout stacked-layout">
+        <section class="card">
+          <div class="form-topbar">
+            <div class="date-inline">
+              <label class="label">Ng&#224;y kh&#225;m</label>
+              <input class="field" id="visitDate" type="date" />
+            </div>
+            <div class="row-actions form-actions">
+              <button class="btn primary" id="saveBtn" type="button">L&#432;u / Ho&#224;n t&#7845;t kh&#225;m</button>
+              <button class="btn soft" id="newBtn" type="button">B&#7879;nh m&#7899;i</button>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="search-zone">
+              <label class="label">H&#7885; v&#224; t&#234;n</label>
+              <input class="field" id="patientName" />
+            </div>
+            <div>
+              <label class="label">S&#7889; &#273;i&#7879;n tho&#7841;i</label>
+              <input class="field" id="phone" />
+            </div>
+            <div class="picker-wrap">
+              <label class="label">N&#259;m sinh</label>
+              <input class="field" id="birthYear" inputmode="numeric" autocomplete="off" />
+              <div class="suggest-box hidden" id="yearSuggestBox"></div>
+            </div>
+            <input id="visitDoctor" type="hidden" list="doctorList" />
+            <div>
+              <label class="label">Tu&#7893;i</label>
+              <input class="field age-input" id="age" readonly />
+            </div>
+            <div>
+              <label class="label">Gi&#7899;i t&#237;nh</label>
+              <select class="field" id="gender">
+                <option>Nam</option>
+                <option>N&#7919;</option>
+                <option>Kh&#225;c</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="info-grid-2">
+            <div>
+              <label class="label">&#272;&#7883;a ch&#7881; + x&#227; / ph&#432;&#7901;ng</label>
+              <input class="field" id="addressWard" />
+            </div>
+            <div class="picker-wrap">
+              <label class="label">T&#7881;nh / Th&#224;nh</label>
+              <input class="field" id="province" autocomplete="off" />
+              <div class="suggest-box hidden" id="provinceSuggestBox"></div>
+            </div>
+          </div>
+
+          <div class="info-grid-3">
+            <div>
+              <label class="label">Tri&#7879;u ch&#7913;ng</label>
+              <input class="field" id="symptom" />
+              <div class="suggest-box hidden" id="symptomSuggestBox"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <div>
+              <h2>Ch&#7849;n &#273;o&#225;n</h2>
+              <div class="sub">G&#245; m&#227; ho&#7863;c v&#224;i ch&#7919;</div>
+            </div>
+            <div class="row-actions">
+              <button class="btn small primary" id="addCodeBtn" type="button">Th&#234;m</button>
+              <button class="btn small" id="toggleCodeDataBtn" type="button">D&#7919; li&#7879;u m&#227;</button>
+            </div>
+          </div>
+          <div class="search-zone">
+            <textarea class="field auto-grow" id="icdInput" rows="1" autocomplete="off"></textarea>
+            <div class="suggest-box hidden" id="icdSuggestBox"></div>
+          </div>
+          <div class="code-data hidden" id="codeDataBox"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <h2 id="drugSectionTitle">Ch&#7881; &#273;&#7883;nh thu&#7889;c</h2>
+            <div class="row-actions">
+              <button class="btn small primary" id="addDrugBtn" type="button">Th&#234;m thu&#7889;c</button>
+              <button class="btn small" id="newPrescriptionBtn" type="button">Toa m&#7899;i</button>
+              <button class="btn small" id="toggleStockBtn" type="button">Kho thu&#7889;c</button>
+            </div>
+          </div>
+          <div class="drug-table">
+            <div class="drug-rows" id="drugRows"></div>
+          </div>
+          <div class="drug-footer-actions">
+            <button class="btn small" id="previewPrintBtn" type="button">Xem / In toa</button>
+          </div>
+          <div class="code-data hidden" id="stockDataBox"></div>
+        </section>
+
+        <section class="card">
+          <div class="fee-grid">
+            <div>
+              <h2>Ng&#224;y t&#225;i kh&#225;m v&#224; c&#244;ng kh&#225;m</h2>
+              <div class="info-grid-2">
+                <div>
+                  <label class="label">Ng&#224;y t&#225;i kh&#225;m</label>
+                  <input class="field" id="followDate" type="date" />
+                </div>
+              </div>
+              <input id="serviceFee" type="hidden" value="0" />
+              <div style="margin-top:12px">
+                <label class="label">L&#7901;i d&#7863;n</label>
+                <textarea class="field" id="adviceNote" rows="3"></textarea>
+              </div>
+            </div>
+            <div>
+              <h2>Ti&#7873;n thu&#7889;c</h2>
+              <div class="money-box">
+                <label class="money-row"><span>Ti&#7873;n thu&#7889;c</span><input class="money-input" id="drugMoney" inputmode="numeric" value="0" /></label>
+                <label class="money-row">
+                  <span>C&#244;ng kh&#225;m</span>
+                  <span class="money-picker">
+                    <input class="money-input" id="serviceMoney" inputmode="numeric" autocomplete="off" value="0" />
+                    <div class="suggest-box hidden service-fee-suggest" id="serviceFeeSuggestBox"></div>
+                  </span>
+                </label>
+                <label class="money-row total"><span>T&#7893;ng ti&#7873;n</span><input class="money-input" id="totalMoney" inputmode="numeric" value="0" /></label>
+              </div>
+              <div style="margin-top:12px">
+                <button class="btn primary" id="saveBottomBtn" type="button" style="width:100%">L&#432;u / Ho&#224;n t&#7845;t kh&#225;m</button>
+              </div>
+              <div class="warning-box" id="warningBox"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <div>
+              <h2>L&#7883;ch s&#7917; kh&#225;m</h2>
+              <div class="sub">M&#7903; l&#7841;i l&#7847;n kh&#225;m c&#361; &#273;&#7875; xem v&#224; in toa</div>
+            </div>
+            <button class="btn small" id="reloadHistoryBtn" type="button">T&#7843;i l&#7841;i</button>
+          </div>
+          <div class="history-table">
+            <div class="history-head">
+              <div>Ng&#224;y</div>
+              <div>L&#7847;n</div>
+              <div>Ch&#7849;n &#273;o&#225;n</div>
+              <div>T&#7893;ng ti&#7873;n</div>
+              <div>M&#7903;</div>
+            </div>
+            <div id="historyRows"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <div>
+              <h2>Th&#7889;ng k&#234; nhanh</h2>
+              <div class="sub">Theo dashboard v&#224; quick stats</div>
+            </div>
+          </div>
+          <div class="stats-grid stats-grid-6">
+            <div class="stat">
+              <div class="muted">H&#7891; s&#417;</div>
+              <div class="k" id="summaryPatients">0</div>
+              <div class="stat-mini" id="summaryPatientsMini"></div>
+            </div>
+            <div class="stat">
+              <div class="muted">Thu&#7889;c</div>
+              <div class="k" id="summaryDrugs">0</div>
+              <div class="stat-mini" id="summaryDrugsMini"></div>
+            </div>
+            <div class="stat">
+              <div class="muted">Kh&#225;m h&#244;m nay</div>
+              <div class="k" id="summaryVisitToday">0</div>
+              <div class="stat-mini" id="summaryVisitTodayMini"></div>
+            </div>
+            <div class="stat">
+              <div class="muted">Doanh thu th&#225;ng</div>
+              <div class="k" id="summaryRevenueMonth">0</div>
+              <div class="stat-mini" id="summaryRevenueMonthMini"></div>
+            </div>
+            <div class="stat">
+              <div class="muted">L&#432;&#7907;t kh&#225;m 7 ng&#224;y</div>
+              <div class="k" id="statWeekCount">0</div>
+              <div class="stat-mini" id="statWeekMini"></div>
+              <div class="trend up" id="statWeekTrend">&#9650; 0% so v&#7899;i tu&#7847;n tr&#432;&#7899;c</div>
+            </div>
+            <div class="stat">
+              <div class="muted">L&#432;&#7907;t kh&#225;m th&#225;ng</div>
+              <div class="k" id="statMonthCount">0</div>
+              <div class="stat-mini" id="statMonthMini"></div>
+              <div class="trend up" id="statMonthTrend">&#9650; 0% so v&#7899;i th&#225;ng tr&#432;&#7899;c</div>
+            </div>
+            <div class="stat">
+              <div class="muted">L&#227;i t&#7841;m t&#237;nh</div>
+              <div class="k" id="statProfit">0</div>
+              <div class="stat-mini" id="statProfitMini"></div>
+              <div class="trend up" id="statProfitTrend">&#9650; 0% so v&#7899;i th&#225;ng tr&#432;&#7899;c</div>
+            </div>
+            <div class="stat">
+              <div class="muted">T&#7927; l&#7879; t&#225;i kh&#225;m</div>
+              <div class="k" id="statRevisitRate">0%</div>
+              <div class="stat-mini" id="statRevisitMini"></div>
+              <div class="trend up" id="statRevisitTrend">0/0 ca quay l&#7841;i</div>
+            </div>
+            <div class="stat">
+              <div class="muted">&#272;&#250;ng h&#7865;n</div>
+              <div class="k" id="statOnTimeCount">0</div>
+              <div class="stat-mini" id="statOnTimeMini"></div>
+              <div class="trend up" id="statOnTimeTrend">0 ca &#273;&#250;ng h&#7865;n</div>
+            </div>
+            <div class="stat">
+              <div class="muted">Tr&#7877; / kh&#244;ng quay l&#7841;i</div>
+              <div class="k" id="statLateMissedCount">0</div>
+              <div class="stat-mini" id="statLateMissedMini"></div>
+              <div class="trend down" id="statLateMissedTrend">0 tr&#7877;, 0 kh&#244;ng quay l&#7841;i</div>
+            </div>
+          </div>
+          <div class="recent-block">
+            <div class="recent-title">L&#432;&#7907;t kh&#225;m g&#7847;n &#273;&#226;y</div>
+            <div class="recent-list" id="recentVisitsList"></div>
+          </div>
+        </section>
+
+        <section class="card clinic-card">
+          <div class="card-title clinic-card__title">
+            <div>
+              <h2>Th&#244;ng tin ph&#242;ng kh&#225;m</h2>
+              <div class="sub">D&#249;ng cho giao di&#7879;n v&#224; m&#7851;u in toa</div>
+            </div>
+            <div class="row-actions">
+              <select class="field field--compact clinic-profile-select" id="clinicProfileSelect">
+                <option value="">H&#7891; s&#417; th&#244;ng tin</option>
+              </select>
+              <button class="btn" id="addClinicBtn" type="button">Th&#234;m th&#244;ng tin</button>
+              <button class="btn" id="deleteClinicBtn" type="button">X&#243;a th&#244;ng tin</button>
+              <button class="btn soft" id="toggleClinicBtn" type="button">S&#7917;a th&#244;ng tin</button>
+              <button class="btn primary" id="saveClinicBtn" type="button">L&#432;u th&#244;ng tin</button>
+            </div>
+          </div>
+          <div class="clinic-meta">
+            <div><span class="clinic-meta-label">T&#234;n ph&#242;ng kh&#225;m</span><strong id="clinicDisplayName">Ph&#242;ng kh&#225;m chuy&#234;n khoa t&#226;m th&#7847;n</strong></div>
+            <div><span class="clinic-meta-label">T&#234;n b&#225;c s&#297;</span><strong id="clinicDisplayDoctor">B&#225;c s&#297; ph&#7909; tr&#225;ch</strong></div>
+            <div><span class="clinic-meta-label">&#272;&#7883;a ch&#7881;</span><strong id="clinicDisplayAddress">Ch&#432;a c&#7853;p nh&#7853;t</strong></div>
+            <div><span class="clinic-meta-label">Gi&#7901; l&#224;m vi&#7879;c</span><strong id="clinicDisplayHours">Ch&#432;a c&#7853;p nh&#7853;t</strong></div>
+            <div><span class="clinic-meta-label">&#272;i&#7879;n tho&#7841;i</span><strong id="clinicDisplayPhone">Ch&#432;a c&#7853;p nh&#7853;t</strong></div>
+          </div>
+          <div class="clinic-form hidden" id="clinicForm">
+            <div><label class="label">T&#234;n ph&#242;ng kh&#225;m</label><input class="field" id="clinicNameInput" /></div>
+            <div><label class="label">T&#234;n b&#225;c s&#297;</label><input class="field" id="clinicDoctorInput" /></div>
+            <div><label class="label">&#272;&#7883;a ch&#7881;</label><input class="field" id="clinicAddressInput" /></div>
+            <div><label class="label">Gi&#7901; l&#224;m vi&#7879;c</label><input class="field" id="clinicHoursInput" /></div>
+            <div><label class="label">S&#7889; &#273;i&#7879;n tho&#7841;i</label><input class="field" id="clinicPhoneInput" /></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="rxModal" class="rx-modal hidden">
+    <div class="rx-panel">
+      <div class="rx-head">
+        <strong>Xem toa thu&#7889;c</strong>
+        <div class="row-actions">
+          <button class="btn small soft" id="rxShareBtn" type="button">Gửi Zalo</button>
+          <button class="btn small primary" id="rxPrintBtn" type="button">In</button>
+          <button class="btn small" id="rxCloseBtn" type="button">&#272;&#243;ng</button>
+        </div>
+      </div>
+      <div class="rx-body" id="rxBody"></div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <datalist id="activeIngredientList"></datalist>
+  <datalist id="doctorList"></datalist>
+  <datalist id="doseList"></datalist>
+  <datalist id="serviceFeeList"></datalist>
+
+  <script src="app-config.js"></script>
+  <script src="icd-data.js"></script>
+  <script src="minh.js"></script>
+</body>
+</html>

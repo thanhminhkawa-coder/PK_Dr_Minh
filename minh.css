@@ -1,0 +1,1346 @@
+:root {
+  --bg: #f3f6f9;
+  --card: #ffffff;
+  --line: #d8e1e8;
+  --text: #1f2937;
+  --muted: #64748b;
+  --primary: #0f8b8d;
+  --primary-strong: #0b6b6d;
+  --soft: #e8f8f7;
+  --danger: #dc4c4c;
+  --success: #1a7f49;
+  --warn: #b7791f;
+  --shell-max: 1520px;
+  --card-pad: clamp(12px, 1.4vw, 18px);
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, "Noto Sans", Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #eef4f8 0%, #f7fafc 100%);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.6;
+}
+button, input, select, textarea { font: inherit; }
+.page { max-width: var(--shell-max); margin: 0 auto; padding: 12px; }
+.shell { background: #ffffffdd; border: 1px solid #fff; border-radius: 22px; padding: var(--card-pad); box-shadow: 0 12px 32px rgba(15, 23, 42, .08); }
+.shell > .card,
+.shell > .main-layout,
+.main-layout > .card,
+.patient-top {
+  width: 100%;
+  min-width: 0;
+}
+
+.topbar, .card-title, .row-actions, .inline, .searchbar, .clinic-card__title, .form-topbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar { align-items: flex-start; margin-bottom: 14px; }
+.topbar .row-actions {
+  justify-content: flex-end;
+}
+.topbar-doctor-filter {
+  min-width: 180px;
+  max-width: 220px;
+}
+.title h1 { margin: 0; font-size: clamp(32px, 2.8vw, 40px); line-height: 1.15; }
+.sub, .muted { color: var(--muted); }
+.sub { font-size: 16px; margin-top: 4px; }
+
+.btn {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 11px 17px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #fff;
+  color: var(--text);
+}
+.btn.primary { background: var(--primary); border-color: transparent; color: #fff; }
+.btn.primary:hover { background: var(--primary-strong); }
+.btn.soft { background: var(--soft); color: var(--primary-strong); border-color: #b8ece9; }
+.btn.danger { background: #fff3f3; color: var(--danger); border-color: #ffd0d0; }
+.btn.small { padding: 9px 14px; font-size: 15px; }
+
+.field, .mini {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: 50px;
+  background: #fff;
+  font-size: 17px;
+  line-height: 1.45;
+  outline: none;
+}
+.auto-grow {
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.mini {
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: 16px;
+}
+.field:focus, .mini:focus {
+  border-color: #87d7d3;
+  box-shadow: 0 0 0 3px rgba(15, 139, 141, .12);
+}
+.label { display: block; font-size: 14px; color: var(--muted); margin: 0 0 6px 2px; font-weight: 700; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--card-pad); }
+.hidden { display: none !important; }
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.patient-top, .clinic-card { margin-bottom: 14px; }
+.main-layout { display: grid; gap: 14px; }
+.stacked-layout { grid-template-columns: 1fr; }
+
+.search-zone, .picker-wrap { position: relative; }
+.suggest-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, .12);
+  max-height: 260px;
+  overflow: auto;
+}
+.suggest-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf2f7;
+  cursor: pointer;
+  font-size: 15px;
+}
+.suggest-item:last-child { border-bottom: none; }
+.suggest-item:hover, .suggest-item.is-active { background: #eefcfb; }
+.service-fee-suggest {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.service-fee-item {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.service-fee-item:last-child {
+  margin-bottom: 0;
+}
+.service-fee-item.is-priority {
+  font-weight: 800;
+  color: var(--primary-strong);
+  background: #eefcfb;
+}
+.money-picker .service-fee-suggest {
+  left: auto;
+  right: 0;
+  min-width: 180px;
+}
+#symptomSuggestBox {
+  position: static;
+  margin-top: 6px;
+  box-shadow: none;
+  max-height: 280px;
+}
+#symptomSuggestBox .suggest-item {
+  cursor: default;
+}
+
+.patient-list {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+.patient-head, .patient-row {
+  display: grid;
+  grid-template-columns: 110px 1.9fr 90px 120px 1fr 110px 80px;
+  gap: 12px;
+  align-items: center;
+  font-size: 15px;
+}
+.patient-head {
+  padding: 14px 12px;
+  background: #f6fafc;
+  color: var(--muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+.patient-list-viewport {
+  position: relative;
+  max-height: 620px;
+  overflow: auto;
+}
+.patient-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 94px;
+  padding: 14px;
+  border-bottom: 1px solid #edf2f7;
+  background: #fff;
+  cursor: pointer;
+}
+.patient-row.active { background: #eefcfb; }
+.patient-meta strong { display: block; font-size: 19px; line-height: 1.3; }
+.patient-meta small { display: block; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.patient-meta__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.patient-meta__sub small {
+  display: inline;
+}
+.visit-tags-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.visit-tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; }
+.visit-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+}
+.follow-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.follow-badge.up { background: #e8fbef; color: var(--success); }
+.follow-badge.down { background: #fff2f2; color: var(--danger); }
+.follow-badge.neutral { background: #eef2f7; color: #5b6472; }
+
+.form-topbar { margin-bottom: 12px; align-items: end; }
+.date-inline { min-width: 220px; }
+.info-grid { display: grid; grid-template-columns: 1.45fr 1.1fr .8fr .9fr; gap: 12px; }
+.info-grid > :nth-child(1) { grid-column: 1 / 3; }
+.info-grid > :nth-child(2) { grid-column: 3; }
+.info-grid > :nth-child(3) { grid-column: 4; }
+.info-grid > :nth-child(4) { grid-column: 1 / 3; }
+.info-grid > :nth-child(5) { grid-column: 3; }
+.info-grid > :nth-child(6) { grid-column: 4; }
+.info-grid-2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; margin-top: 12px; }
+.info-grid-3 { display: grid; grid-template-columns: 1fr 1.3fr; gap: 12px; margin-top: 12px; }
+.field--compact {
+  min-width: 180px;
+  width: auto;
+}
+.diag-row { display: grid; grid-template-columns: 1.5fr auto auto; gap: 10px; align-items: start; }
+.code-box { margin-top: 8px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fcfdfd; max-height: 260px; overflow-y: auto; }
+.code-row { padding: 12px 14px; border-bottom: 1px solid #edf2f7; font-size: 15px; }
+.code-row:last-child { border-bottom: none; }
+.code-manager { display: grid; gap: 12px; }
+.code-manager__form {
+  display: grid;
+  grid-template-columns: 160px 1fr auto auto auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcfd;
+}
+.code-manager__list {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.code-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.code-row.active { background: #eefcfb; }
+.code-row__code { font-weight: 700; }
+.code-row__name { color: var(--text); }
+.code-row__actions { display: flex; gap: 8px; }
+.code-empty { padding: 14px; color: var(--muted); }
+
+.age-input { text-align: center; font-weight: 700; }
+.age-green { background: #ecfdf5; color: #166534; }
+.age-yellow { background: #fefce8; color: #a16207; }
+.age-red { background: #fef2f2; color: #b91c1c; }
+
+.drug-table {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+  .drug-footer-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+  }
+.drug-row {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+  padding: 12px;
+  align-items: start;
+  font-size: 15px;
+  border-bottom: 1px solid #edf2f7;
+}
+.drug-row:last-child { border-bottom: none; }
+.drug-row__index {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-weight: 800;
+  padding-top: 30px;
+}
+.drug-row__main { display: grid; gap: 10px; }
+.drug-row__top,
+.drug-row__bottom {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+.drug-row__top {
+  grid-template-columns: minmax(260px, 1.5fr) minmax(230px, 1.25fr) 88px 88px;
+}
+.drug-row__bottom {
+  grid-template-columns: minmax(320px, 1.7fr) 112px 112px 112px 56px;
+}
+.drug-field { min-width: 0; }
+.drug-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.drug-field--ingredient .mini {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+.drug-field .mini,
+.drug-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.drug-field__label {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+}
+.drug-field--ingredient .mini.is-overdose {
+  border-color: #f2a3a3;
+  background: #fff1f1;
+  color: #b42318;
+}
+.drug-field--usage textarea { min-height: 72px; resize: vertical; }
+.drug-action {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+}
+.drug-action .icon-btn {
+  width: 40px;
+  min-width: 40px;
+}
+.drug-inline-index { display: none; }
+.stock-manager {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.stock-toolbar {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcfd;
+}
+.stock-toolbar__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.stock-paste {
+  min-height: 92px;
+  font-family: "Segoe UI", Roboto, "Noto Sans", Arial, Helvetica, sans-serif;
+}
+.stock-manager__table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  max-height: 360px;
+  overflow: auto;
+}
+.stock-table {
+  min-width: 1180px;
+}
+.stock-table__head,
+.stock-table__row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.1fr) minmax(200px, 1.1fr) 100px 100px 110px minmax(260px, 1.6fr) 70px;
+  gap: 10px;
+  align-items: start;
+}
+.stock-table__head {
+  padding: 12px 14px;
+  background: #f6fafc;
+  color: var(--muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+.stock-table__row {
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+.stock-table__row:last-child { border-bottom: none; }
+.stock-table__row .mini,
+.stock-table__row textarea.mini {
+  width: 100%;
+}
+.warning {
+  margin-top: 10px;
+  background: #fff7e8;
+  border: 1px solid #ffe0a8;
+  color: #8a5a00;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.fee-grid {
+  display: grid;
+  grid-template-columns: 1.2fr .9fr;
+  gap: 14px;
+}
+
+.money-box {
+  display: grid;
+  gap: 10px;
+}
+.money-picker {
+  position: relative;
+  display: inline-block;
+}
+
+.money-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.money-row.total {
+  background: #e9fbfb;
+  color: var(--primary-strong);
+}
+.money-input {
+  width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: right;
+  font-size: 18px;
+  font-weight: 700;
+  color: inherit;
+  background: #fff;
+}
+
+.warning-box {
+  min-height: 28px;
+  margin-top: 10px;
+  color: #8a5a00;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.wide-field { flex: 1; min-width: 220px; }
+.sum-card { display: grid; gap: 10px; }
+.sum-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  font-weight: 700;
+  font-size: 18px;
+}
+.sum-line.total { background: #e9fbfb; color: var(--primary-strong); }
+
+.history-table {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+}
+.history-head, .history-row {
+  display: grid;
+  grid-template-columns: 120px 96px minmax(280px, 1.6fr) 140px 96px;
+  gap: 12px;
+  padding: 12px;
+  align-items: center;
+  font-size: 16px;
+}
+.history-head {
+  background: #f6fafc;
+  color: var(--muted);
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+}
+.history-row { border-bottom: 1px solid #edf2f7; }
+.history-row:last-child { border-bottom: none; }
+.history-visit-tag {
+  display: none;
+}
+.history-total-inline {
+  display: none;
+}
+.history-drugs {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.stat { padding: 12px; border-radius: 16px; background: #fbfcfd; border: 1px solid var(--line); }
+.stat .k { font-size: clamp(22px, 2.2vw, 30px); font-weight: 800; margin-top: 6px; line-height: 1.15; }
+.stat-mini {
+  margin-top: 8px;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+}
+.stat-mini__track {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e7eef3;
+  overflow: hidden;
+}
+.stat-mini__track--stack {
+  gap: 2px;
+  background: transparent;
+}
+.stat-mini__fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.stat-mini-compare {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  align-items: end;
+}
+.stat-mini-compare__item {
+  display: flex;
+  align-items: flex-end;
+  height: 18px;
+}
+.stat-mini-compare__bar {
+  min-height: 4px;
+  border-radius: 999px;
+  background: #0f8b8d;
+}
+.stat-mini-compare__bar.is-previous {
+  background: #b9d7dc;
+}
+.stat-mini-donut {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.stat-mini-donut__center {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 7px;
+  font-weight: 800;
+  color: var(--text);
+}
+.trend {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.trend.up { background: #e8fbef; color: var(--success); }
+.trend.down { background: #fff4de; color: var(--warn); }
+.recent-block { margin-top: 14px; }
+.recent-title { margin-bottom: 8px; font-weight: 700; }
+.recent-list { display: grid; gap: 8px; }
+.recent-item { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fbfcfd; font-size: 15px; }
+.recent-item strong { display: block; margin-bottom: 4px; }
+
+.clinic-card { background: linear-gradient(180deg, rgba(253, 254, 254, .92) 0%, rgba(246, 251, 253, .95) 100%); }
+.clinic-card__title .row-actions {
+  justify-content: flex-end;
+}
+.clinic-profile-select {
+  min-width: 220px;
+}
+.clinic-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 4px; }
+.clinic-meta div { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; }
+.clinic-meta strong { display: block; font-size: 17px; margin-top: 4px; }
+.clinic-meta-label { display: block; font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.clinic-form { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; }
+
+.rx-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9999; }
+.rx-panel { background: #fff; width: min(980px, 100%); max-height: 90vh; overflow: auto; border-radius: 18px; box-shadow: 0 20px 50px rgba(0, 0, 0, .18); }
+.rx-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; }
+.rx-body { padding: 18px; }
+.toast { position: fixed; right: 20px; bottom: 20px; z-index: 10000; background: #1f2937; color: #fff; padding: 14px 16px; border-radius: 12px; box-shadow: 0 16px 30px rgba(0, 0, 0, .22); font-size: 15px; }
+.toast.error { background: #b42318; }
+.toast.success { background: #18794e; }
+
+@media (max-width: 1280px) {
+  .patient-list {
+    overflow-x: auto;
+  }
+  .patient-list-viewport,
+  #patientListBody {
+    min-width: 1040px;
+  }
+  .patient-head, .patient-row { min-width: 1040px; }
+  .history-head, .history-row { min-width: 780px; }
+  .drug-row { min-width: 1120px; }
+}
+
+@media (max-width: 1024px) {
+  .info-grid, .info-grid-2, .info-grid-3, .diag-row, .stats-grid, .clinic-meta, .clinic-form, .fee-grid, .code-manager__form {
+    grid-template-columns: 1fr;
+  }
+  .drug-row__top, .drug-row__bottom { grid-template-columns: 1fr 1fr; }
+  .stock-toolbar__actions { justify-content: flex-start; }
+}
+
+@media (max-width: 720px) {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  body { font-size: 15px; }
+  .page { padding: 7px; }
+  .page,
+  .shell,
+  .main-layout,
+  .stacked-layout,
+  .card,
+  .patient-top {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  .shell, .card { padding: 10px; }
+  .patient-top {
+    margin: 0 0 14px;
+    border-radius: var(--radius);
+  }
+  .topbar, .form-topbar, .searchbar, .row-actions, .inline { gap: 8px; }
+  .form-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+  .date-inline {
+    min-width: 0;
+    grid-column: 1;
+  }
+  .form-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+    align-items: end;
+  }
+  #saveBtn {
+    display: none;
+  }
+  .searchbar { flex-direction: column; align-items: stretch; }
+  .field, .mini { font-size: 15px; }
+  .btn { min-height: 40px; }
+  #icdSuggestBox {
+    position: static;
+    margin-top: 6px;
+    box-shadow: none;
+    max-height: 260px;
+    overflow: auto;
+  }
+  .rx-modal {
+    padding: 8px;
+    align-items: stretch;
+  }
+  .rx-panel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 14px;
+  }
+  .rx-head {
+    padding: 10px 12px;
+    align-items: flex-start;
+  }
+  .rx-body {
+    padding: 10px;
+    overflow-x: auto;
+  }
+  .patient-head,
+  .history-head,
+  .stock-table__head { display: none; }
+  .patient-list {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 14px;
+    box-sizing: border-box;
+  }
+  .patient-list,
+  .history-table,
+  .stock-manager__table-wrap { overflow: visible; }
+  .patient-list-viewport {
+    max-height: none;
+    overflow: visible;
+    height: auto !important;
+    width: 100%;
+    display: block;
+    position: static !important;
+  }
+  .patient-list-body,
+  #patientListBody {
+    height: auto !important;
+    width: 100%;
+    max-width: 100%;
+    display: block;
+    position: static !important;
+  }
+  .patient-row {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    grid-template-columns: 64px minmax(0, 1fr) auto auto;
+    gap: 4px 8px;
+    padding: 4px 7px;
+    border-bottom: 1px solid #edf2f7;
+    align-items: start;
+  }
+  .patient-row > div {
+    display: grid;
+    gap: 0;
+  }
+  .patient-row > div::before {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .patient-meta strong {
+    font-size: 16px;
+    line-height: 1.08;
+  }
+  .patient-meta small {
+    font-size: 13px;
+    line-height: 1.15;
+  }
+  .patient-meta__sub {
+    display: block;
+    min-width: 0;
+  }
+  .patient-meta__sub small {
+    display: block;
+    white-space: normal;
+    word-break: break-word;
+    overflow: visible;
+  }
+  .visit-tags-inline {
+    display: inline-flex;
+    flex-wrap: wrap;
+    margin-left: 4px;
+    vertical-align: baseline;
+  }
+  .visit-tags { margin-top: 1px; gap: 3px; }
+  .visit-tag,
+  .follow-badge {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+  .patient-row > div:nth-child(1)::before { content: "Ngày khám"; }
+  .patient-row > div:nth-child(2)::before { content: "Bệnh nhân"; }
+  .patient-row > div:nth-child(3)::before { content: ""; display: none; }
+  .patient-row > div:nth-child(4)::before { content: ""; display: none; }
+  .patient-row > div:nth-child(5)::before { content: ""; display: none; }
+  .patient-row > div:nth-child(6)::before { content: ""; display: none; }
+  .patient-row > div:nth-child(7)::before { content: ""; display: none; }
+  .patient-row > div:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .patient-row > div:nth-child(2) {
+    grid-column: 2 / 5;
+    grid-row: 1;
+    min-width: 0;
+    overflow: visible;
+  }
+  .patient-meta {
+    min-width: 0;
+    overflow: visible;
+  }
+  .patient-row > div:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .patient-row > div:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .patient-row > div:nth-child(5) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.25;
+  }
+  .patient-row > div:nth-child(6) {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
+  }
+  .patient-row > div:nth-child(7) {
+    grid-column: 4;
+    grid-row: 2;
+    align-self: center;
+  }
+  .patient-row > div:nth-child(6),
+  .patient-row > div:nth-child(7) {
+    justify-self: end;
+  }
+  .patient-row > div:nth-child(6) .follow-badge {
+    justify-self: end;
+  }
+  .patient-row > div:nth-child(7) .btn {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .patient-row > div:nth-child(7) .btn {
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 13px;
+    width: auto;
+    justify-self: end;
+  }
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .info-grid > :nth-child(1) {
+    grid-column: 1 / -1;
+  }
+  .info-grid > :nth-child(2) {
+    grid-column: 1;
+  }
+  .info-grid > :nth-child(3) {
+    grid-column: 2;
+  }
+  .info-grid > :nth-child(4) {
+    grid-column: 1 / -1;
+  }
+  .info-grid > :nth-child(5) {
+    grid-column: 1;
+  }
+  .info-grid > :nth-child(6) {
+    grid-column: 2;
+  }
+  .info-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .history-row {
+    min-width: 0;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 8px 9px;
+    border-bottom: 1px solid #edf2f7;
+    align-items: start;
+  }
+  .history-row > div {
+    display: grid;
+    gap: 2px;
+  }
+  .history-row > div::before {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .history-row > div:nth-child(1)::before { content: "Ngày"; }
+  .history-row > div:nth-child(2)::before { content: "Lần khám"; }
+  .history-row > div:nth-child(3)::before { content: "Chẩn đoán"; }
+  .history-row > div:nth-child(4)::before { content: "Tổng tiền"; }
+  .history-row > div:nth-child(5)::before { content: "Mở"; }
+  .history-row > div:nth-child(1) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .history-row > div:nth-child(1)::before {
+    display: block;
+    width: 100%;
+  }
+  .history-visit-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(15, 139, 141, .08);
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .history-visit-no {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-weight: 700;
+  }
+  .history-total-inline {
+    display: inline-flex;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .history-row > div:nth-child(4) { display: none; }
+  .history-row > div:nth-child(3),
+  .history-row > div:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+  .drug-row {
+    min-width: 0;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px 0;
+  }
+  .drug-row__index {
+    display: none;
+  }
+  .drug-inline-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: #eefcfb;
+    color: var(--primary-strong);
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .drug-row__top,
+  .drug-row__bottom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .drug-row__main {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px;
+    background: #fff;
+    position: relative;
+    overflow: visible;
+    z-index: 2;
+  }
+  .drug-field--ingredient,
+  .drug-field--usage {
+    flex: 1 1 100%;
+  }
+  .drug-field--ingredient .mini,
+  .drug-field--brand .mini {
+    min-height: 50px;
+  }
+  .drug-field--ingredient .mini {
+    font-size: 18px;
+    line-height: 1.25;
+  }
+  .drug-field--brand {
+    flex: 1 1 142px;
+    min-width: 0;
+  }
+  .drug-field--dose {
+    flex: 0 0 50px;
+    position: relative;
+  }
+  .drug-field--dose .mini {
+    min-height: 42px;
+    padding-inline: 6px;
+    text-align: center;
+  }
+  .dose-quick {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 128px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, .12);
+  }
+  .drug-field--dose-right .dose-quick {
+    left: auto;
+    right: 0;
+  }
+  .dose-quick__btn {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    min-height: 30px;
+    min-width: 36px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .drug-field--usage textarea {
+    min-height: 72px;
+    height: auto;
+    overflow: hidden;
+    resize: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .drug-field--usage .drug-field__label,
+  .drug-field--usage .label {
+    display: none;
+  }
+  .drug-field--unit,
+  .drug-field--price,
+  .drug-field--quantity {
+    flex: 1 1 calc(33.333% - 6px);
+  }
+  .drug-field--quantity {
+    position: relative;
+  }
+  .quantity-quick {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 60;
+    width: 100%;
+    max-height: 180px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, .12);
+  }
+  .quantity-quick__btn {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    min-height: 30px;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .quantity-quick__btn.is-common {
+    font-weight: 800;
+    color: var(--primary-strong);
+    background: #eefcfb;
+  }
+  .drug-field--unit { order: 1; }
+  .drug-field--quantity { order: 2; }
+  .drug-field--price { order: 3; }
+  .drug-field--usage { order: 4; }
+  .drug-remove-top {
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .stock-table {
+    min-width: 0;
+  }
+  .stock-table__row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+  .stock-table__row > div {
+    display: grid;
+    gap: 4px;
+  }
+  .stock-table__row > div::before {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .stock-table__row > div:nth-child(1)::before { content: "Hoạt chất"; }
+  .stock-table__row > div:nth-child(2)::before { content: "Tên thương mại"; }
+  .stock-table__row > div:nth-child(3)::before { content: "Đơn vị"; }
+  .stock-table__row > div:nth-child(4)::before { content: "Tồn kho"; }
+  .stock-table__row > div:nth-child(5)::before { content: "Giá"; }
+  .stock-table__row > div:nth-child(6)::before { content: "Công dụng"; }
+  .stock-table__row > div:nth-child(7)::before { content: "Xóa"; }
+  .stock-table__row > div:last-child { justify-items: end; }
+  .money-input { width: 132px; font-size: 15px; }
+  .stats-grid, .clinic-meta { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 390px) and (max-width: 720px) {
+  .page { padding: 8px; }
+  .shell, .card { padding: 12px; }
+  .patient-top {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 14px;
+  }
+  .patient-list {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+  }
+  .drug-field--dose {
+    flex-basis: 50px;
+  }
+  .stock-table__row {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .stock-table__row > div:nth-child(1),
+  .stock-table__row > div:nth-child(2),
+  .stock-table__row > div:nth-child(6),
+  .stock-table__row > div:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+  .history-row {
+    grid-template-columns: 1fr;
+    gap: 10px 12px;
+  }
+  .history-drugs {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
+
+@media (min-width: 390px) and (max-width: 430px) and (min-height: 860px) {
+  .page {
+    padding: 10px;
+  }
+  .shell,
+  .card,
+  .patient-top {
+    padding: 14px;
+    border-radius: 18px;
+  }
+  .topbar {
+    gap: 10px;
+  }
+  .topbar .btn {
+    min-height: 42px;
+    padding-inline: 14px;
+  }
+  .topbar-doctor-filter {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+  .form-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .date-inline .field {
+    min-height: 46px;
+  }
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .info-grid > :nth-child(1) {
+    grid-column: 1 / -1;
+  }
+  .info-grid > :nth-child(2),
+  .info-grid > :nth-child(3),
+  .info-grid > :nth-child(4),
+  .info-grid > :nth-child(5),
+  .info-grid > :nth-child(6) {
+    grid-column: auto;
+  }
+  .field--compact {
+    min-width: 0;
+    width: 100%;
+  }
+  .clinic-card__title .row-actions {
+    width: 100%;
+  }
+  .clinic-profile-select {
+    min-width: 0;
+    width: 100%;
+  }
+  .info-grid-3 {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .info-grid-3 > :last-child {
+    grid-column: 1 / -1;
+  }
+  .patient-list-viewport {
+    max-height: 420px;
+  }
+  .patient-row {
+    padding: 8px 10px;
+  }
+  .patient-row__mobile-top {
+    gap: 8px;
+  }
+  .patient-row__mobile-name {
+    font-size: 15px;
+  }
+  .patient-row__mobile-meta {
+    font-size: 12px;
+  }
+  .drug-row__main {
+    padding: 12px;
+  }
+  .drug-field--ingredient .mini {
+    font-size: 18px;
+    min-height: 52px;
+  }
+  .drug-field--brand {
+    flex: 1 1 156px;
+  }
+  .drug-field--brand .mini {
+    min-height: 46px;
+  }
+  .drug-field--dose {
+    flex: 0 0 56px;
+  }
+  .drug-field--dose .mini {
+    min-height: 46px;
+    font-size: 15px;
+  }
+  .drug-field--unit,
+  .drug-field--quantity,
+  .drug-field--price {
+    flex: 1 1 calc(33.333% - 8px);
+  }
+  .drug-field--usage textarea {
+    min-height: 84px;
+  }
+  .money-row,
+  .sum-line {
+    padding: 14px;
+  }
+  .money-input {
+    width: 144px;
+    font-size: 16px;
+  }
+  .stats-grid,
+  .clinic-meta {
+    gap: 10px;
+  }
+  .rx-head {
+    padding: 12px 14px;
+  }
+  .rx-body {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar > .row-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 8px;
+    align-items: stretch;
+  }
+  .topbar > .row-actions .btn,
+  .topbar > .row-actions .topbar-doctor-filter {
+    min-width: 0;
+    width: 100%;
+    min-height: 38px;
+    font-size: 14px;
+  }
+  .topbar > .row-actions .btn {
+    padding: 9px 10px;
+    border-radius: 12px;
+  }
+}
