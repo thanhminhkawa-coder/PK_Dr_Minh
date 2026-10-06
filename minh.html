@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>PK Dr. Minh | Hồ sơ khám và kê toa</title>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#242528" media="(prefers-color-scheme: dark)" />
+  <!-- đặt theme trước khi CSS tải để không nháy trắng; lựa chọn lưu ở localStorage "pk-theme" (light | dark | system) -->
+  <script>try{var t=localStorage.getItem("pk-theme")||"system";document.documentElement.dataset.theme=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}</script>
   <link rel="stylesheet" href="minh.css" />
 </head>
 <body>

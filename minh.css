@@ -66,6 +66,7 @@
   --bg-auth: linear-gradient(180deg, #eef4f8 0%, #f7fafc 100%);
   /* viền */
   --divider-soft: #edf2f7;
+  --input-border-soft: var(--line);  /* ô nhập trong hàng tiền */
   --field-border-focus: #87d7d3;
   --focus-ring: rgba(15, 139, 141, .45);
   --focus-glow: rgba(15, 139, 141, .12);
@@ -92,6 +93,50 @@
 }
 
 * { box-sizing: border-box; }
+/* ---------- Theme tối: chỉ ghi đè token màu ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #202124; --bg-subtle: #28292c; --bg-subtle-2: #28292c; --bg-subtle-3: #28292c; --bg-row-hover: #2c2d30;
+  --bg-raised: #2f3033; --bg-input: #2a2b2e; --bg-control: #2a2b2e; --bg-hover: #3a3b3e; --bg-badge: #35363a;
+  --bg-brand-soft: #1d393a; --bg-brand-soft-2: #1d393a; --bg-brand-soft-3: #1d393a; --soft: #1d393a;
+  --bg-topnav: rgba(36, 37, 40, .92); --bg-tabbar: rgba(36, 37, 40, .97);
+  --bg-overlay: rgba(0, 0, 0, .6); --bg-overlay-sheet: rgba(0, 0, 0, .6);
+  --bg-paper-frame: #28292c; --bg-splash: #202124; --bg-auth: linear-gradient(180deg, #202124 0%, #252629 100%);
+  --line: #3c4043; --divider: #34373b; --divider-soft: #34373b; --field-border: #80858c; --input-border-soft: #80858c;
+  --field-border-focus: #5ccfc9; --focus-ring: rgba(92, 207, 201, .5); --focus-glow: rgba(92, 207, 201, .18);
+  --brand-border: #2c5a5b; --wheel-band: rgba(92, 207, 201, .14); --wheel-edge: rgba(92, 207, 201, .4); --spinner-track: #3c4043;
+  --text: #e8eaed; --text-muted: #aeb3b9; --text-brand: #5ccfc9; --text-on-primary: #ffffff;
+  --primary: #0f7f82; --primary-strong: #0e7a7d;
+  --text-danger: #f28b82; --text-success: #81c995; --text-warn: #f2c66d;
+  --danger-bg: #3a2324; --danger-bg-2: #3a2324; --danger-bg-3: #3a2324; --danger-bg-4: #3a2324;
+  --danger-border: #6e3434; --danger-border-strong: #c05f5a;
+  --success-bg: #1e3326; --success-bg-2: #1e3326;
+  --warn-bg: #3a301c; --warn-bg-2: #3a301c; --warn-bg-3: #3a301c; --warn-border: #6b5524;
+  --toast-bg: #3c4043;
+  /* bóng gần như vô hình trên nền tối: thêm viền 1px (box-shadow, không đổi kích thước) để tách lớp */
+  --shadow-auth: 0 12px 32px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  --shadow-menu: 0 8px 24px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  --shadow-pop: 0 18px 36px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  --shadow-quick: 0 12px 24px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, .55), 0 0 0 1px var(--line);
+  --shadow-wheel: 0 18px 44px rgba(0, 0, 0, .55), 0 0 0 1px var(--line);
+  --shadow-toast: 0 16px 30px rgba(0, 0, 0, .5), 0 0 0 1px var(--line);
+  --shadow-fab: 0 10px 24px rgba(0, 0, 0, .5);
+  --shadow-tabbar: 0 -4px 14px rgba(0, 0, 0, .4);
+}
+:root[data-theme="dark"] ::placeholder { color: var(--text-muted); opacity: 1; }
+/* autofill của trình duyệt không được tô nền vàng/trắng */
+:root[data-theme="dark"] input:-webkit-autofill,
+:root[data-theme="dark"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+/* mũi tên select là data-URI nên không đọc được var(): ghi đè màu stroke */
+:root[data-theme="dark"] select.clinic-profile-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23aeb3b9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -679,7 +724,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .money-input {
   width: 180px;
   height: var(--control-h);
-  border: 1px solid var(--line);
+  border: 1px solid var(--input-border-soft);
   border-radius: var(--control-radius);
   padding: 0 12px;
   text-align: right;
