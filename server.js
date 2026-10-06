@@ -705,6 +705,56 @@ app.post("/api/patients/:id/visits", async (req, res, next) => {
   }
 });
 
+app.put("/api/visits/:id", async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    let updatedVisit = null;
+    let touchedDrugIds = [];
+
+    await session.withTransaction(async () => {
+      const visit = await Visit.findById(req.params.id).session(session).lean();
+      if (!visit) {
+        throw createHttpError(404, "Khong tim thay luot kham de cap nhat.");
+      }
+
+      const payload = sanitizeVisitPayload(req.body);
+      const items = await buildVisitDrugItems(payload.drugs, session);
+      const drugTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+
+      // chỉ thuốc có chênh lệch số lượng mới đụng tới kho
+      await applyStockDeltas(buildStockDeltas(visit.drugs || [], items), session);
+
+      // visitNo, patientId, printHistory giữ nguyên
+      updatedVisit = await Visit.findByIdAndUpdate(
+        visit._id,
+        {
+          $set: {
+            doctor: payload.doctor,
+            visitDate: payload.visitDate,
+            symptom: payload.symptom,
+            diagnosis: payload.diagnosis,
+            note: payload.note,
+            followUpDate: payload.followUpDate,
+            serviceFee: payload.serviceFee,
+            drugTotal,
+            totalMoney: drugTotal + payload.serviceFee,
+            drugs: items
+          }
+        },
+        { new: true, runValidators: true, session }
+      ).lean();
+      touchedDrugIds = [...(visit.drugs || []), ...items].map((item) => item.drugId);
+    });
+
+    res.json({ ...updatedVisit, warnings: await findNegativeStockWarnings(touchedDrugIds) });
+  } catch (error) {
+    next(error);
+  } finally {
+    await session.endSession();
+  }
+});
+
 app.post("/api/visits/:id/print", async (req, res, next) => {
   try {
     const printedAt = new Date();
