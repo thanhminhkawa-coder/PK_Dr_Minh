@@ -2714,7 +2714,8 @@ function showPrescriptionPreview() {
 function autoGrowField(element) {
   if (!element) return;
   element.style.height = "auto";
-  element.style.height = `${Math.max(element.scrollHeight, 50)}px`;
+  // min-height trong CSS giữ chiều cao tối thiểu bằng control; cộng viền vì scrollHeight không tính
+  element.style.height = `${element.scrollHeight + element.offsetHeight - element.clientHeight}px`;
 }
 
 // dữ liệu cũ không có buổi trưa vẫn hiển thị đúng ("Trưa -")

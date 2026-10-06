@@ -17,6 +17,10 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
   --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --control-h: 44px;      /* ô nhập, select, date, nút, icon-btn, nút phân trang */
+  --control-h-sm: 36px;   /* chỉ trong bảng dày đặc trên desktop (dòng thuốc, dòng kho); điện thoại = 44px */
+  --control-radius: 12px;
+  --ctl-h: var(--control-h);  /* chiều cao control tại chỗ; bảng dày đặc đặt lại bằng --control-h-sm */
   --section-gap: var(--space-6);
   --title-gap: var(--space-4);
   --row-gap: var(--space-4);
@@ -83,10 +87,10 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: var(--ctl-h);
   border: 1px solid var(--line);
-  border-radius: 13px;
-  padding: 10px 17px;
+  border-radius: var(--control-radius);
+  padding: 0 17px;
   cursor: pointer;
   background: #fff;
   font-size: var(--fs-base);
@@ -100,7 +104,7 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
 .btn.danger { background: #fff3f3; border-color: #ffd0d0; color: var(--text-danger); }
 .btn.ghost { border-color: transparent; background: transparent; }
 .btn.ghost:hover { background: #eef4f8; }
-.btn.small { padding: 8px 14px; font-size: var(--fs-sm); }
+.btn.small { padding: 0 14px; font-size: var(--fs-sm); }
 .btn--block { width: 100%; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn:focus-visible, .icon-btn:focus-visible, .birth-year-btn:focus-visible, .date-pick-btn:focus-visible, .tab:focus-visible, .link-btn:focus-visible, .fab:focus-visible, summary:focus-visible {
@@ -111,11 +115,11 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--ctl-h);
+  height: var(--ctl-h);
   flex: none;
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: var(--control-radius);
   background: #fff;
   color: var(--text);
   cursor: pointer;
@@ -143,9 +147,9 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
 .field, .mini {
   width: 100%;
   border: 1px solid var(--field-border);
-  border-radius: 14px;
-  padding: 12px 14px;
-  min-height: 50px;
+  border-radius: var(--control-radius);
+  padding: 0 14px;
+  height: var(--ctl-h);
   background: #fff;
   outline: none;
   font-size: var(--fs-base);
@@ -153,8 +157,9 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
   line-height: var(--lh-input);
   color: var(--text);
 }
-input.field, select.field { height: 50px; }
-input[type="date"].field { -webkit-appearance: none; appearance: none; display: block; min-height: 50px; text-align: left; line-height: var(--lh-input); }
+/* textarea: cao tối thiểu bằng control, 1 dòng canh giữa nhờ padding dọc; tự giãn khi nhiều dòng */
+textarea.field, textarea.mini { height: auto; min-height: var(--ctl-h); padding-block: calc((var(--ctl-h) - 2px - var(--lh-input) * 1em) / 2); }
+input[type="date"].field { -webkit-appearance: none; appearance: none; display: block; text-align: left; line-height: var(--lh-input); }
 input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .auto-grow {
   resize: none;
@@ -163,8 +168,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   word-break: break-word;
 }
 .mini {
-  min-height: 44px;
-  padding: 10px 12px;
+  padding: 0 12px;
   font-size: var(--fs-base);
 }
 .field:focus, .mini:focus, .money-input:focus {
@@ -174,7 +178,6 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .label { display: block; margin: 0 0 6px 2px; font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-muted); }
 .input-with-btn { display: flex; gap: 8px; align-items: stretch; }
 .input-with-btn .field { min-width: 0; flex: 1; }
-.input-with-btn .icon-btn { height: 50px; }
 .sub, .muted { color: var(--text-muted); }
 .sub { margin-top: 4px; font-size: var(--fs-lg); }
 
@@ -415,11 +418,11 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--control-h);
+  min-height: var(--control-h);
   padding: 0 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--control-radius);
   background: #fff;
   cursor: pointer;
   color: var(--text);
@@ -511,7 +514,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 /* giới tính: 3 radio trên một hàng cao bằng ô nhập */
 .radio-group { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-5); min-width: 0; margin: 0; padding: 0; border: 0; }
 .radio-group > legend { padding: 0; }
-.radio { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 44px; min-height: 50px; cursor: pointer; font-size: var(--fs-base); font-weight: var(--fw-regular); color: var(--text); }
+.radio { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 44px; min-height: var(--control-h); cursor: pointer; font-size: var(--fs-base); font-weight: var(--fw-regular); color: var(--text); }
 .radio input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--primary); cursor: pointer; }
 .radio input:focus-visible { outline: 3px solid rgba(15, 139, 141, .45); outline-offset: 2px; }
 
@@ -590,6 +593,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stock-pending__row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .stock-list { border: 1px solid var(--line); border-radius: 14px; overflow-y: auto; background: #fff; }
 .stock-list > .stock-head { position: sticky; top: 0; z-index: 1; }
+.stock-row { --ctl-h: var(--control-h-sm); }
 .stock-head, .stock-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 110px 130px 44px;
@@ -622,7 +626,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--line);
   border-radius: 14px;
   background: #fff;
@@ -632,10 +636,10 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .money-row.total { background: #e9fbfb; color: var(--text-brand); }
 .money-input {
   width: 180px;
-  min-height: 44px;
+  height: var(--control-h);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: var(--control-radius);
+  padding: 0 12px;
   text-align: right;
   background: #fff;
   outline: none;
@@ -681,7 +685,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .clinic-card.page-section > .clinic-card__title { margin-bottom: var(--space-5); }
 .clinic-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
 select.clinic-profile-select {
-  min-width: 220px; height: 44px; padding: 0 40px 0 var(--space-4);
+  min-width: 220px; padding: 0 40px 0 var(--space-4);
   appearance: none; -webkit-appearance: none;
   background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center / 18px;
 }
@@ -818,7 +822,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 /* ---------- <768px: điện thoại ---------- */
 @media (max-width: 767px) {.topnav { display: none; }
   .page { padding: 0 0 calc(var(--tabbar-h) + 16px + 52px + 24px + var(--safe-b)); }
-  :root { --section-gap: var(--space-5); --title-gap: var(--space-3); --row-gap: 14px; --col-gap: var(--space-3); --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 22px; --fs-num: 26px; }
+  :root { --section-gap: var(--space-5); --title-gap: var(--space-3); --row-gap: 14px; --col-gap: var(--space-3); --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 22px; --fs-num: 26px; --control-h-sm: 44px; }
   .shell { padding: var(--space-4); }
   .card { padding: 12px; }.mobile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: var(--space-4); }
   .mobile-head h1 { margin: 0; min-width: 0; font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: var(--lh-heading); color: var(--text-brand); }
@@ -845,7 +849,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .fab { right: 16px; bottom: calc(var(--tabbar-h) + 16px + var(--safe-b)); padding: 0 20px; }
   .toast { bottom: calc(var(--tabbar-h) + 16px + 52px + 12px + var(--safe-b)); left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
 
-  .btn.small { min-height: 44px; }.searchbar { display: grid; grid-template-columns: 1fr 1fr; }
+  .searchbar { display: grid; grid-template-columns: 1fr 1fr; }
   .form-actions { display: grid; grid-template-columns: 1fr auto; }
   .form-actions .btn { white-space: nowrap; }
   .birth-year-btn { display: none; }
@@ -858,7 +862,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .clinic-card__title .row-actions { justify-content: flex-start; }
   .clinic-card__title .row-actions .btn, .clinic-profile-select { flex: 1 1 100%; min-width: 0; width: 100%; }
 
-  .money-row { padding: 12px; }
+  .money-row { padding: var(--space-2) var(--space-3); }
   .money-input { width: 150px; }
 
   /* kho thuốc */
@@ -913,7 +917,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-head > :nth-child(n+6):nth-child(-n+8) { text-align: right; }
 .drug-row { border-bottom: 1px solid var(--divider); }
 .drug-row:last-child { border-bottom: 0; }
-.drug-row__line { padding-block: 8px; min-height: 56px; }
+.drug-row__line { --ctl-h: var(--control-h-sm); padding-block: 8px; min-height: 56px; }
 .drug-cell--index { color: var(--text-muted); }
 .drug-cell--drug { min-width: 0; }
 .drug-name { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-weight: var(--fw-medium); overflow-wrap: anywhere; }
@@ -925,14 +929,14 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: var(--fs-sm); }
 .drug-field { min-width: 0; position: relative; }
 .drug-field .mini, .drug-field textarea { width: 100%; }
-.drug-row__line .drug-field .mini { height: 38px; min-height: 38px; padding: 0 var(--space-1); text-align: center; }
+.drug-row__line .drug-field .mini { padding: 0 var(--space-1); text-align: center; }
 .drug-row__line .drug-field--quantity .mini { text-align: right; padding-right: var(--space-2); }
 .mini.is-overdose { border-color: #f2a3a3; background: #fff1f1; color: var(--text-danger); }
 .drug-lbl, .drug-calc, .drug-toggle__text { display: none; }
 .drug-cell--price, .drug-cell--subtotal { text-align: right; }
 .drug-subtotal strong { font-weight: var(--fw-medium); }
 .drug-actions { display: flex; justify-content: flex-end; gap: var(--space-1); }
-.drug-actions .icon-btn { width: 34px; height: 34px; border-radius: 10px; }
+.drug-actions .icon-btn { width: var(--ctl-h); height: var(--ctl-h); }
 .drug-toggle .icon { transition: transform .2s; }
 .drug-row.is-open .drug-toggle .icon { transform: rotate(180deg); }
 .drug-detail { display: none; }
@@ -945,12 +949,12 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   border-radius: 12px;
   background: #f8fafc;
 }
-.drug-detail .mini { height: 40px; min-height: 40px; }
-.drug-field--usage textarea { min-height: 40px; resize: none; }
+.drug-detail { --ctl-h: var(--control-h-sm); }
+.drug-field--usage textarea { resize: none; }
 .drug-row--search { border-bottom: 0; padding: var(--space-3) 14px; }
 .drug-search { position: relative; }
 .drug-search > .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.drug-search .mini { height: 44px; padding-left: 44px; border-style: dashed; }
+.drug-search .mini { height: var(--control-h); padding-left: 44px; border-style: dashed; }
 .drug-summary { display: flex; justify-content: flex-end; align-items: baseline; gap: var(--space-2); margin-top: var(--space-3); }
 .drug-summary strong { font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .drug-cell--price, .drug-subtotal, .drug-calc, .drug-row__line .mini { font-variant-numeric: tabular-nums; }
@@ -979,14 +983,14 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-name__idx { display: inline; }
   .drug-cell--drug { grid-column: 1 / 4; grid-row: 1; }
   .drug-actions { display: contents; }
-  .drug-actions .drug-remove { grid-column: 4; grid-row: 1; justify-self: end; width: 44px; height: 44px; }
+  .drug-actions .drug-remove { grid-column: 4; grid-row: 1; justify-self: end; width: var(--ctl-h); height: var(--ctl-h); }
   .drug-field--morning { grid-column: 1; grid-row: 2; }
   .drug-field--noon { grid-column: 2; grid-row: 2; }
   .drug-field--night { grid-column: 3; grid-row: 2; }
   .drug-field--quantity { grid-column: 4; grid-row: 2; }
   .drug-calc { display: block; grid-column: 1 / 3; grid-row: 3; color: var(--text-muted); font-size: var(--fs-sm); }
   .drug-calc strong { color: var(--text); font-weight: var(--fw-medium); font-size: var(--fs-base); }
-  .drug-actions .drug-toggle { grid-column: 3 / 5; grid-row: 3; justify-self: end; width: auto; white-space: nowrap; height: 44px; padding: 0 var(--space-3); gap: var(--space-1); border-radius: 13px; }
+  .drug-actions .drug-toggle { grid-column: 3 / 5; grid-row: 3; justify-self: end; width: auto; white-space: nowrap; height: var(--ctl-h); padding: 0 var(--space-3); gap: var(--space-1); }
   .drug-toggle__text { display: inline; font-size: var(--fs-sm); font-weight: var(--fw-medium); }
   .drug-field--dose, .drug-field--quantity {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -1005,5 +1009,5 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-row.is-open .drug-detail { margin: 0 var(--space-3) var(--space-3); }
   .drug-row--search { border: 1px dashed var(--field-border); padding: 0; background: transparent; }
   .drug-search > .icon { display: none; }
-  .drug-search .mini { height: 48px; padding-left: var(--space-3); border: 0; background: transparent; text-align: center; }
+  .drug-search .mini { height: var(--control-h); padding-left: var(--space-3); border: 0; background: transparent; text-align: center; }
 }
