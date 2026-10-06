@@ -395,8 +395,27 @@ authRouter.post("/change-password/request", requireAuth, async (req, res) => {
   res.json({ email: user.email, expiresInMinutes: CHANGE_CODE_MINUTES });
 });
 
+// kiểm tra mã (không tiêu thụ mã); mã sai được tính vào số lần thử
+async function assertChangeCode(user, code) {
+  const live = user.passwordChangeCodeHash && user.passwordChangeCodeExpires > new Date() && user.passwordChangeAttempts < CHANGE_CODE_MAX_ATTEMPTS;
+  if (!live) throw createHttpError(400, "Mã xác nhận đã hết hạn. Vui lòng gửi lại mã.");
+  const expected = Buffer.from(user.passwordChangeCodeHash);
+  const given = Buffer.from(sha256(String(code || "").trim()));
+  if (!crypto.timingSafeEqual(expected, given)) {
+    user.passwordChangeAttempts += 1;
+    await user.save();
+    throw createHttpError(400, "Mã xác nhận không đúng.");
+  }
+}
+
+authRouter.post("/change-password/verify", requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId);
+  if (!user) throw createHttpError(401, "Phiên đăng nhập không hợp lệ.");
+  await assertChangeCode(user, req.body?.code);
+  res.json({ ok: true });
+});
+
 authRouter.post("/change-password/confirm", requireAuth, async (req, res) => {
-  const code = String(req.body?.code || "").trim();
   const password = String(req.body?.password || "");
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw createHttpError(400, `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`);
@@ -404,15 +423,7 @@ authRouter.post("/change-password/confirm", requireAuth, async (req, res) => {
 
   const user = await User.findById(req.userId);
   if (!user) throw createHttpError(401, "Phiên đăng nhập không hợp lệ.");
-  const live = user.passwordChangeCodeHash && user.passwordChangeCodeExpires > new Date() && user.passwordChangeAttempts < CHANGE_CODE_MAX_ATTEMPTS;
-  if (!live) throw createHttpError(400, "Mã xác nhận đã hết hạn. Vui lòng gửi lại mã.");
-  const expected = Buffer.from(user.passwordChangeCodeHash);
-  const given = Buffer.from(sha256(code));
-  if (!crypto.timingSafeEqual(expected, given)) {
-    user.passwordChangeAttempts += 1;
-    await user.save();
-    throw createHttpError(400, "Mã xác nhận không đúng.");
-  }
+  await assertChangeCode(user, req.body?.code);
 
   user.passwordHash = await bcrypt.hash(password, BCRYPT_COST);
   user.passwordChangeCodeHash = "";

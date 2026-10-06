@@ -268,7 +268,7 @@ function cacheRefs() {
   [
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "resetForm",
-    "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "changePasswordBtn", "passwordModal", "pwIntro", "pwConfirmFields", "pwCode", "pwNew", "pwNew2", "pwToggle", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
+    "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
     "newPrescriptionBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
@@ -321,13 +321,17 @@ function bindEvents() {
     showAuthView("forgot");
   });
   refs.loginPasswordToggle.addEventListener("click", toggleLoginPassword);
-  refs.changePasswordBtn.addEventListener("click", openPasswordModal);
   refs.pwSendBtn.addEventListener("click", sendPasswordCode);
   refs.pwResendBtn.addEventListener("click", sendPasswordCode);
   refs.pwConfirmBtn.addEventListener("click", confirmPasswordChange);
-  refs.pwToggle.addEventListener("click", togglePasswordFields);
+  refs.pwOtp.addEventListener("input", handleOtpInput);
+  refs.pwOtp.addEventListener("keydown", handleOtpKeydown);
+  refs.passwordModal.addEventListener("click", (event) => {
+    const eye = event.target.closest("[data-pw-eye]");
+    if (eye) { const input = document.getElementById(eye.dataset.pwEye); setPasswordVisible(input, input.type === "password"); }
+  });
   refs.passwordModal.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && event.target.tagName === "INPUT") confirmPasswordChange();
+    if (event.key === "Enter" && (event.target === refs.pwNew || event.target === refs.pwNew2)) confirmPasswordChange();
   });
 
   refs.searchInput.addEventListener("input", handleSearchInput);
@@ -454,7 +458,7 @@ function handleAppAction(event) {
   const actionButton = event.target.closest("[data-app-action]");
   if (actionButton) {
     const action = actionButton.dataset.appAction;
-    if (action === "refresh") initializeApp();
+    if (action === "change-password") openPasswordModal();
     if (action === "export") exportData().catch(handleError);
     if (action === "import") refs.importFile.click();
     if (action === "logout") logout();
@@ -565,16 +569,30 @@ function toggleLoginPassword() {
   refs.loginPasswordToggle.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
 }
 
-// ---- Đổi mật khẩu: gửi mã về email, nhập mã + mật khẩu mới ----
+// ---- Đổi mật khẩu: gửi mã về email, nhập đủ 6 số (tự kiểm tra), rồi mới nhập mật khẩu mới ----
+
+const OTP_LENGTH = 6;
+let pwCode = "";
+let pwVerifying = false;
+
+function pwBoxes() {
+  return [...refs.pwOtp.querySelectorAll(".otp__box")];
+}
+
+function showPasswordStep(step) {
+  refs.pwStepCode.classList.toggle("hidden", step !== "code");
+  refs.pwStepNew.classList.toggle("hidden", step !== "new");
+  refs.pwSendBtn.classList.toggle("hidden", step !== "send");
+  refs.pwConfirmBtn.classList.toggle("hidden", step !== "new");
+}
 
 function openPasswordModal() {
-  [refs.pwCode, refs.pwNew, refs.pwNew2].forEach((input) => { input.value = ""; });
-  setPasswordFieldsVisible(false);
+  pwCode = "";
+  refs.pwOtp.innerHTML = Array.from({ length: OTP_LENGTH }, (_, i) => `<input class="field otp__box" inputmode="numeric" maxlength="1" autocomplete="${i ? "off" : "one-time-code"}" aria-label="Số thứ ${i + 1}" />`).join("");
+  [refs.pwNew, refs.pwNew2].forEach((input) => { input.value = ""; setPasswordVisible(input, false); });
   setAuthMessage(refs.pwMsg, "");
-  refs.pwConfirmFields.classList.add("hidden");
-  refs.pwConfirmBtn.classList.add("hidden");
-  refs.pwSendBtn.classList.remove("hidden");
-  refs.pwIntro.textContent = `Mã xác nhận gồm 6 số sẽ được gửi tới ${refs.accountEmail.textContent}.`;
+  refs.pwIntro.textContent = `Mã xác nhận gồm ${OTP_LENGTH} số sẽ được gửi tới ${refs.accountEmail.textContent}.`;
+  showPasswordStep("send");
   refs.passwordModal.showModal();
 }
 
@@ -597,10 +615,9 @@ async function sendPasswordCode(event) {
   try {
     const data = await authedPost("/api/auth/change-password/request", {});
     refs.pwIntro.textContent = `Đã gửi mã tới ${data.email}. Mã có hiệu lực ${data.expiresInMinutes} phút.`;
-    refs.pwConfirmFields.classList.remove("hidden");
-    refs.pwSendBtn.classList.add("hidden");
-    refs.pwConfirmBtn.classList.remove("hidden");
-    refs.pwCode.focus();
+    pwBoxes().forEach((box) => { box.value = ""; });
+    showPasswordStep("code");
+    pwBoxes()[0].focus();
   } catch (error) {
     setAuthMessage(refs.pwMsg, error.message);
   } finally {
@@ -608,17 +625,54 @@ async function sendPasswordCode(event) {
   }
 }
 
+async function verifyPasswordCode() {
+  const code = pwBoxes().map((box) => box.value).join("");
+  if (code.length < OTP_LENGTH || pwVerifying) return;
+  pwVerifying = true;
+  setAuthMessage(refs.pwMsg, "");
+  try {
+    await authedPost("/api/auth/change-password/verify", { code });
+    pwCode = code;
+    refs.pwIntro.textContent = "Mã đúng. Nhập mật khẩu mới.";
+    showPasswordStep("new");
+    refs.pwNew.focus();
+  } catch (error) {
+    setAuthMessage(refs.pwMsg, error.message);
+    pwBoxes().forEach((box) => { box.value = ""; });
+    pwBoxes()[0].focus();
+  } finally {
+    pwVerifying = false;
+  }
+}
+
+function handleOtpInput(event) {
+  const box = event.target;
+  if (!box.classList.contains("otp__box")) return;
+  const boxes = pwBoxes();
+  const digits = box.value.replace(/\D/g, "");
+  box.value = digits.slice(-1);
+  // dán nhiều số: rải vào các ô từ ô hiện tại
+  if (digits.length > 1) digits.slice(0, OTP_LENGTH).split("").forEach((digit, i) => { if (boxes[i]) boxes[i].value = digit; });
+  const next = boxes.find((item) => !item.value);
+  (next || boxes[OTP_LENGTH - 1]).focus();
+  verifyPasswordCode();
+}
+
+function handleOtpKeydown(event) {
+  const box = event.target;
+  if (!box.classList.contains("otp__box") || event.key !== "Backspace" || box.value) return;
+  const prev = box.previousElementSibling;
+  if (prev) { prev.value = ""; prev.focus(); }
+}
+
 async function confirmPasswordChange() {
-  if (refs.pwConfirmFields.classList.contains("hidden")) return;
-  const code = refs.pwCode.value.trim();
   const password = refs.pwNew.value;
-  if (!/^\d{6}$/.test(code)) return setAuthMessage(refs.pwMsg, "Nhập mã xác nhận gồm 6 số.");
   if (password.length < 8) return setAuthMessage(refs.pwMsg, "Mật khẩu tối thiểu 8 ký tự.");
   if (password !== refs.pwNew2.value) return setAuthMessage(refs.pwMsg, "Hai mật khẩu không khớp.");
   setAuthMessage(refs.pwMsg, "");
   setBusy(refs.pwConfirmBtn, true);
   try {
-    await authedPost("/api/auth/change-password/confirm", { code, password });
+    await authedPost("/api/auth/change-password/confirm", { code: pwCode, password });
     refs.passwordModal.close();
     showToast("Đã đổi mật khẩu.", "success");
   } catch (error) {
@@ -628,16 +682,13 @@ async function confirmPasswordChange() {
   }
 }
 
-function togglePasswordFields() {
-  setPasswordFieldsVisible(refs.pwNew.type === "password");
-}
-
-function setPasswordFieldsVisible(show) {
-  refs.pwNew.type = refs.pwNew2.type = show ? "text" : "password";
-  refs.pwToggle.setAttribute("aria-pressed", String(show));
-  refs.pwToggle.setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
-  refs.pwToggle.title = show ? "Ẩn mật khẩu" : "Hiện mật khẩu";
-  refs.pwToggle.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
+function setPasswordVisible(input, show) {
+  input.type = show ? "text" : "password";
+  const eye = refs.passwordModal.querySelector(`[data-pw-eye="${input.id}"]`);
+  eye.setAttribute("aria-pressed", String(show));
+  eye.setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
+  eye.title = show ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+  eye.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
 }
 
 async function handleLoginSubmit(event) {

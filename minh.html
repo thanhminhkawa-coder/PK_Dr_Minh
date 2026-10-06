@@ -107,9 +107,9 @@
         <details class="settings-menu">
           <summary class="btn ghost" aria-label="Cài đặt" title="Cài đặt"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="btn__label">Cài đặt</span></summary>
           <div class="settings-menu__list">
-          <button class="btn ghost" type="button" data-app-action="refresh"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span>Làm mới</span></button>
-          <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Xuất dữ liệu</span></button>
-          <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Nạp dữ liệu</span></button>
+          <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Xuất dữ liệu</span></button>
+          <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Nạp dữ liệu</span></button>
+          <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
           <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
           </div>
         </details>
@@ -123,9 +123,9 @@
           <div class="mobile-head">
             <h1 data-clinic-name>Phòng khám tâm thần</h1>
             <div class="mobile-head__actions">
-              <button class="icon-btn" type="button" data-app-action="refresh" aria-label="Làm mới" title="Làm mới"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg></button>
-              <button class="icon-btn" type="button" data-app-action="export" aria-label="Xuất dữ liệu" title="Xuất dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></button>
-              <button class="icon-btn" type="button" data-app-action="import" aria-label="Nạp dữ liệu" title="Nạp dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg></button>
+              <button class="icon-btn" type="button" data-app-action="export" aria-label="Xuất dữ liệu" title="Xuất dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg></button>
+              <button class="icon-btn" type="button" data-app-action="import" aria-label="Nạp dữ liệu" title="Nạp dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></button>
+              <button class="icon-btn" type="button" data-app-action="change-password" aria-label="Đổi mật khẩu" title="Đổi mật khẩu"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></button>
               <button class="icon-btn" type="button" data-app-action="logout" aria-label="Đăng xuất" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg></button>
             </div>
           </div>
@@ -387,11 +387,9 @@
           <section class="card page-section account-card">
             <div class="card-title">
               <h2>Tài khoản</h2>
-              <button class="btn small" id="changePasswordBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
             </div>
             <div class="clinic-meta">
               <div><span class="clinic-meta-label">Email</span><strong id="accountEmail"></strong></div>
-              <div><span class="clinic-meta-label">Mật khẩu</span><strong>••••••••</strong></div>
             </div>
           </section>
         </section>
@@ -471,23 +469,25 @@
     </div>
     <div class="modal__body stack">
       <p id="pwIntro"></p>
-      <div class="stack hidden" id="pwConfirmFields">
-        <div>
-          <label class="label" for="pwCode">Mã xác nhận</label>
-          <input class="field" id="pwCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
-        </div>
+      <div class="stack hidden" id="pwStepCode">
+        <div class="otp" id="pwOtp" role="group" aria-label="Mã xác nhận 6 số"></div>
+        <button class="link-btn" id="pwResendBtn" type="button">Gửi lại mã</button>
+      </div>
+      <div class="stack hidden" id="pwStepNew">
         <div>
           <label class="label" for="pwNew">Mật khẩu mới</label>
-          <div class="input-with-btn">
+          <div class="date-field">
             <input class="field" id="pwNew" type="password" autocomplete="new-password" />
-            <button class="icon-btn" id="pwToggle" type="button" aria-label="Hiện mật khẩu" title="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button>
+            <button class="date-pick-btn" type="button" data-pw-eye="pwNew" aria-label="Hiện mật khẩu" title="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button>
           </div>
         </div>
         <div>
           <label class="label" for="pwNew2">Nhập lại mật khẩu mới</label>
-          <input class="field" id="pwNew2" type="password" autocomplete="new-password" />
+          <div class="date-field">
+            <input class="field" id="pwNew2" type="password" autocomplete="new-password" />
+            <button class="date-pick-btn" type="button" data-pw-eye="pwNew2" aria-label="Hiện mật khẩu" title="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
         </div>
-        <button class="link-btn" id="pwResendBtn" type="button">Gửi lại mã</button>
       </div>
       <p class="auth__msg" id="pwMsg" role="alert"></p>
     </div>
