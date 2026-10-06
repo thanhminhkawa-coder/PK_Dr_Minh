@@ -287,13 +287,53 @@ function cacheRefs() {
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
     "importModal", "importMeta", "importTable", "importConfirm", "importConfirmBtn", "importMsg",
-    "yearWheelLayer", "yearWheelPanel", "yearWheel"
+    "yearWheelLayer", "yearWheelPanel", "yearWheel", "themeMenuBtn", "themeChoice"
   ].forEach((id) => {
     refs[id] = document.getElementById(id);
   });
 }
 
+// ---- Giao diện Sáng / Tối / Theo hệ thống (lưu theo thiết bị ở localStorage, không lên server) ----
+
+const THEME_KEY = "pk-theme";
+const darkSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function getThemePref() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === "light" || value === "dark" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function setThemePref(value) {
+  try {
+    localStorage.setItem(THEME_KEY, value);
+  } catch {
+    // trình duyệt chặn bộ nhớ: vẫn áp dụng cho phiên hiện tại
+  }
+  applyTheme(value);
+}
+
+function applyTheme(pref = getThemePref()) {
+  const dark = pref === "dark" || (pref === "system" && darkSchemeQuery.matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  refs.themeChoice.querySelectorAll("input").forEach((input) => { input.checked = input.value === pref; });
+  refs.themeMenuBtn.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon");
+  refs.themeMenuBtn.querySelector("span").textContent = dark ? "Giao diện sáng" : "Giao diện tối";
+  // chọn cố định thì thanh trình duyệt đổi màu theo; theo hệ thống thì mỗi thẻ meta tự theo media
+  const [light, night] = document.querySelectorAll('meta[name="theme-color"]');
+  if (light && night) {
+    light.content = pref === "dark" ? "#242528" : "#ffffff";
+    night.content = pref === "light" ? "#ffffff" : "#242528";
+  }
+}
+
 function bindEvents() {
+  refs.themeChoice.addEventListener("change", (event) => setThemePref(event.target.value));
+  darkSchemeQuery.addEventListener("change", () => { if (getThemePref() === "system") applyTheme(); });
+  applyTheme();
   document.addEventListener("click", handleAppAction);
   window.addEventListener("hashchange", () => {
     if (!refs.appRoot.classList.contains("hidden")) applyTabFromHash();
@@ -459,6 +499,7 @@ function handleAppAction(event) {
   if (actionButton) {
     const action = actionButton.dataset.appAction;
     if (action === "change-password") openPasswordModal();
+    if (action === "toggle-theme") setThemePref(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
     if (action === "export") exportData().catch(handleError);
     if (action === "import") refs.importFile.click();
     if (action === "logout") logout();
