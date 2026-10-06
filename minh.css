@@ -227,7 +227,7 @@ h1, h2 { overflow-wrap: anywhere; }
 .topnav .btn { white-space: nowrap; }
 
 /* ---------- Cards, layout ---------- */
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--card-pad); }
+.card { background: var(--card); border: 0; border-radius: var(--radius); padding: var(--card-pad); }
 .card-title, .row-actions, .searchbar, .clinic-card__title, .form-topbar {
   display: flex;
   gap: 10px;
@@ -303,10 +303,9 @@ h1, h2 { overflow-wrap: anywhere; }
 .patient-row.active { background: #eefcfb; }
 .patient-row:focus-visible { outline: 3px solid rgba(15, 139, 141, .45); outline-offset: -3px; }
 .patient-row--empty { cursor: default; padding: 22px 14px; color: var(--muted); }
-.pr-table { padding: 0 14px; height: 100px; }
-/* desktop: chỉ hiện 5 bệnh nhân, còn lại cuộn trong khung (mỗi trang 10) */
-#patientListBody { max-height: 505px; overflow-y: auto; overscroll-behavior: contain; }
-.patient-meta__sub { max-height: 4.4em; overflow: hidden; }
+.pr-table { padding: 14px; min-height: 94px; }
+/* chỉ hiện 5 bệnh nhân, còn lại cuộn trong khung (mỗi trang 10); chiều cao khung do JS tính theo 5 dòng đầu */
+#patientListBody { overflow-y: auto; overscroll-behavior: contain; }
 .pr-table > div { min-width: 0; overflow-wrap: anywhere; }
 .pr-card { display: none; }
 .patient-meta strong { display: block; font-size: 19px; line-height: 1.3; }
@@ -691,7 +690,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 @media (max-width: 1023px) {
   .patient-head { display: none; }
   .pr-table { display: none; }
-  #patientListBody { max-height: none; overflow: visible; }
+  #patientListBody { overscroll-behavior: auto; }
   .pr-card { display: block; padding: 12px 12px 12px 14px; }
   .pc__l1 { display: flex; align-items: flex-start; gap: 8px; }
   .pc__name { flex: 1; min-width: 0; font-size: 18px; line-height: 1.3; overflow-wrap: anywhere; }

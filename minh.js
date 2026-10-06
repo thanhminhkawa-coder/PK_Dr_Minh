@@ -296,6 +296,11 @@ function bindEvents() {
   window.addEventListener("hashchange", () => {
     if (!refs.appRoot.classList.contains("hidden")) applyTabFromHash();
   });
+  let resizeFrame = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(fitPatientListHeight);
+  });
   phoneLayoutQuery.addEventListener("change", () => {
     updateSaveButtons();
     renderPatientList();
@@ -644,6 +649,7 @@ function showTab(tab) {
   refs.saveFab.classList.toggle("hidden", tab !== "home");
   window.scrollTo(0, 0);
   if (tab === "home") {
+    fitPatientListHeight();
     autoGrowField(refs.icdInput);
     autoGrowField(refs.adviceNote);
     refs.drugRows.querySelectorAll(".drug-field--usage textarea").forEach((element) => autoGrowField(element));
@@ -954,7 +960,16 @@ function renderPatientList() {
   refs.patientListBody.innerHTML = rows.map(buildPatientRow).join("")
     || '<div class="patient-row patient-row--empty">Không có bệnh nhân phù hợp.</div>';
   refs.patientListBody.scrollTop = 0;
+  fitPatientListHeight();
   renderPager(total, pages, start, rows.length);
+}
+
+// khung danh sách cao đúng bằng 5 dòng đầu (dòng cao thấp khác nhau tùy nội dung/khổ màn hình)
+function fitPatientListHeight() {
+  const rows = [...refs.patientListBody.querySelectorAll(".patient-row")];
+  refs.patientListBody.style.maxHeight = "";
+  if (rows.length <= 5 || !rows[0].offsetHeight) return;
+  refs.patientListBody.style.maxHeight = `${Math.ceil(rows.slice(0, 5).reduce((sum, row) => sum + row.getBoundingClientRect().height, 0)) + 1}px`;
 }
 
 function renderPager(total, pages, start, count) {
