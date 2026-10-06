@@ -287,7 +287,7 @@ function cacheRefs() {
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
     "importModal", "importMeta", "importTable", "importConfirm", "importConfirmBtn", "importMsg",
-    "yearWheelLayer", "yearWheelPanel", "yearWheel", "themeMenuBtn", "themeChoice"
+    "yearWheelLayer", "yearWheelPanel", "yearWheel", "themeMenuBtn"
   ].forEach((id) => {
     refs[id] = document.getElementById(id);
   });
@@ -319,7 +319,6 @@ function setThemePref(value) {
 function applyTheme(pref = getThemePref()) {
   const dark = pref === "dark" || (pref === "system" && darkSchemeQuery.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  refs.themeChoice.querySelectorAll("input").forEach((input) => { input.checked = input.value === pref; });
   refs.themeMenuBtn.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon");
   refs.themeMenuBtn.querySelector("span").textContent = dark ? "Giao diện sáng" : "Giao diện tối";
   // chọn cố định thì thanh trình duyệt đổi màu theo; theo hệ thống thì mỗi thẻ meta tự theo media
@@ -331,7 +330,6 @@ function applyTheme(pref = getThemePref()) {
 }
 
 function bindEvents() {
-  refs.themeChoice.addEventListener("change", (event) => setThemePref(event.target.value));
   darkSchemeQuery.addEventListener("change", () => { if (getThemePref() === "system") applyTheme(); });
   applyTheme();
   document.addEventListener("click", handleAppAction);
