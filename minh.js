@@ -233,6 +233,10 @@ const state = {
   editingDrugId: "",
   icdList: getDefaultIcdList(),
   selectedIcdCode: "",
+  editingIcdCode: "",
+  deletingIcdCode: "",
+  icdSearch: "",
+  stockSearch: "",
   clinicInfo: { ...DEFAULT_CLINIC_INFO },
   clinicProfiles: [],
   activeClinicProfileId: "",
@@ -265,11 +269,11 @@ function cacheRefs() {
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "resetForm",
     "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "saveFab", "importFile",
-    "connectionState", "patientCountText", "searchInput", "searchBtn", "clearSearchBtn",
-    "patientListBody", "patientPager", "searchSuggestBox", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
-    "newPrescriptionBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
+    "patientCountText", "searchInput",
+    "patientListBody", "patientPager", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
+    "newPrescriptionBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "addCodeBtn", "toggleCodeDataBtn",
-    "codeDataBox", "previewPrintBtn", "addDrugBtn", "toggleStockBtn", "drugRows", "stockDataBox", "warningBox",
+    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "toggleStockBtn", "drugRows", "stockDataBox", "warningBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
     "summaryPatients", "summaryDrugs",
     "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
@@ -280,8 +284,6 @@ function cacheRefs() {
     "statMonthTrend", "statProfit", "statProfitTrend", "statRevisitRate", "statRevisitTrend", "statOnTimeCount",
     "statOnTimeTrend", "statLateMissedCount", "statLateMissedTrend", "activeIngredientList", "doseList",
     "doctorList", "serviceFeeList", "serviceFeeSuggestBox", "drugSectionTitle",
-    "summaryPatientsMini", "summaryDrugsMini", "summaryVisitTodayMini", "summaryRevenueMonthMini",
-    "statWeekMini", "statMonthMini", "statProfitMini", "statRevisitMini", "statOnTimeMini", "statLateMissedMini",
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
     "importModal", "importMeta", "importTable", "importConfirm", "importConfirmBtn", "importMsg",
@@ -299,7 +301,7 @@ function bindEvents() {
   let resizeFrame = 0;
   window.addEventListener("resize", () => {
     cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(fitPatientListHeight);
+    resizeFrame = requestAnimationFrame(() => { fitPatientListHeight(); syncFollowDateWidth(); });
   });
   phoneLayoutQuery.addEventListener("change", () => {
     updateSaveButtons();
@@ -320,15 +322,14 @@ function bindEvents() {
   });
   refs.loginPasswordToggle.addEventListener("click", toggleLoginPassword);
 
-  refs.searchBtn.addEventListener("click", () => applySearch(refs.searchInput.value));
-  refs.clearSearchBtn.addEventListener("click", clearSearch);
   refs.searchInput.addEventListener("input", handleSearchInput);
-  refs.searchInput.addEventListener("focus", () => renderSearchSuggestions(refs.searchInput.value));
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.patientListBody.addEventListener("click", handlePatientListClick);
   refs.patientListBody.addEventListener("keydown", handlePatientListKeydown);
   refs.patientPager.addEventListener("click", handlePagerClick);
   refs.cancelEditBtn.addEventListener("click", cancelEditMode);
+  [refs.visitDate, refs.followDate].forEach(enhanceDateInput);
+  syncFollowDateWidth();
   refs.birthYear.addEventListener("input", handleBirthYearInput);
   refs.birthYear.addEventListener("focus", () => {
     if (!wheelOnlyQuery.matches) showYearSuggestions(refs.birthYear.value);
@@ -354,6 +355,16 @@ function bindEvents() {
   refs.icdInput.addEventListener("change", handleDiagnosisInput);
   refs.adviceNote.addEventListener("input", () => autoGrowField(refs.adviceNote));
   refs.codeDataBox.addEventListener("click", handleCodeDataClick);
+  refs.icdEditSaveBtn.addEventListener("click", saveIcdEdit);
+  refs.icdDeleteConfirmBtn.addEventListener("click", confirmIcdDelete);
+  refs.codeDataBox.addEventListener("input", (event) => {
+    if (event.target.id !== "icdSearchInput") return;
+    state.icdSearch = event.target.value;
+    renderCodeRows();
+  });
+  refs.icdEditModal.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") saveIcdEdit();
+  });
   refs.toggleStockBtn.addEventListener("click", () => {
     refs.stockDataBox.classList.toggle("hidden");
     if (!refs.stockDataBox.classList.contains("hidden")) renderStockData();
@@ -373,6 +384,16 @@ function bindEvents() {
     if (event.target.closest(".dose-quick, .quantity-quick")) event.preventDefault();
   });
   refs.stockDataBox.addEventListener("click", handleStockDataClick);
+  refs.stockDataBox.addEventListener("input", (event) => {
+    if (event.target.id !== "stockSearchInput") return;
+    state.stockSearch = event.target.value;
+    renderStockRows();
+  });
+  refs.stockPasteApplyBtn.addEventListener("click", applyStockPaste);
+  refs.stockManualBtn.addEventListener("click", () => {
+    refs.stockAddModal.close();
+    openDrugModal("");
+  });
   refs.drugForm.addEventListener("submit", handleDrugFormSubmit);
   refs.dmDeleteBtn.addEventListener("click", deleteDrugFromModal);
   refs.serviceMoney.addEventListener("input", syncServiceFeeFromMoney);
@@ -406,7 +427,6 @@ function bindEvents() {
   refs.saveClinicBtn.addEventListener("click", saveClinicInfo);
 
   document.addEventListener("click", (event) => {
-    if (!event.target.closest(".search-zone")) refs.searchSuggestBox.classList.add("hidden");
     if (!event.target.closest(".picker-wrap") && !event.target.closest(".money-picker")) {
       refs.yearSuggestBox.classList.add("hidden");
       refs.provinceSuggestBox.classList.add("hidden");
@@ -422,6 +442,8 @@ function bindEvents() {
 // ---- Nút dùng chung: làm mới / xuất / nạp / đăng xuất / đóng dialog / quay lại đăng nhập ----
 
 function handleAppAction(event) {
+  const menu = document.querySelector(".settings-menu");
+  if (menu?.open && (!menu.contains(event.target) || event.target.closest("[data-app-action]"))) menu.open = false;
   const actionButton = event.target.closest("[data-app-action]");
   if (actionButton) {
     const action = actionButton.dataset.appAction;
@@ -647,6 +669,7 @@ function showTab(tab) {
     else link.removeAttribute("aria-current");
   });
   refs.saveFab.classList.toggle("hidden", tab !== "home");
+  if (tab === "home") syncFollowDateWidth();
   window.scrollTo(0, 0);
   if (tab === "home") {
     fitPatientListHeight();
@@ -658,7 +681,6 @@ function showTab(tab) {
 
 async function initializeApp() {
   try {
-    setConnectionState("Đang tải dữ liệu...", false);
     await Promise.all([loadHealth(), loadDashboard(), loadQuickStats(), loadDrugs(), loadPatients(), loadSettings()]);
     renderClinicInfo();
     renderCodeData();
@@ -703,7 +725,6 @@ async function loadSettings() {
 
 async function loadHealth() {
   const health = await fetchJson("/api/health");
-  setConnectionState(health.mongoState === "connected" ? "Đã kết nối MongoDB" : "Mất kết nối MongoDB", health.mongoState === "connected");
 }
 
 async function loadDashboard() {
@@ -732,77 +753,6 @@ async function loadQuickStats() {
   setTrend(refs.statWeekTrend, stats.weekCount, stats.previousWeekCount, "tuần trước");
   setTrend(refs.statMonthTrend, stats.monthCount, stats.previousMonthCount, "tháng trước");
   setTrend(refs.statProfitTrend, stats.monthProfit, stats.previousMonthProfit, "tháng trước");
-  renderStatsCharts(stats);
-}
-
-function renderStatsCharts(stats) {
-  const summaryMax = Math.max(
-    Number(state.dashboard?.summary?.patientCount || 0),
-    Number(state.dashboard?.summary?.drugCount || 0),
-    Number(state.dashboard?.summary?.visitTodayCount || 0),
-    1
-  );
-  const profitMax = Math.max(Number(stats.monthProfit || 0), Number(stats.previousMonthProfit || 0), Number(state.dashboard?.summary?.monthRevenue || 0), 1);
-  const revisit = stats.revisit || {};
-  const onTime = Number(revisit.onTime || 0);
-  const late = Number(revisit.late || 0);
-  const missed = Number(revisit.missed || 0);
-  const total = Math.max(onTime + late + missed, 1);
-
-  refs.summaryPatientsMini.innerHTML = buildMiniMeter(Number(state.dashboard?.summary?.patientCount || 0), summaryMax, "#0f8b8d");
-  refs.summaryDrugsMini.innerHTML = buildMiniMeter(Number(state.dashboard?.summary?.drugCount || 0), summaryMax, "#1f5f8b");
-  refs.summaryVisitTodayMini.innerHTML = buildMiniMeter(Number(state.dashboard?.summary?.visitTodayCount || 0), summaryMax, "#2aa198");
-  refs.summaryRevenueMonthMini.innerHTML = buildMiniMeter(Number(state.dashboard?.summary?.monthRevenue || 0), profitMax, "#1a7f49");
-  refs.statWeekMini.innerHTML = buildMiniCompare(Number(stats.weekCount || 0), Number(stats.previousWeekCount || 0), ["Tuần này", "Tuần trước"]);
-  refs.statMonthMini.innerHTML = buildMiniCompare(Number(stats.monthCount || 0), Number(stats.previousMonthCount || 0), ["Tháng này", "Tháng trước"]);
-  refs.statProfitMini.innerHTML = buildMiniCompare(Number(stats.monthProfit || 0), Number(stats.previousMonthProfit || 0), ["Hiện tại", "Trước đó"], true);
-  refs.statRevisitMini.innerHTML = buildMiniDonut(onTime, late, missed, `${revisit.rate || 0}%`);
-  refs.statOnTimeMini.innerHTML = buildMiniMeter(onTime, total, "#1a7f49");
-  refs.statLateMissedMini.innerHTML = buildMiniStack(late, missed, total);
-}
-
-function buildMiniMeter(value, max, color) {
-  const width = Math.max((value / Math.max(max, 1)) * 100, value ? 12 : 0);
-  return `<div class="stat-mini__track"><div class="stat-mini__fill" style="width:${width}%;background:${color}"></div></div>`;
-}
-
-function buildMiniCompare(current, previous, labels, money = false) {
-  const max = Math.max(current, previous, 1);
-  const currentWidth = Math.max((current / max) * 100, current ? 12 : 0);
-  const previousWidth = Math.max((previous / max) * 100, previous ? 12 : 0);
-  const hint = `${labels[0]}: ${money ? formatMoney(current) : current} | ${labels[1]}: ${money ? formatMoney(previous) : previous}`;
-  return `
-    <div class="stat-mini-compare" title="${escapeHtml(hint)}" aria-label="${escapeHtml(hint)}">
-      <div class="stat-mini-compare__item">
-        <div class="stat-mini-compare__bar is-current" style="width:${currentWidth}%"></div>
-      </div>
-      <div class="stat-mini-compare__item">
-        <div class="stat-mini-compare__bar is-previous" style="width:${previousWidth}%"></div>
-      </div>
-    </div>
-  `;
-}
-
-function buildMiniDonut(onTime, late, missed, centerText) {
-  const total = Math.max(onTime + late + missed, 1);
-  const onTimeAngle = (onTime / total) * 360;
-  const lateAngle = (late / total) * 360;
-  return `
-    <div class="stat-mini-donut" style="background:conic-gradient(#1a7f49 0deg ${onTimeAngle}deg, #f0b24f ${onTimeAngle}deg ${onTimeAngle + lateAngle}deg, #dc4c4c ${onTimeAngle + lateAngle}deg 360deg)">
-      <div class="stat-mini-donut__center">${escapeHtml(centerText)}</div>
-    </div>
-  `;
-}
-
-function buildMiniStack(late, missed, total) {
-  const lateWidth = Math.max((late / Math.max(total, 1)) * 100, late ? 10 : 0);
-  const missedWidth = Math.max((missed / Math.max(total, 1)) * 100, missed ? 10 : 0);
-  return `
-    <div class="stat-mini__track stat-mini__track--stack">
-      <div class="stat-mini__fill" style="width:${lateWidth}%;background:#f0b24f"></div>
-      <div class="stat-mini__fill" style="width:${missedWidth}%;background:#dc4c4c"></div>
-    </div>
-  `;
 }
 
 async function loadPatients() {
@@ -866,17 +816,12 @@ function renderDoctorControls() {
 
 function handleSearchInput(event) {
   applySearch(event.target.value);
-  renderSearchSuggestions(event.target.value);
 }
 
 function handleSearchKeydown(event) {
   if (event.key === "Enter") {
     event.preventDefault();
-    const first = state.filteredPatients[0];
-    if (first) {
-      selectPatient(first._id);
-      refs.searchSuggestBox.classList.add("hidden");
-    }
+    applySearch(refs.searchInput.value);
   }
 }
 
@@ -886,6 +831,9 @@ function applySearch(rawValue, { keepPage = false } = {}) {
   state.filteredPatients = keyword
     ? state.patients.filter((patient) => normalizeText(buildPatientHaystack(patient)).includes(keyword))
     : state.patients.slice();
+  // bệnh nhân hẹn tái khám hôm nay lên đầu (sort ổn định, giữ nguyên thứ tự còn lại)
+  const dueToday = (p) => getFollowStatus(p.lastFollowUpDate).label === "Hôm nay";
+  state.filteredPatients.sort((a, b) => dueToday(b) - dueToday(a));
   refs.patientCountText.textContent = `${formatNumber(state.filteredPatients.length)} hồ sơ`;
   if (!keepPage) state.page = 1;
   renderPatientList();
@@ -893,44 +841,7 @@ function applySearch(rawValue, { keepPage = false } = {}) {
 
 function clearSearch() {
   refs.searchInput.value = "";
-  refs.searchSuggestBox.classList.add("hidden");
   applySearch("");
-}
-
-function renderSearchSuggestions(value) {
-  const keyword = normalizeText(value.trim());
-  if (!keyword) {
-    refs.searchSuggestBox.classList.add("hidden");
-    return;
-  }
-  const suggestions = state.patients
-    .map((patient) => ({ patient, score: scorePatientMatch(patient, keyword) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
-
-  if (!suggestions.length) {
-    refs.searchSuggestBox.classList.add("hidden");
-    return;
-  }
-
-  refs.searchSuggestBox.innerHTML = suggestions.map(({ patient }) => `
-    <div class="suggest-item" data-search-patient-id="${patient._id}">
-      <strong>${escapeHtml(patient.fullName)}</strong><br>
-      <span class="muted">${escapeHtml(patient.phone)} - ${escapeHtml(patient.address || "")} - ${escapeHtml(patient.province || "")}${patient.lastDoctor ? ` - BS ${escapeHtml(patient.lastDoctor)}` : ""}</span>
-    </div>
-  `).join("");
-  refs.searchSuggestBox.classList.remove("hidden");
-  refs.searchSuggestBox.querySelectorAll("[data-search-patient-id]").forEach((item) => {
-    item.addEventListener("click", async () => {
-      const patient = state.patients.find((entry) => entry._id === item.dataset.searchPatientId);
-      if (!patient) return;
-      refs.searchInput.value = patient.fullName;
-      refs.searchSuggestBox.classList.add("hidden");
-      applySearch(patient.fullName);
-      await selectPatient(patient._id);
-    });
-  });
 }
 
 function handlePatientListClick(event) {
@@ -941,14 +852,18 @@ function handlePatientListClick(event) {
   }
   const row = event.target.closest(".patient-row[data-id]");
   if (row) {
-    selectPatient(row.dataset.id).catch(handleError);
+    openPatientFromList(row.dataset.id);
   }
 }
 
 function handlePatientListKeydown(event) {
   if (event.key !== "Enter" || event.target !== event.target.closest(".patient-row[data-id]")) return;
   event.preventDefault();
-  selectPatient(event.target.dataset.id).catch(handleError);
+  openPatientFromList(event.target.dataset.id);
+}
+
+function openPatientFromList(id) {
+  selectPatient(id).then(() => document.getElementById("visitFormCard").scrollIntoView({ behavior: "smooth", block: "start" })).catch(handleError);
 }
 
 function renderPatientList() {
@@ -1036,7 +951,7 @@ function buildPatientRow(patient) {
         <div>${formatMoney(patient.totalRevenue)}</div>
         <div>${escapeHtml(patient.lastDiagnosis || "")}</div>
         <div><span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span></div>
-        <div><button class="btn small danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}<span>Xóa</span></button></div>
+        <div><button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button></div>
       </div>
       <div class="pr-card">
         <div class="pc__l1">
@@ -1132,6 +1047,70 @@ function updateSaveButtons() {
   });
 }
 
+// Ô ngày dạng dd/mm/yyyy: Backspace xóa dần từ năm sang tháng rồi ngày. `.value` vẫn đọc/ghi yyyy-mm-dd như ô date gốc.
+function enhanceDateInput(input) {
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  const picker = document.createElement("input");
+  picker.type = "date";
+  picker.className = "date-native";
+  picker.tabIndex = -1;
+  picker.setAttribute("aria-hidden", "true");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "date-pick-btn";
+  button.title = button.ariaLabel = "Chọn ngày";
+  button.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>';
+  const wrap = document.createElement("div");
+  wrap.className = "date-field";
+  input.before(wrap);
+  wrap.append(input, picker, button);
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.placeholder = "dd/mm/yyyy";
+  input.maxLength = 10;
+  const format = (digits) => [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean).join("/");
+  Object.defineProperty(input, "value", {
+    get() {
+      const [d, m, y] = nativeValue.get.call(input).split("/");
+      if (!y || y.length !== 4) return "";
+      const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      return Number.isNaN(Date.parse(iso)) || new Date(iso).toISOString().slice(0, 10) !== iso ? "" : iso;
+    },
+    set(iso) {
+      const [y, m, d] = String(iso || "").slice(0, 10).split("-");
+      nativeValue.set.call(input, y && m && d ? `${d}/${m}/${y}` : "");
+      picker.value = iso || "";
+    }
+  });
+  input.addEventListener("input", () => {
+    nativeValue.set.call(input, format(nativeValue.get.call(input).replace(/\D/g, "")));
+  });
+  button.addEventListener("click", () => {
+    picker.value = input.value;
+    if (picker.showPicker) picker.showPicker(); else picker.focus();
+  });
+  picker.addEventListener("change", () => {
+    input.value = picker.value;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+// Ngày tái khám rộng bằng ô Ngày khám (trừ điện thoại: 1 cột, rộng hết hàng)
+function syncFollowDateWidth() {
+  const follow = refs.followDate.closest(".date-field");
+  const width = refs.visitDate.closest(".date-field").offsetWidth;
+  follow.style.width = phoneLayoutQuery.matches || !width ? "" : `${width}px`;
+}
+
+function getGender() {
+  return document.querySelector('#gender input[name="gender"]:checked')?.value || "Nam";
+}
+
+function setGender(value) {
+  const radio = [...document.querySelectorAll('#gender input[name="gender"]')].find((item) => item.value === value);
+  (radio || document.querySelector('#gender input[name="gender"]')).checked = true;
+}
+
 function setAdviceNote(value) {
   refs.adviceNote.value = value;
   autoGrowField(refs.adviceNote);
@@ -1140,7 +1119,7 @@ function setAdviceNote(value) {
 function fillFormFromRecord(patient, visit) {
   refs.patientName.value = patient?.fullName || "";
   refs.birthYear.value = patient?.birthYear || "";
-  refs.gender.value = patient?.gender || "Nam";
+  setGender(patient?.gender);
   refs.addressWard.value = patient?.address || "";
   refs.province.value = patient?.province || "";
   refs.phone.value = patient?.phone || "";
@@ -1201,8 +1180,8 @@ function createNewPatient() {
   refs.patientName.value = "";
   refs.birthYear.value = "";
   refs.age.value = "";
-  refs.age.className = "field age-input";
-  refs.gender.value = "Nam";
+  refs.age.className = "age-badge";
+  setGender("Nam");
   refs.addressWard.value = "";
   refs.province.value = "";
   refs.phone.value = "";
@@ -1486,12 +1465,12 @@ function calcAge() {
   const year = Number(refs.birthYear.value || 0);
   if (!year) {
     refs.age.value = "";
-    refs.age.className = "field age-input";
+    refs.age.className = "age-badge";
     return;
   }
   const age = Math.max(0, new Date().getFullYear() - year);
   refs.age.value = String(age);
-  refs.age.className = "field age-input";
+  refs.age.className = "age-badge";
   if (age >= 1 && age < 40) refs.age.classList.add("age-green");
   else if (age >= 40 && age < 60) refs.age.classList.add("age-yellow");
   else if (age >= 60 && age <= 90) refs.age.classList.add("age-red");
@@ -1513,41 +1492,45 @@ function renderIcdSuggest() {
 }
 
 function renderCodeData() {
-  const selected = state.icdList.find((item) => item.code === state.selectedIcdCode) || { code: "", name: "" };
+  refs.codeDataBox.innerHTML = `
+    <div class="code-manager">
+      <div class="code-toolbar">
+        <div class="code-search">
+          <input class="field" id="icdSearchInput" type="search" placeholder="Tìm mã hoặc tên chẩn đoán..." autocomplete="off" aria-label="Tìm mã ICD" value="${escapeAttribute(state.icdSearch)}" />
+          ${iconHtml("search")}
+        </div>
+        <button class="btn small primary" type="button" data-action="create-icd" title="Thêm mã ICD">${iconHtml("plus")}<span>Thêm</span></button>
+      </div>
+      <div class="code-manager__list">
+        <div class="code-head">
+          <div>Mã ICD</div>
+          <div>Tên chẩn đoán</div>
+          <div></div>
+        </div>
+        <div id="codeRows"></div>
+      </div>
+    </div>
+  `;
+  renderCodeRows();
+}
+
+function renderCodeRows() {
+  const keyword = normalizeText(state.icdSearch.trim());
   const rows = state.icdList
-    .slice()
+    .filter((item) => !keyword || normalizeText(`${item.code} ${item.name}`).includes(keyword))
     .sort((a, b) => String(a.code).localeCompare(String(b.code), "vi"))
     .map((item) => `
-      <div class="code-row ${item.code === state.selectedIcdCode ? "active" : ""}" data-action="select-icd" data-code="${escapeAttribute(item.code)}">
+      <div class="code-row ${item.code === state.selectedIcdCode ? "active" : ""}" data-action="use-icd" data-code="${escapeAttribute(item.code)}" title="Bấm để dùng mã này">
         <div class="code-row__code">${escapeHtml(item.code)}</div>
         <div class="code-row__name">${escapeHtml(item.name)}</div>
         <div class="code-row__actions">
-          <button class="btn small" type="button" data-action="use-icd" data-code="${escapeAttribute(item.code)}">Dung</button>
+          <button class="icon-btn" type="button" data-action="edit-icd" data-code="${escapeAttribute(item.code)}" aria-label="Sửa mã ${escapeAttribute(item.code)}" title="Sửa">${iconHtml("pencil")}</button>
+          <button class="icon-btn danger" type="button" data-action="delete-icd" data-code="${escapeAttribute(item.code)}" aria-label="Xóa mã ${escapeAttribute(item.code)}" title="Xóa">${iconHtml("trash-2")}</button>
         </div>
       </div>
     `)
     .join("");
-
-  refs.codeDataBox.innerHTML = `
-    <div class="code-manager">
-      <div class="code-manager__form">
-        <div>
-          <label class="label">Ma ICD</label>
-          <input class="field" id="codeDataCodeInput" value="${escapeAttribute(selected.code)}" />
-        </div>
-        <div>
-          <label class="label">Ten chan doan</label>
-          <input class="field" id="codeDataNameInput" value="${escapeAttribute(selected.name)}" />
-        </div>
-        <button class="btn small primary" type="button" data-action="create-icd">Them</button>
-        <button class="btn small" type="button" data-action="update-icd">Sua</button>
-        <button class="btn small danger" type="button" data-action="delete-icd">Xóa</button>
-      </div>
-      <div class="code-manager__list">
-        ${rows || '<div class="code-empty">Chưa có mã ICD.</div>'}
-      </div>
-    </div>
-  `;
+  document.getElementById("codeRows").innerHTML = rows || '<div class="code-empty">Không có mã ICD phù hợp.</div>';
 }
 
 function addCustomCode() {
@@ -1560,18 +1543,32 @@ function addCustomCode() {
 }
 
 async function handleCodeDataClick(event) {
-  const action = event.target.dataset.action;
+  const target = event.target.closest("[data-action]");
+  const action = target?.dataset.action;
   if (!action) return;
 
   try {
-    if (action === "select-icd") {
-      state.selectedIcdCode = event.target.closest("[data-code]")?.dataset.code || "";
-      renderCodeData();
+    if (action === "edit-icd" || action === "create-icd") {
+      const item = state.icdList.find((entry) => entry.code === target.dataset.code);
+      state.editingIcdCode = item ? item.code : "";
+      refs.icdEditTitle.textContent = item ? "Sửa mã chẩn đoán" : "Thêm mã chẩn đoán";
+      refs.icdEditCode.value = item?.code || "";
+      refs.icdEditName.value = item?.name || "";
+      refs.icdEditModal.showModal();
+      return;
+    }
+
+    if (action === "delete-icd") {
+      const item = state.icdList.find((entry) => entry.code === target.dataset.code);
+      if (!item) return;
+      state.deletingIcdCode = item.code;
+      refs.icdDeleteText.textContent = `Xóa mã ${item.code} - ${item.name}?`;
+      refs.icdDeleteModal.showModal();
       return;
     }
 
     if (action === "use-icd") {
-      const code = event.target.dataset.code;
+      const code = target.dataset.code;
       const item = state.icdList.find((entry) => entry.code === code);
       if (!item) return;
       state.selectedIcdCode = item.code;
@@ -1581,64 +1578,43 @@ async function handleCodeDataClick(event) {
       handleDiagnosisInput();
       return;
     }
+  } catch (error) {
+    handleError(error);
+  }
+}
 
-    const codeInput = document.getElementById("codeDataCodeInput");
-    const nameInput = document.getElementById("codeDataNameInput");
-    const code = String(codeInput?.value || "").trim();
-    const name = String(nameInput?.value || "").trim();
-
-    if (action === "create-icd") {
-      if (!code || !name) {
-        showToast("Nhap ma ICD va ten chan doan.", "error");
-        return;
-      }
-      if (state.icdList.some((item) => item.code === code)) {
-        showToast("Ma ICD da ton tai.", "error");
-        return;
-      }
+async function saveIcdEdit() {
+  const code = refs.icdEditCode.value.trim();
+  const name = refs.icdEditName.value.trim();
+  const editing = state.editingIcdCode;
+  if (!code || !name) return showToast("Nhập đầy đủ mã ICD và tên chẩn đoán.", "error");
+  if (state.icdList.some((item) => item.code === code && item.code !== editing)) return showToast("Mã ICD bị trùng.", "error");
+  try {
+    if (editing) {
+      state.icdList = state.icdList.map((item) => item.code === editing ? { code, name } : item);
+      if (state.selectedIcdCode === editing) state.selectedIcdCode = code;
+    } else {
       state.icdList.push({ code, name });
-      state.selectedIcdCode = code;
-      await persistSettings();
-      renderCodeData();
-      renderIcdSuggest();
-      showToast("Da them ma ICD.");
-      return;
     }
+    await persistSettings();
+    refs.icdEditModal.close();
+    renderCodeRows();
+    renderIcdSuggest();
+    showToast(editing ? "Đã sửa mã ICD." : "Đã thêm mã ICD.");
+  } catch (error) {
+    handleError(error);
+  }
+}
 
-    if (action === "update-icd") {
-      if (!state.selectedIcdCode) {
-        showToast("Hay chon ma ICD can sua.", "error");
-        return;
-      }
-      if (!code || !name) {
-        showToast("Nhap day du ma ICD va ten chan doan.", "error");
-        return;
-      }
-      if (state.icdList.some((item) => item.code === code && item.code !== state.selectedIcdCode)) {
-        showToast("Mã ICD mới bị trùng.", "error");
-        return;
-      }
-      state.icdList = state.icdList.map((item) => item.code === state.selectedIcdCode ? { code, name } : item);
-      state.selectedIcdCode = code;
-      await persistSettings();
-      renderCodeData();
-      renderIcdSuggest();
-      showToast("Da sua ma ICD.");
-      return;
-    }
-
-    if (action === "delete-icd") {
-      if (!state.selectedIcdCode) {
-        showToast("Hãy chọn mã ICD cần xóa.", "error");
-        return;
-      }
-      state.icdList = state.icdList.filter((item) => item.code !== state.selectedIcdCode);
-      state.selectedIcdCode = "";
-      await persistSettings();
-      renderCodeData();
-      renderIcdSuggest();
-      showToast("Đã xóa mã ICD.");
-    }
+async function confirmIcdDelete() {
+  try {
+    state.icdList = state.icdList.filter((item) => item.code !== state.deletingIcdCode);
+    if (state.selectedIcdCode === state.deletingIcdCode) state.selectedIcdCode = "";
+    await persistSettings();
+    refs.icdDeleteModal.close();
+    renderCodeRows();
+    renderIcdSuggest();
+    showToast("Đã xóa mã ICD.");
   } catch (error) {
     handleError(error);
   }
@@ -1678,60 +1654,81 @@ function isPristineDraftRow(row) {
 function buildDoseFieldHtml(row, field) {
   return `
     <div class="drug-field drug-field--dose drug-field--${field} drug-field--dose-${field}">
-      <label class="label">${DOSE_LABELS[field]}</label>
-      <input class="mini" data-field="${field}" ${phoneLayoutQuery.matches ? "" : 'list="doseList"'} aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
+      <input class="mini" data-field="${field}" placeholder="–" ${phoneLayoutQuery.matches ? "" : 'list="doseList"'} aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
+      <span class="drug-lbl">${DOSE_LABELS[field]}</span>
       <div class="dose-quick hidden">
         ${DOSE_OPTIONS.map((option) => `<button class="dose-quick__btn" type="button" data-action="set-dose" data-dose-field="${field}" data-dose-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
       </div>
     </div>`;
 }
 
-function renderDrugRows() {
-  refs.drugRows.innerHTML = state.draftRows.map((row, index) => `
-    <div class="drug-row ${row.expanded ? "is-open" : ""}" data-key="${row.key}">
-      <div class="drug-row__index">${index + 1}</div>
-      <div class="drug-row__main">
-        <div class="drug-row__top">
-          <div class="drug-field drug-field--ingredient">
-            <label class="label"><span class="drug-inline-index">${index + 1}</span>Hoạt chất</label>
-            <input class="mini ${isDrugDoseExceeded(row) ? "is-overdose" : ""}" data-field="activeIngredient" list="activeIngredientList" aria-label="Hoạt chất" value="${escapeAttribute(row.activeIngredient)}" />
-          </div>
-          <div class="drug-field drug-field--brand">
-            <label class="label">Tên thương mại</label>
-            <input class="mini" data-field="brandName" aria-label="Tên thương mại" value="${escapeAttribute(getDrugBrandDisplay(row))}" />
-          </div>
-          ${DOSE_FIELDS.map((field) => buildDoseFieldHtml(row, field)).join("")}
-        </div>
-        <div class="drug-row__bottom">
-          <div class="drug-field drug-field--usage">
-            <label class="label">Công dụng / HDSD</label>
-            <textarea class="mini" data-field="usage" rows="2" aria-label="Công dụng / cách dùng">${escapeHtml(row.usage)}</textarea>
-          </div>
-          <div class="drug-field drug-field--unit">
-            <label class="label">Đơn vị</label>
-            <input class="mini" data-field="unit" aria-label="Đơn vị" value="${escapeAttribute(row.unit)}" />
-          </div>
-          <div class="drug-field drug-field--quantity">
-            <label class="label">Số lượng</label>
-            <input class="mini" data-field="quantity" inputmode="numeric" pattern="[0-9]*" aria-label="Số lượng" value="${escapeAttribute(row.quantity)}" />
-            <div class="quantity-quick hidden">
-              ${QUANTITY_OPTIONS.map((option) => `<button class="quantity-quick__btn ${["30", "60", "90"].includes(option) ? "is-common" : ""}" type="button" data-action="set-quantity" data-quantity-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
-            </div>
-          </div>
-          <div class="drug-field drug-field--price">
-            <label class="label">Đơn giá</label>
-            <input class="mini" data-field="price" inputmode="numeric" aria-label="Đơn giá" value="${escapeAttribute(formatMoney(row.price))}" />
-          </div>
-          <div class="drug-subtotal"><span>Thành tiền</span><strong>${formatMoney(toNumber(row.quantity) * toNumber(row.price))}</strong></div>
-          <div class="drug-field drug-field--remove">
-            <button class="btn small danger drug-remove" data-action="remove" type="button" aria-label="Xóa dòng thuốc ${index + 1}" title="Xóa dòng thuốc">${iconHtml("trash-2")}<span class="remove-label">Xóa dòng</span></button>
-          </div>
-        </div>
-        <button class="btn small drug-toggle" data-action="toggle-row" type="button" aria-expanded="${row.expanded ? "true" : "false"}"><span>${row.expanded ? "Thu gọn" : "Chi tiết"}</span>${iconHtml("chevron-down")}</button>
+// luôn có đúng 1 dòng tìm (draft trống) ở cuối danh sách
+function ensureSearchRow() {
+  const filled = state.draftRows.filter((row) => !isPristineDraftRow(row));
+  state.draftRows = [...filled, state.draftRows.find(isPristineDraftRow) || createDraftRow()];
+}
+
+function buildDrugSubText(row) {
+  return [composeBrandName(row.brandName, row.activeIngredient), row.unit, row.usage].map((item) => String(item || "").trim()).filter(Boolean).join(" · ");
+}
+
+function buildDrugCalcHtml(row) {
+  return `${escapeHtml(formatNumber(toNumber(row.quantity)))} × ${escapeHtml(formatMoney(row.price))} = <strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong>`;
+}
+
+function buildDrugRowHtml(row, index) {
+  if (isPristineDraftRow(row)) {
+    return `
+    <div class="drug-row drug-row--search" data-key="${row.key}">
+      <div class="drug-search">
+        ${iconHtml("search")}
+        <input class="mini" data-field="activeIngredient" list="activeIngredientList" autocomplete="off" aria-label="Thêm thuốc" placeholder="${phoneLayoutQuery.matches ? "+ Thêm thuốc" : "Gõ tên hoạt chất hoặc tên thương mại để thêm thuốc…"}" value="" />
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }
+  const number = index + 1;
+  return `
+    <div class="drug-row ${row.expanded ? "is-open" : ""}" data-key="${row.key}">
+      <div class="drug-row__line">
+        <div class="drug-cell drug-cell--index">${number}</div>
+        <div class="drug-cell drug-cell--drug">
+          <div class="drug-name"><span class="drug-name__idx">${number}. </span><span class="drug-name__text">${escapeHtml(row.activeIngredient)}</span><span class="drug-badges"></span></div>
+          <div class="drug-sub">${escapeHtml(buildDrugSubText(row))}</div>
+        </div>
+        ${DOSE_FIELDS.map((field) => buildDoseFieldHtml(row, field)).join("")}
+        <div class="drug-field drug-field--quantity">
+          <input class="mini" data-field="quantity" inputmode="numeric" pattern="[0-9]*" aria-label="Số lượng" value="${escapeAttribute(row.quantity)}" />
+          <span class="drug-lbl">Số lượng</span>
+          <div class="quantity-quick hidden">
+            ${QUANTITY_OPTIONS.map((option) => `<button class="quantity-quick__btn ${["30", "60", "90"].includes(option) ? "is-common" : ""}" type="button" data-action="set-quantity" data-quantity-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
+          </div>
+        </div>
+        <div class="drug-cell drug-cell--price">${escapeHtml(formatMoney(row.price))}</div>
+        <div class="drug-cell drug-cell--subtotal drug-subtotal"><strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong></div>
+        <div class="drug-calc">${buildDrugCalcHtml(row)}</div>
+        <div class="drug-actions">
+          <button class="icon-btn drug-toggle" data-action="toggle-row" type="button" aria-expanded="${row.expanded ? "true" : "false"}" aria-label="Chi tiết thuốc ${number}" title="Chi tiết">${iconHtml("chevron-down")}<span class="drug-toggle__text">${row.expanded ? "Thu gọn" : "Chi tiết"}</span></button>
+          <button class="icon-btn danger drug-remove" data-action="remove" type="button" aria-label="Xóa dòng thuốc ${number}" title="Xóa dòng thuốc">${iconHtml("trash-2")}</button>
+        </div>
+      </div>
+      <div class="drug-detail">
+        <div class="drug-field drug-field--ingredient"><label class="label">Hoạt chất</label><input class="mini" data-field="activeIngredient" list="activeIngredientList" aria-label="Hoạt chất" value="${escapeAttribute(row.activeIngredient)}" /></div>
+        <div class="drug-field drug-field--brand"><label class="label">Tên thương mại</label><input class="mini" data-field="brandName" aria-label="Tên thương mại" value="${escapeAttribute(getDrugBrandDisplay(row))}" /></div>
+        <div class="drug-field drug-field--unit"><label class="label">Đơn vị</label><input class="mini" data-field="unit" aria-label="Đơn vị" value="${escapeAttribute(row.unit)}" /></div>
+        <div class="drug-field drug-field--price"><label class="label">Đơn giá</label><input class="mini" data-field="price" inputmode="numeric" aria-label="Đơn giá" value="${escapeAttribute(formatMoney(row.price))}" /></div>
+        <div class="drug-field drug-field--usage"><label class="label">Công dụng / HDSD</label><textarea class="mini" data-field="usage" rows="1" aria-label="Công dụng / cách dùng">${escapeHtml(row.usage)}</textarea></div>
+      </div>
+    </div>`;
+}
+
+function renderDrugRows() {
+  ensureSearchRow();
+  refs.drugRows.innerHTML = state.draftRows.map(buildDrugRowHtml).join("");
   refs.drugRows.querySelectorAll(".drug-field--usage textarea").forEach((element) => autoGrowField(element));
+  refreshDrugRowStates();
+}
+
+function refreshDrugRowStates() {
   refs.drugRows.querySelectorAll(".drug-row").forEach((rowElement) => {
     const row = state.draftRows.find((item) => item.key === rowElement.dataset.key);
     if (row) applyDoseAlertStateToRowElement(rowElement, row);
@@ -1848,9 +1845,14 @@ function toggleQuantityQuickPicker(fieldElement) {
   if (shouldOpen) target.classList.remove("hidden");
 }
 
+// cập nhật dòng chính (tên, dòng phụ, đơn giá, thành tiền) sau khi sửa
 function refreshRowSubtotal(rowElement, row) {
-  const subtotal = rowElement.querySelector(".drug-subtotal strong");
-  if (subtotal) subtotal.textContent = formatMoney(toNumber(row.quantity) * toNumber(row.price));
+  const set = (selector, html) => { const el = rowElement.querySelector(selector); if (el) el.innerHTML = html; };
+  set(".drug-name__text", escapeHtml(row.activeIngredient));
+  set(".drug-sub", escapeHtml(buildDrugSubText(row)));
+  set(".drug-cell--price", escapeHtml(formatMoney(row.price)));
+  set(".drug-subtotal", `<strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong>`);
+  set(".drug-calc", buildDrugCalcHtml(row));
 }
 
 function handleDrugRowChange(event) {
@@ -1865,6 +1867,7 @@ function handleDrugRowChange(event) {
   if (!row || !field) return;
 
   if (field === "activeIngredient") {
+    const wasSearch = rowElement.classList.contains("drug-row--search");
     row.activeIngredient = event.target.value;
     if (event.type === "change") {
       const drug = findMatchingDrugByIngredient(row.activeIngredient, row.brandName);
@@ -1875,6 +1878,7 @@ function handleDrugRowChange(event) {
         row.brandName = composeBrandName(row.brandName, row.activeIngredient);
       }
       renderDrugRows();
+      if (wasSearch && row.drugId) refs.drugRows.querySelector(`.drug-row[data-key="${row.key}"] input[data-field="morning"]`)?.focus();
     }
   } else if (field === "quantity") {
     if (event.type === "focusin") {
@@ -1919,10 +1923,12 @@ function updateTotals() {
   applyMoneyField(refs.drugMoney, "drug", drugTotal);
   applyMoneyField(refs.serviceMoney, "service", service);
   renderTotalMoney();
+  const count = state.draftRows.filter((row) => !isPristineDraftRow(row) && (row.drugId || row.activeIngredient)).length;
+  refs.drugSummary.innerHTML = `<span class="muted">${count} thuốc · Tiền thuốc</span> <strong>${escapeHtml(formatMoney(drugTotal))}</strong>`;
 }
 
-// thuốc sẽ âm kho nếu lưu toa hiện tại (khi sửa toa cũ, trả lại số lượng toa đó trước khi so)
-function findProjectedNegativeStock() {
+// tồn kho dự kiến của từng thuốc nếu lưu toa hiện tại (khi sửa toa cũ, trả lại số lượng toa đó trước khi so)
+function computeProjectedStock() {
   const editing = state.editingVisitId ? findHistoryVisit(state.editingVisitId) : null;
   const restored = new Map();
   (editing?.drugs || []).forEach((item) => restored.set(String(item.drugId), (restored.get(String(item.drugId)) || 0) + Number(item.quantity || 0)));
@@ -1930,14 +1936,18 @@ function findProjectedNegativeStock() {
   state.draftRows.forEach((row) => {
     if (row.drugId && toNumber(row.quantity) > 0) requested.set(row.drugId, (requested.get(row.drugId) || 0) + toNumber(row.quantity));
   });
-  const negative = [];
+  const projected = new Map();
   requested.forEach((quantity, drugId) => {
     const drug = state.drugs.find((item) => item._id === drugId);
-    if (!drug) return;
-    const after = Number(drug.quantity || 0) + (restored.get(drugId) || 0) - quantity;
-    if (after < 0) negative.push({ name: drug.brandName || drug.activeIngredient, after });
+    if (drug) projected.set(drugId, { drug, after: Number(drug.quantity || 0) + (restored.get(drugId) || 0) - quantity });
   });
-  return negative;
+  return projected;
+}
+
+function findProjectedNegativeStock() {
+  return [...computeProjectedStock().values()]
+    .filter((item) => item.after < 0)
+    .map((item) => ({ name: item.drug.brandName || item.drug.activeIngredient, after: item.after }));
 }
 
 function updateWarning() {
@@ -1951,6 +1961,7 @@ function updateWarning() {
     lines.push(`<span class="is-neg">${iconHtml("alert-triangle")} ${escapeHtml(item.name)} sẽ âm kho (còn ${formatNumber(item.after)})</span>`);
   });
   refs.warningBox.innerHTML = lines.join("<br>");
+  refreshDrugRowStates();
 }
 
 function inferDrugSuggestions(symptomText) {
@@ -2213,18 +2224,12 @@ function renderStockData() {
   const pending = state.pendingStockRows;
   refs.stockDataBox.innerHTML = `
     <div class="stock-manager">
-      <div class="stock-toolbar">
-        <div class="stock-toolbar__actions">
-          <button class="btn small primary" data-action="add-drug" type="button">${iconHtml("plus")}<span>Thêm thuốc</span></button>
-          <button class="btn small" data-action="reload-stock" type="button">${iconHtml("refresh-cw")}<span>Tải lại</span></button>
+      <div class="code-toolbar">
+        <div class="code-search">
+          <input class="field" id="stockSearchInput" type="search" placeholder="Tìm hoạt chất hoặc tên thương mại..." autocomplete="off" aria-label="Tìm thuốc trong kho" value="${escapeAttribute(state.stockSearch)}" />
+          ${iconHtml("search")}
         </div>
-        <div>
-          <label class="label" for="stockPasteInput">Dán dữ liệu từ Excel</label>
-          <textarea class="field stock-paste" id="stockPasteInput" rows="4" placeholder="Copy nhiều dòng từ Excel rồi dán vào đây. Thứ tự cột: Hoạt chất, Tên thương mại, Đơn vị, Tồn kho, Giá, Công dụng"></textarea>
-        </div>
-        <div class="stock-toolbar__actions">
-          <button class="btn small primary" data-action="apply-stock-paste" type="button">${iconHtml("plus")}<span>Dán vào bảng</span></button>
-        </div>
+        <button class="btn small primary" type="button" data-action="add-drug">${iconHtml("plus")}<span>Thêm thuốc</span></button>
       </div>
       ${pending.length ? `
         <div class="stock-pending">
@@ -2241,19 +2246,45 @@ function renderStockData() {
         </div>` : ""}
       <div class="stock-list">
         <div class="stock-head"><div>Hoạt chất</div><div class="stock-row__qty">Tồn kho</div><div class="stock-row__price">Đơn giá</div><div></div></div>
-        ${getSortedStockDrugs().map((drug) => {
-          const negative = Number(drug.quantity) < 0;
-          return `
-            <div class="stock-row ${negative ? "is-negative" : ""}">
-              <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? '<span class="badge-neg">Âm kho</span>' : ""}</div>
-              <div class="stock-row__qty"><span class="stock-row__lbl">Tồn kho: </span>${formatNumber(drug.quantity)}</div>
-              <div class="stock-row__price"><span class="stock-row__lbl">Đơn giá: </span>${formatMoney(drug.price)}</div>
-              <div class="stock-row__act"><button class="btn small" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("pencil")}<span>Chi tiết</span></button></div>
-            </div>`;
-        }).join("") || '<div class="code-empty">Chưa có thuốc trong kho.</div>'}
+        <div id="stockRows"></div>
       </div>
     </div>
   `;
+  renderStockRows();
+}
+
+function renderStockRows() {
+  const keyword = normalizeText(state.stockSearch.trim());
+  const drugs = getSortedStockDrugs().filter((drug) => !keyword || normalizeText(`${drug.activeIngredient} ${drug.brandName || ""}`).includes(keyword));
+  document.getElementById("stockRows").innerHTML = drugs.map((drug) => {
+    const negative = Number(drug.quantity) < 0;
+    return `
+      <div class="stock-row ${negative ? "is-negative" : ""}">
+        <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? '<span class="badge-neg">Âm kho</span>' : ""}</div>
+        <div class="stock-row__qty"><span class="stock-row__lbl">Tồn kho: </span>${formatNumber(drug.quantity)}</div>
+        <div class="stock-row__price"><span class="stock-row__lbl">Đơn giá: </span>${formatMoney(drug.price)}</div>
+        <div class="stock-row__act"><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("pencil")}</button></div>
+      </div>`;
+  }).join("") || '<div class="code-empty">Không có thuốc phù hợp.</div>';
+  // khung chỉ hiện 5 dòng, còn lại cuộn
+  const list = document.querySelector(".stock-list");
+  list.style.maxHeight = "";
+  const rows = [...list.querySelectorAll(".stock-row")].slice(0, 5);
+  if (rows.length === 5 && list.offsetHeight) list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + rows.reduce((sum, row) => sum + row.offsetHeight, 0) + 2}px`;
+}
+
+function applyStockPaste() {
+  try {
+    const rows = parseStockPaste(refs.stockPasteInput.value || "");
+    if (!rows.length) throw new Error("Chưa có dữ liệu Excel hợp lệ để dán.");
+    state.pendingStockRows = [...state.pendingStockRows, ...rows];
+    refs.stockPasteInput.value = "";
+    refs.stockAddModal.close();
+    renderStockData();
+    showToast(`Đã dán ${rows.length} dòng. Bấm "Lưu" để thêm vào kho.`, "success");
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 async function handleStockDataClick(event) {
@@ -2263,27 +2294,12 @@ async function handleStockDataClick(event) {
 
   try {
     if (action === "add-drug") {
-      openDrugModal("");
+      refs.stockAddModal.showModal();
       return;
     }
 
     if (action === "open-drug") {
       openDrugModal(actionElement.dataset.id);
-      return;
-    }
-
-    if (action === "reload-stock") {
-      await loadDrugs();
-      return;
-    }
-
-    if (action === "apply-stock-paste") {
-      const text = document.getElementById("stockPasteInput")?.value || "";
-      const rows = parseStockPaste(text);
-      if (!rows.length) throw new Error("Chưa có dữ liệu Excel hợp lệ để dán.");
-      state.pendingStockRows = [...state.pendingStockRows, ...rows];
-      renderStockData();
-      showToast(`Đã dán ${rows.length} dòng. Bấm "Lưu" để thêm vào kho.`, "success");
       return;
     }
 
@@ -2464,14 +2480,24 @@ function applyCatalogDrugToRow(row, drug) {
 }
 
 function applyDoseAlertStateToRowElement(rowElement, row) {
-  const input = rowElement?.querySelector('[data-field="activeIngredient"]');
-  if (!input) return;
   const exceeded = isDrugDoseExceeded(row);
-  input.classList.toggle("is-overdose", exceeded);
   const doseInfo = getDrugDoseLimitInfo(row);
-  input.title = exceeded && doseInfo
+  const title = exceeded && doseInfo
     ? `Vượt liều tối đa/ngày: ${formatDoseValue(doseInfo.dailyDose)} > ${formatDoseValue(doseInfo.maxDose)} ${doseInfo.unit}`
     : "";
+  rowElement.querySelectorAll('[data-field="activeIngredient"], .drug-field--dose .mini').forEach((input) => {
+    input.classList.toggle("is-overdose", exceeded);
+    input.title = title;
+  });
+  const badges = rowElement.querySelector(".drug-badges");
+  if (!badges) return;
+  const stock = row.drugId ? computeProjectedStock().get(row.drugId) : null;
+  const negative = Boolean(stock && stock.after < 0);
+  rowElement.classList.toggle("is-negative", negative);
+  badges.innerHTML = `${exceeded ? '<span class="drug-badge drug-badge--danger" title="' + escapeAttribute(title) + '">Quá liều</span>' : ""}${
+    stock ? (negative
+      ? `<span class="drug-badge drug-badge--danger">Âm kho −${escapeHtml(formatNumber(Math.abs(stock.after)))}</span>`
+      : `<span class="drug-badge drug-badge--ok">Kho ${escapeHtml(formatNumber(stock.drug.quantity))}</span>`) : ""}`;
 }
 
 function isDrugDoseExceeded(row) {
@@ -2598,7 +2624,7 @@ async function saveEncounter() {
       fullName: refs.patientName.value.trim(),
       phone: refs.phone.value.trim(),
       birthYear: refs.birthYear.value.trim(),
-      gender: refs.gender.value,
+      gender: getGender(),
       address: refs.addressWard.value.trim(),
       province: refs.province.value.trim(),
       notes: ""
@@ -2725,7 +2751,7 @@ function buildPrescriptionShareSvg() {
               <div><strong>Bác sĩ:</strong> ${currentDoctor}</div>
               <div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div>
               <div><strong>Điện thoại:</strong> ${clinicPhone}</div>
-              <div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(refs.gender.value)} - ${escapeHtml(refs.age.value)} tuổi</div>
+              <div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(getGender())} - ${escapeHtml(refs.age.value)} tuổi</div>
               <div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div>
               <div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div>
               <div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div>
@@ -2837,7 +2863,7 @@ function buildPrescriptionHtml() {
       <td>${buildDoseText(row)}</td>
     </tr>
   `).join("");
-  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}h1{font-size:22px;margin:0 0 8px;text-align:center}.meta{margin-bottom:12px;line-height:1.55}.meta div{margin-bottom:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.meta{line-height:1.45}table{font-size:11px}th,td{padding:4px}.footer{flex-direction:column;gap:12px}.footer-note{max-width:none}.sign{min-width:0;width:100%}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="sheet"><h1>${escapeHtml(state.clinicInfo.name)}</h1><div class="meta"><div><strong>Bác sĩ:</strong> ${escapeHtml(currentDoctor)}</div><div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div><div><strong>Điện thoại:</strong> ${clinicPhone}</div><div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(refs.gender.value)} - ${escapeHtml(refs.age.value)} tuổi</div><div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div><div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div><div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div><div><strong>Chẩn đoán:</strong> ${escapeHtml(refs.icdInput.value)}</div></div><table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ điều trị</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div></body></html>`;
+  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}h1{font-size:22px;margin:0 0 8px;text-align:center}.meta{margin-bottom:12px;line-height:1.55}.meta div{margin-bottom:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.meta{line-height:1.45}table{font-size:11px}th,td{padding:4px}.footer{flex-direction:column;gap:12px}.footer-note{max-width:none}.sign{min-width:0;width:100%}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="sheet"><h1>${escapeHtml(state.clinicInfo.name)}</h1><div class="meta"><div><strong>Bác sĩ:</strong> ${escapeHtml(currentDoctor)}</div><div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div><div><strong>Điện thoại:</strong> ${clinicPhone}</div><div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(getGender())} - ${escapeHtml(refs.age.value)} tuổi</div><div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div><div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div><div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div><div><strong>Chẩn đoán:</strong> ${escapeHtml(refs.icdInput.value)}</div></div><table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ điều trị</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div></body></html>`;
 }
 
 async function printPrescription() {
@@ -2973,6 +2999,9 @@ function renderClinicInfo() {
   refs.clinicDisplayAddress.textContent = state.clinicInfo.address;
   refs.clinicDisplayHours.textContent = state.clinicInfo.hours;
   refs.clinicDisplayPhone.textContent = state.clinicInfo.phone;
+  [["clinicDisplayAddress", "address"], ["clinicDisplayHours", "hours"], ["clinicDisplayPhone", "phone"]].forEach(([ref, key]) => {
+    refs[ref].classList.toggle("is-empty", state.clinicInfo[key] === DEFAULT_CLINIC_INFO[key]);
+  });
   refs.clinicNameInput.value = state.clinicInfo.name;
   refs.clinicDoctorInput.value = state.clinicInfo.doctor;
   refs.clinicAddressInput.value = state.clinicInfo.address;
@@ -3157,32 +3186,8 @@ function normalizeIcdList(list = []) {
   return unique.size ? [...unique.values()] : DEFAULT_ICD_LIST.slice();
 }
 
-function setConnectionState(text, connected) {
-  refs.connectionState.textContent = text;
-  refs.connectionState.style.color = connected ? "#18794e" : "#b42318";
-}
-
 function buildPatientHaystack(patient) {
   return [patient.fullName, patient.phone, patient.address, patient.province, patient.birthYear, patient.gender, patient.lastDiagnosis, patient.lastDoctor].join(" ");
-}
-
-function scorePatientMatch(patient, keyword) {
-  const fields = [
-    normalizeText(patient.fullName),
-    normalizeText(patient.phone),
-    normalizeText(patient.address),
-    normalizeText(patient.province),
-    normalizeText(String(patient.birthYear || "")),
-    normalizeText(patient.lastDiagnosis),
-    normalizeText(patient.lastDoctor)
-  ];
-  let score = 0;
-  fields.forEach((field) => {
-    if (!field) return;
-    if (field.startsWith(keyword)) score += 5;
-    if (field.includes(keyword)) score += 2;
-  });
-  return score;
 }
 
 function getFollowStatus(dateValue) {
@@ -3192,7 +3197,7 @@ function getFollowStatus(dateValue) {
   if (Number.isNaN(target.getTime())) return { label: "Không hợp lệ", cls: "neutral" };
   const diff = Math.round((target - today) / 86400000);
   if (diff > 0) return { label: `Còn ${diff} ngày`, cls: "up" };
-  if (diff === 0) return { label: "Tái khám hôm nay", cls: "down" };
+  if (diff === 0) return { label: "Hôm nay", cls: "down" };
   return { label: `Quá ${Math.abs(diff)} ngày`, cls: "down" };
 }
 

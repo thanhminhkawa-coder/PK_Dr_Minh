@@ -27,6 +27,7 @@
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
@@ -34,6 +35,7 @@
     <symbol id="i-pill" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></symbol>
     <symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
     <symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
   </svg>
 
@@ -101,10 +103,15 @@
         <a class="tab" href="#clinic" data-tab="clinic"><svg class="icon" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
       </nav>
       <div class="topnav__actions">
-        <button class="btn ghost" type="button" data-app-action="refresh" aria-label="Làm mới" title="Làm mới"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span class="btn__label">Làm mới</span></button>
-        <button class="btn ghost" type="button" data-app-action="export" aria-label="Xuất dữ liệu" title="Xuất dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span class="btn__label">Xuất dữ liệu</span></button>
-        <button class="btn ghost" type="button" data-app-action="import" aria-label="Nạp dữ liệu" title="Nạp dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span class="btn__label">Nạp dữ liệu</span></button>
-        <button class="btn ghost" type="button" data-app-action="logout" aria-label="Đăng xuất" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span class="btn__label">Đăng xuất</span></button>
+        <details class="settings-menu">
+          <summary class="btn ghost" aria-label="Cài đặt" title="Cài đặt"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="btn__label">Cài đặt</span></summary>
+          <div class="settings-menu__list">
+          <button class="btn ghost" type="button" data-app-action="refresh"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span>Làm mới</span></button>
+          <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Xuất dữ liệu</span></button>
+          <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Nạp dữ liệu</span></button>
+          <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -121,50 +128,41 @@
             </div>
           </div>
 
-          <section class="card patient-top">
-            <div class="card-title">
-              <h2>Danh sách bệnh nhân</h2>
-              <div class="row-actions">
-                <span class="muted" id="connectionState">Đang kết nối...</span>
-                <span class="muted" id="patientCountText">0 hồ sơ</span>
-              </div>
-            </div>
-
-            <div class="search-zone">
-              <input class="field" id="searchInput" placeholder="Tìm tên, địa chỉ, số điện thoại, năm sinh..." autocomplete="off" aria-label="Tìm bệnh nhân" />
-              <div class="suggest-box hidden" id="searchSuggestBox"></div>
-            </div>
-
-            <div class="searchbar">
-              <button class="btn small primary" id="searchBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><span>Tìm kiếm</span></button>
-              <button class="btn small" id="clearSearchBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>Xóa tìm</span></button>
-            </div>
-
-            <div class="patient-list">
-              <div class="patient-head">
-                <div>Ngày khám</div>
-                <div>Họ tên / SĐT / Địa chỉ / Giới tính / Lần khám</div>
-                <div>Tuổi</div>
-                <div>Tổng tiền</div>
-                <div>ICD</div>
-                <div>Tái khám</div>
-                <div>Xóa</div>
-              </div>
-              <div id="patientListBody"></div>
-            </div>
-            <nav class="pager" id="patientPager" aria-label="Phân trang danh sách bệnh nhân"></nav>
-          </section>
-
-          <main class="main-layout stacked-layout">
-            <section class="card" id="visitFormCard">
-              <div class="form-topbar">
-                <div class="date-inline">
-                  <label class="label" for="visitDate">Ngày khám</label>
-                  <input class="field" id="visitDate" type="date" />
+          <main class="main-layout">
+            <section class="card patient-top home-section">
+              <div class="card-title">
+                <h2>Danh sách bệnh nhân</h2>
+                <div class="row-actions">
+                  <span class="muted" id="patientCountText">0 hồ sơ</span>
                 </div>
+              </div>
+
+              <div class="search-zone">
+                <input class="field" id="searchInput" placeholder="Tìm tên, địa chỉ, số điện thoại, năm sinh..." autocomplete="off" aria-label="Tìm bệnh nhân" />
+                <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
+              </div>
+
+              <div class="patient-list">
+                <div class="patient-head">
+                  <div>Ngày khám</div>
+                  <div>Họ tên / SĐT / Địa chỉ / Giới tính / Lần khám</div>
+                  <div>Tuổi</div>
+                  <div>Tổng tiền</div>
+                  <div>ICD</div>
+                  <div>Tái khám</div>
+                  <div>Xóa</div>
+                </div>
+                <div id="patientListBody"></div>
+                <nav class="pager" id="patientPager" aria-label="Phân trang danh sách bệnh nhân"></nav>
+              </div>
+            </section>
+
+            <section class="card home-section" id="visitFormCard">
+              <div class="card-title">
+                <h2>Thông tin bệnh nhân</h2>
                 <div class="row-actions form-actions">
-                  <button class="btn primary" id="saveBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Lưu / Hoàn tất khám</span></button>
-                  <button class="btn soft" id="newBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Bệnh mới</span></button>
+                  <button class="btn small primary" id="saveBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Lưu / Hoàn tất khám</span></button>
+                  <button class="btn small" id="newBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Bệnh nhân mới</span></button>
                 </div>
               </div>
 
@@ -174,113 +172,110 @@
                 <button class="btn small" id="cancelEditBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>Hủy sửa</span></button>
               </div>
 
+              <input id="visitDoctor" type="hidden" list="doctorList" />
               <div class="info-grid">
-                <div class="search-zone">
-                  <label class="label" for="patientName">Họ và tên</label>
-                  <input class="field" id="patientName" />
+                <div class="search-zone f-name">
+                  <label class="label" for="patientName">Họ và tên <span class="req" aria-hidden="true">*</span></label>
+                  <input class="field" id="patientName" placeholder="Nguyễn Văn A" aria-required="true" />
                 </div>
-                <div>
-                  <label class="label" for="phone">Số điện thoại</label>
-                  <input class="field" id="phone" inputmode="tel" />
+                <div class="f-phone">
+                  <label class="label" for="phone">Số điện thoại <span class="req" aria-hidden="true">*</span></label>
+                  <input class="field" id="phone" inputmode="tel" placeholder="0912 345 678" aria-required="true" />
                 </div>
-                <div class="picker-wrap" id="birthYearWrap">
+                <div class="picker-wrap f-year" id="birthYearWrap">
                   <label class="label" for="birthYear">Năm sinh</label>
-                  <div class="input-with-btn">
-                    <input class="field" id="birthYear" inputmode="numeric" autocomplete="off" aria-haspopup="listbox" />
-                    <button class="icon-btn birth-year-btn" id="birthYearBtn" type="button" aria-label="Chọn năm sinh" title="Chọn năm sinh" aria-haspopup="listbox"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+                  <div class="year-field">
+                    <input class="field" id="birthYear" inputmode="numeric" placeholder="1980" autocomplete="off" aria-haspopup="listbox" />
+                    <output class="age-badge" id="age" for="birthYear"></output>
+                    <button class="birth-year-btn" id="birthYearBtn" type="button" aria-label="Chọn năm sinh" title="Chọn năm sinh" aria-haspopup="listbox"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>
                   </div>
                   <div class="suggest-box hidden" id="yearSuggestBox"></div>
                 </div>
-                <input id="visitDoctor" type="hidden" list="doctorList" />
-                <div>
-                  <label class="label" for="age">Tuổi</label>
-                  <input class="field age-input" id="age" readonly />
+                <div class="f-date">
+                  <label class="label" for="visitDate">Ngày khám</label>
+                  <input class="field" id="visitDate" type="date" />
                 </div>
-                <div>
-                  <label class="label" for="gender">Giới tính</label>
-                  <select class="field" id="gender">
-                    <option>Nam</option>
-                    <option>Nữ</option>
-                    <option>Khác</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="info-grid-2">
-                <div>
-                  <label class="label" for="addressWard">Địa chỉ + xã / phường</label>
-                  <input class="field" id="addressWard" />
-                </div>
-                <div class="picker-wrap">
+                <fieldset class="radio-group f-gender" id="gender">
+                  <legend class="label">Giới tính</legend>
+                  <label class="radio"><input type="radio" name="gender" value="Nam" checked> <span>Nam</span></label>
+                  <label class="radio"><input type="radio" name="gender" value="Nữ"> <span>Nữ</span></label>
+                  <label class="radio"><input type="radio" name="gender" value="Khác"> <span>Khác</span></label>
+                </fieldset>
+                <div class="picker-wrap f-prov">
                   <label class="label" for="province">Tỉnh / Thành</label>
-                  <input class="field" id="province" autocomplete="off" />
+                  <input class="field" id="province" placeholder="Gõ để chọn" autocomplete="off" />
                   <div class="suggest-box hidden" id="provinceSuggestBox"></div>
                 </div>
+                <div class="f-addr">
+                  <label class="label" for="addressWard">Địa chỉ + xã / phường</label>
+                  <input class="field" id="addressWard" placeholder="Số nhà, đường, xã / phường" />
+                </div>
               </div>
+            </section>
 
-              <div class="info-grid-3">
+            <section class="card home-section">
+              <div class="card-title">
                 <div>
+                  <h2>Chẩn đoán</h2>
+                </div>
+                <div class="row-actions">
+                  <button class="btn small primary" id="addCodeBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
+                  <button class="btn small" id="toggleCodeDataBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-database"/></svg><span>Dữ liệu mã</span></button>
+                </div>
+              </div>
+              <div class="diag-grid">
+                <div class="diag-symptom">
                   <label class="label" for="symptom">Triệu chứng</label>
                   <input class="field" id="symptom" />
                   <div class="suggest-box hidden" id="symptomSuggestBox"></div>
                 </div>
-              </div>
-            </section>
-
-            <section class="card">
-              <div class="card-title">
-                <div>
-                  <h2>Chẩn đoán</h2>
-                  <div class="sub">Gõ mã hoặc vài chữ</div>
+                <div class="search-zone">
+                  <label class="label" for="icdInput">Chẩn đoán</label>
+                  <textarea class="field auto-grow" id="icdInput" rows="1" autocomplete="off"></textarea>
+                  <div class="suggest-box hidden" id="icdSuggestBox"></div>
                 </div>
-                <div class="row-actions">
-                  <button class="btn small primary" id="addCodeBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
-                  <button class="btn small" id="toggleCodeDataBtn" type="button"><span>Dữ liệu mã</span></button>
-                </div>
-              </div>
-              <div class="search-zone">
-                <textarea class="field auto-grow" id="icdInput" rows="1" autocomplete="off" aria-label="Chẩn đoán"></textarea>
-                <div class="suggest-box hidden" id="icdSuggestBox"></div>
               </div>
               <div class="code-data hidden" id="codeDataBox"></div>
             </section>
 
-            <section class="card">
+            <section class="card home-section">
               <div class="card-title">
                 <h2 id="drugSectionTitle">Chỉ định thuốc</h2>
                 <div class="row-actions">
-                  <button class="btn small primary" id="addDrugBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm thuốc</span></button>
+                  <button class="btn small primary hidden" id="addDrugBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm thuốc</span></button>
                   <button class="btn small" id="newPrescriptionBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pill"/></svg><span>Toa mới</span></button>
                   <button class="btn small" id="toggleStockBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-package"/></svg><span>Kho thuốc</span></button>
+                  <button class="btn small" id="previewPrintBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-printer"/></svg><span>Xem / In toa</span></button>
                 </div>
               </div>
               <div class="drug-table">
+                <div class="drug-head" aria-hidden="true">
+                  <div>#</div><div>Thuốc</div><div>Sáng</div><div>Trưa</div><div>Tối</div><div>SL</div><div>Đơn giá</div><div>Thành tiền</div><div></div>
+                </div>
                 <div class="drug-rows" id="drugRows"></div>
               </div>
-              <div class="drug-footer-actions">
-                <button class="btn small" id="previewPrintBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-printer"/></svg><span>Xem / In toa</span></button>
-              </div>
+              <div class="drug-summary" id="drugSummary"></div>
               <div class="code-data hidden" id="stockDataBox"></div>
             </section>
 
-            <section class="card">
+            <section class="card home-section">
               <div class="fee-grid">
-                <div>
-                  <h2>Ngày tái khám và công khám</h2>
-                  <div class="info-grid-2">
+                <div class="fee-col">
+                  <h2>Ngày tái khám và Lời dặn</h2>
+                  <div class="stack">
                     <div>
                       <label class="label" for="followDate">Ngày tái khám</label>
                       <input class="field" id="followDate" type="date" />
                     </div>
-                  </div>
-                  <input id="serviceFee" type="hidden" value="0" />
-                  <div style="margin-top:12px">
-                    <label class="label" for="adviceNote">Lời dặn</label>
-                    <textarea class="field auto-grow" id="adviceNote" rows="1"></textarea>
+                    <input id="serviceFee" type="hidden" value="0" />
+                    <div>
+                      <label class="label" for="adviceNote">Lời dặn</label>
+                      <textarea class="field auto-grow" id="adviceNote" rows="1"></textarea>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <h2>Tiền thuốc</h2>
+                <div class="fee-col">
+                  <h2>Công khám</h2>
                   <div class="money-box">
                     <label class="money-row"><span>Tiền thuốc</span><input class="money-input" id="drugMoney" inputmode="numeric" value="0" /></label>
                     <label class="money-row">
@@ -305,19 +300,16 @@
             <div class="card-title">
               <div>
                 <h2>Thống kê nhanh</h2>
-                <div class="sub">Theo dashboard và quick stats</div>
               </div>
             </div>
             <div class="stats-grid stats-grid-2">
               <div class="stat">
                 <div class="muted">Hồ sơ</div>
                 <div class="k" id="summaryPatients">0</div>
-                <div class="stat-mini" id="summaryPatientsMini"></div>
               </div>
               <div class="stat">
                 <div class="muted">Lượt khám tháng</div>
                 <div class="k" id="statMonthCount">0</div>
-                <div class="stat-mini" id="statMonthMini"></div>
                 <div class="trend up" id="statMonthTrend">▲ 0% so với tháng trước</div>
               </div>
             </div>
@@ -327,46 +319,38 @@
                 <div class="stat">
                   <div class="muted">Thuốc</div>
                   <div class="k" id="summaryDrugs">0</div>
-                  <div class="stat-mini" id="summaryDrugsMini"></div>
                 </div>
                 <div class="stat">
                   <div class="muted">Khám hôm nay</div>
                   <div class="k" id="summaryVisitToday">0</div>
-                  <div class="stat-mini" id="summaryVisitTodayMini"></div>
                 </div>
                 <div class="stat">
                   <div class="muted">Doanh thu tháng</div>
                   <div class="k" id="summaryRevenueMonth">0</div>
-                  <div class="stat-mini" id="summaryRevenueMonthMini"></div>
                 </div>
                 <div class="stat">
                   <div class="muted">Lượt khám 7 ngày</div>
                   <div class="k" id="statWeekCount">0</div>
-                  <div class="stat-mini" id="statWeekMini"></div>
                   <div class="trend up" id="statWeekTrend">▲ 0% so với tuần trước</div>
                 </div>
                 <div class="stat">
                   <div class="muted">Lãi tạm tính</div>
                   <div class="k" id="statProfit">0</div>
-                  <div class="stat-mini" id="statProfitMini"></div>
                   <div class="trend up" id="statProfitTrend">▲ 0% so với tháng trước</div>
                 </div>
                 <div class="stat">
                   <div class="muted">Tỷ lệ tái khám</div>
                   <div class="k" id="statRevisitRate">0%</div>
-                  <div class="stat-mini" id="statRevisitMini"></div>
                   <div class="trend up" id="statRevisitTrend">0/0 ca quay lại</div>
                 </div>
                 <div class="stat">
                   <div class="muted">Đúng hẹn</div>
                   <div class="k" id="statOnTimeCount">0</div>
-                  <div class="stat-mini" id="statOnTimeMini"></div>
                   <div class="trend up" id="statOnTimeTrend">0 ca đúng hẹn</div>
                 </div>
                 <div class="stat">
                   <div class="muted">Trễ / không quay lại</div>
                   <div class="k" id="statLateMissedCount">0</div>
-                  <div class="stat-mini" id="statLateMissedMini"></div>
                   <div class="trend down" id="statLateMissedTrend">0 trễ, 0 không quay lại</div>
                 </div>
               </div>
@@ -465,10 +449,60 @@
       <div class="modal__foot">
         <button class="btn danger" id="dmDeleteBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
         <span class="modal__spacer"></span>
-        <button class="btn" type="button" data-close-dialog><span>Đóng</span></button>
         <button class="btn primary" id="dmSaveBtn" type="submit"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="stockAddModal" class="modal modal--sheet" aria-labelledby="stockAddTitle">
+    <div class="modal__head">
+      <strong id="stockAddTitle">Thêm thuốc</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body">
+      <label class="label" for="stockPasteInput">Dán dữ liệu từ Excel</label>
+      <textarea class="field stock-paste" id="stockPasteInput" rows="6" placeholder="Copy nhiều dòng từ Excel rồi dán vào đây. Thứ tự cột: Hoạt chất, Tên thương mại, Đơn vị, Tồn kho, Giá, Công dụng"></textarea>
+    </div>
+    <div class="modal__foot">
+      <button class="btn" id="stockManualBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Nhập từng thuốc</span></button>
+      <span class="modal__spacer"></span>
+      <button class="btn primary" id="stockPasteApplyBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Dán vào bảng</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="icdEditModal" class="modal modal--sheet" aria-labelledby="icdEditTitle">
+    <div class="modal__head">
+      <strong id="icdEditTitle">Sửa mã chẩn đoán</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body stack">
+      <div>
+        <label class="label" for="icdEditCode">Mã ICD</label>
+        <input class="field" id="icdEditCode" autocomplete="off" />
+      </div>
+      <div>
+        <label class="label" for="icdEditName">Tên chẩn đoán</label>
+        <input class="field" id="icdEditName" autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
+      <button class="btn primary" id="icdEditSaveBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="icdDeleteModal" class="modal modal--sheet" aria-labelledby="icdDeleteTitle">
+    <div class="modal__head">
+      <strong id="icdDeleteTitle">Xác nhận xóa</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body"><p id="icdDeleteText"></p></div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
+      <button class="btn danger" id="icdDeleteConfirmBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+    </div>
   </dialog>
 
   <dialog id="importModal" class="modal modal--sheet" aria-labelledby="importModalTitle">
