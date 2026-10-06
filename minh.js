@@ -268,7 +268,7 @@ function cacheRefs() {
   [
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "resetForm",
-    "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "saveFab", "importFile",
+    "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "changePasswordBtn", "passwordModal", "pwIntro", "pwConfirmFields", "pwCode", "pwNew", "pwNew2", "pwToggle", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
     "newPrescriptionBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
@@ -321,6 +321,14 @@ function bindEvents() {
     showAuthView("forgot");
   });
   refs.loginPasswordToggle.addEventListener("click", toggleLoginPassword);
+  refs.changePasswordBtn.addEventListener("click", openPasswordModal);
+  refs.pwSendBtn.addEventListener("click", sendPasswordCode);
+  refs.pwResendBtn.addEventListener("click", sendPasswordCode);
+  refs.pwConfirmBtn.addEventListener("click", confirmPasswordChange);
+  refs.pwToggle.addEventListener("click", togglePasswordFields);
+  refs.passwordModal.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") confirmPasswordChange();
+  });
 
   refs.searchInput.addEventListener("input", handleSearchInput);
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
@@ -353,7 +361,6 @@ function bindEvents() {
   refs.icdInput.addEventListener("focus", renderIcdSuggest);
   refs.icdInput.addEventListener("click", renderIcdSuggest);
   refs.icdInput.addEventListener("change", handleDiagnosisInput);
-  refs.adviceNote.addEventListener("input", () => autoGrowField(refs.adviceNote));
   refs.codeDataBox.addEventListener("click", handleCodeDataClick);
   refs.icdEditSaveBtn.addEventListener("click", saveIcdEdit);
   refs.icdDeleteConfirmBtn.addEventListener("click", confirmIcdDelete);
@@ -402,11 +409,7 @@ function bindEvents() {
   refs.serviceMoney.addEventListener("click", renderServiceFeeSuggest);
   refs.serviceMoney.addEventListener("focus", () => formatMoneyField(refs.serviceMoney, false));
   refs.serviceMoney.addEventListener("blur", () => formatMoneyField(refs.serviceMoney, true));
-  ["drugMoney", "serviceMoney"].forEach((id) => {
-    refs[id].addEventListener("input", handleMoneyOverrideInput);
-    refs[id].addEventListener("focus", () => formatMoneyField(refs[id], false));
-    refs[id].addEventListener("blur", () => formatMoneyField(refs[id], true));
-  });
+  refs.serviceMoney.addEventListener("input", handleMoneyOverrideInput);
   refs.previewPrintBtn.addEventListener("click", showPrescriptionPreview);
   refs.rxCloseBtn.addEventListener("click", () => refs.rxModal.close());
   refs.rxPrintBtn.addEventListener("click", () => printPrescription().catch(handleError));
@@ -562,6 +565,81 @@ function toggleLoginPassword() {
   refs.loginPasswordToggle.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
 }
 
+// ---- Đổi mật khẩu: gửi mã về email, nhập mã + mật khẩu mới ----
+
+function openPasswordModal() {
+  [refs.pwCode, refs.pwNew, refs.pwNew2].forEach((input) => { input.value = ""; });
+  setPasswordFieldsVisible(false);
+  setAuthMessage(refs.pwMsg, "");
+  refs.pwConfirmFields.classList.add("hidden");
+  refs.pwConfirmBtn.classList.add("hidden");
+  refs.pwSendBtn.classList.remove("hidden");
+  refs.pwIntro.textContent = `Mã xác nhận gồm 6 số sẽ được gửi tới ${refs.accountEmail.textContent}.`;
+  refs.passwordModal.showModal();
+}
+
+// access token có thể đã hết hạn trong lúc mở popup: làm mới một lần rồi gọi lại
+async function authedPost(url, body) {
+  const send = () => fetchJson(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  try {
+    return await send();
+  } catch (error) {
+    if (error.message !== "Cần đăng nhập.") throw error;
+    await refreshAccessToken();
+    return send();
+  }
+}
+
+async function sendPasswordCode(event) {
+  const button = event.currentTarget;
+  setAuthMessage(refs.pwMsg, "");
+  setBusy(button, true);
+  try {
+    const data = await authedPost("/api/auth/change-password/request", {});
+    refs.pwIntro.textContent = `Đã gửi mã tới ${data.email}. Mã có hiệu lực ${data.expiresInMinutes} phút.`;
+    refs.pwConfirmFields.classList.remove("hidden");
+    refs.pwSendBtn.classList.add("hidden");
+    refs.pwConfirmBtn.classList.remove("hidden");
+    refs.pwCode.focus();
+  } catch (error) {
+    setAuthMessage(refs.pwMsg, error.message);
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+async function confirmPasswordChange() {
+  if (refs.pwConfirmFields.classList.contains("hidden")) return;
+  const code = refs.pwCode.value.trim();
+  const password = refs.pwNew.value;
+  if (!/^\d{6}$/.test(code)) return setAuthMessage(refs.pwMsg, "Nhập mã xác nhận gồm 6 số.");
+  if (password.length < 8) return setAuthMessage(refs.pwMsg, "Mật khẩu tối thiểu 8 ký tự.");
+  if (password !== refs.pwNew2.value) return setAuthMessage(refs.pwMsg, "Hai mật khẩu không khớp.");
+  setAuthMessage(refs.pwMsg, "");
+  setBusy(refs.pwConfirmBtn, true);
+  try {
+    await authedPost("/api/auth/change-password/confirm", { code, password });
+    refs.passwordModal.close();
+    showToast("Đã đổi mật khẩu.", "success");
+  } catch (error) {
+    setAuthMessage(refs.pwMsg, error.message);
+  } finally {
+    setBusy(refs.pwConfirmBtn, false);
+  }
+}
+
+function togglePasswordFields() {
+  setPasswordFieldsVisible(refs.pwNew.type === "password");
+}
+
+function setPasswordFieldsVisible(show) {
+  refs.pwNew.type = refs.pwNew2.type = show ? "text" : "password";
+  refs.pwToggle.setAttribute("aria-pressed", String(show));
+  refs.pwToggle.setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
+  refs.pwToggle.title = show ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+  refs.pwToggle.querySelector("use").setAttribute("href", show ? "#i-eye-off" : "#i-eye");
+}
+
 async function handleLoginSubmit(event) {
   event.preventDefault();
   const email = refs.loginEmail.value.trim();
@@ -678,7 +756,6 @@ function showTab(tab) {
   if (tab === "home") {
     fitPatientListHeight();
     autoGrowField(refs.icdInput);
-    autoGrowField(refs.adviceNote);
     refs.drugRows.querySelectorAll(".drug-field--usage textarea").forEach((element) => autoGrowField(element));
   }
 }
@@ -1117,7 +1194,6 @@ function setGender(value) {
 
 function setAdviceNote(value) {
   refs.adviceNote.value = value;
-  autoGrowField(refs.adviceNote);
 }
 
 function fillFormFromRecord(patient, visit) {
