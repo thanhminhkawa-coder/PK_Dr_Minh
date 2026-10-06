@@ -1,95 +1,96 @@
-# Trien khai on dinh: Netlify + Backend rieng + MongoDB
+# Triển khai PK Dr. Minh: chỉ dùng Render
 
-Day la huong phu hop nhat voi bo ma hien tai.
+Một web service Render chạy Express, phục vụ cả giao diện tĩnh (`minh.html`, `minh.css`, `minh.js`, ...) lẫn `/api` trên cùng một domain. Dữ liệu nằm ở MongoDB Atlas. Không dùng Netlify, nên `app-config.js` giữ nguyên `API_BASE: ""`.
 
-- Frontend tinh: Netlify
-- Backend Node/Express: Render, Railway hoac VPS Node
-- Database: MongoDB Atlas
+## 1. Tạo web service trên Render
 
-Khong nen doi sang `Vercel + Supabase` o thoi diem nay vi ma hien tai dang dung:
+1. Render Dashboard → **New** → **Web Service** → chọn repo.
+2. Cấu hình:
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+3. Thêm các biến môi trường ở mục 2, rồi **Deploy**.
 
-- Express chay lau dai
-- Mongoose/MongoDB
-- nhieu API CRUD theo MongoDB
+## 2. Biến môi trường
 
-## 1. Frontend tren Netlify
+| Biến | Bắt buộc | Ví dụ / ghi chú |
+|---|---|---|
+| `MONGODB_URI` | có | Chuỗi kết nối Atlas, có tên database `PK-DrMinh`. |
+| `MONGODB_URI_DIRECT` | không | Chuỗi dự phòng dạng `mongodb://host1,host2,...` khi DNS SRV bị lỗi. |
+| `JWT_ACCESS_SECRET` | có | Chuỗi ngẫu nhiên dài. Tạo bằng `openssl rand -hex 32`. Thiếu thì server không khởi động. |
+| `NODE_ENV` | có | `production`. Bật cờ `Secure` cho cookie đăng nhập (cần HTTPS, Render đã có sẵn). |
+| `APP_BASE_URL` | có | Địa chỉ công khai, ví dụ `https://pk-dr-minh.onrender.com` (không có dấu `/` ở cuối). Dùng để tạo link đặt lại mật khẩu. |
+| `SMTP_HOST` | để gửi email quên mật khẩu | `smtp.gmail.com` |
+| `SMTP_PORT` | như trên | `587` (STARTTLS) hoặc `465` (SSL) |
+| `SMTP_USER` | như trên | Địa chỉ Gmail gửi thư |
+| `SMTP_PASS` | như trên | **App Password** của Gmail (mục 4), không phải mật khẩu đăng nhập Gmail |
+| `MAIL_FROM` | không | `"PK Dr. Minh <your-account@gmail.com>"`. Bỏ trống thì dùng `SMTP_USER`. |
+| `CORS_ORIGINS` | không | Không cần khi giao diện và API cùng domain. |
+| `PORT` | không | Render tự đặt. |
 
-Cac file dung cho frontend:
+Lưu ý:
+- Biến môi trường trên Render luôn thắng file `.env` (server chỉ đọc file khi biến chưa có).
+- Nếu thiếu `SMTP_HOST`, link đặt lại mật khẩu được in ra log của service thay vì gửi email.
 
-- `minh.html`
-- `minh.css`
-- `minh.js`
-- `icd-data.js`
-- `app-config.js`
-- `netlify.toml`
+## 3. Tạo tài khoản đăng nhập
 
-Lam nhu sau:
-
-1. Dua repo hoac thu muc goc len Netlify.
-2. Dat `Publish directory` la `.`
-3. Khi da co URL backend that, sua `app-config.js`:
-
-```js
-window.APP_CONFIG = {
-  API_BASE: "https://your-backend-domain.com"
-};
-```
-
-## 2. Backend rieng
-
-Chay backend:
+Hệ thống chỉ có một người dùng. Sau lần deploy đầu tiên, mở **Shell** của service trên Render và chạy:
 
 ```bash
-npm install
-npm start
+npm run create-user -- email-cua-ban@gmail.com
 ```
 
-Bien moi truong can co:
+Nhập mật khẩu (tối thiểu 8 ký tự, không hiện ra màn hình). Đã có tài khoản thì lệnh từ chối, trừ khi thêm `--reset-password`:
 
-- `PORT`
-- `MONGODB_URI`
-- `MONGODB_URI_DIRECT`
-- `CORS_ORIGINS`
-
-Vi du:
-
-```env
-PORT=3000
-MONGODB_URI=...
-MONGODB_URI_DIRECT=...
-CORS_ORIGINS=https://your-site.netlify.app
+```bash
+npm run create-user -- email-cua-ban@gmail.com --reset-password
 ```
 
-## 3. Kiem tra sau khi deploy
+Đổi mật khẩu bằng cách này sẽ thu hồi mọi phiên đăng nhập cũ.
 
-Kiem tra backend:
+## 4. Tạo Gmail App Password
 
-- `/api/health`
-- `/api/patients`
-- `/api/drugs`
-- `/api/settings`
+1. Vào <https://myaccount.google.com/security> và bật **Xác minh 2 bước** cho tài khoản Gmail gửi thư.
+2. Vào <https://myaccount.google.com/apppasswords>, đặt tên (ví dụ `PK Dr. Minh`) rồi bấm **Tạo**.
+3. Chép mật khẩu 16 ký tự (bỏ khoảng trắng) vào `SMTP_PASS`.
+4. `SMTP_USER` là địa chỉ Gmail đó, `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`.
 
-Kiem tra frontend:
+## 5. Atlas Network Access
 
-- mo site Netlify
-- tai duoc danh sach benh nhan
-- luu duoc benh nhan moi
-- luu duoc toa thuoc
-- mo duoc xem/in toa
+Atlas chặn mọi kết nối lạ theo mặc định, nên cần cho phép Render:
 
-## 4. Vi sao chon huong nay
+1. Atlas → **Security** → **Network Access** → **Add IP Address**.
+2. Cách an toàn: thêm các **Outbound IP** của service (Render → service → **Connect** → **Outbound**).
+3. Cách nhanh (kém an toàn hơn): `0.0.0.0/0`. Chỉ nên dùng tạm khi thử.
 
-- it sua ma nhat
-- giu nguyen MongoDB hien co
-- de bao tri hon ep Express hien tai sang serverless
-- de mo rong backend doc lap khi du lieu tang
+Atlas là replica set nên transaction (lưu lượt khám, sửa toa, nạp dữ liệu) chạy bình thường.
 
-## 5. Ket luan ngan
+## 6. Thay đổi trong database
 
-Neu ban muon trien khai online on dinh, hay dung:
+Lần chạy đầu, Mongoose tự tạo thêm hai collection và index:
 
-- Netlify cho giao dien
-- mot backend Node rieng
-- MongoDB Atlas cho du lieu
+- `users`: email (unique), `passwordHash`, token đặt lại mật khẩu.
+- `sessions`: refresh token đã băm, kèm index TTL trên `absoluteExpiresAt` (Mongo tự xóa phiên hết hạn).
 
-Day la huong an toan nhat cho bo ma hien tai.
+Collection cũ (`patients`, `visits`, `drugs`, `settings`) không đổi tên field. Field mới đều có giá trị mặc định, dữ liệu hiện có dùng tiếp được. Tồn kho thuốc giờ cho phép số âm.
+
+## 7. Checklist sau khi deploy
+
+- [ ] `https://<domain>/api/health` trả `{"ok":true,"mongoState":"connected"}`.
+- [ ] `https://<domain>/api/patients` (không đăng nhập) trả 401.
+- [ ] Mở trang, thấy màn hình đăng nhập; đăng nhập đúng thì vào được app.
+- [ ] Tải lại trang vẫn còn đăng nhập; **Đăng xuất** rồi tải lại thì phải đăng nhập lại.
+- [ ] **Quên mật khẩu**: nhận được email, link mở ra form mật khẩu mới, đặt xong đăng nhập lại được.
+- [ ] Danh sách bệnh nhân hiện đủ, phân trang 20 hồ sơ/trang.
+- [ ] Lưu một lượt khám thử: tồn kho trừ đúng; sửa toa đó thì kho chỉ đổi theo chênh lệch.
+- [ ] Xem toa, in toa, gửi Zalo; layout không bị hẹp sau khi in.
+- [ ] **Xuất dữ liệu** tải được file `pk-dr-minh-full-*.json`.
+- [ ] Trên điện thoại: thêm vào màn hình chính, tab bar dưới đáy, chọn năm sinh bằng bánh xe.
+
+## 8. Sao lưu
+
+Bấm **Xuất dữ liệu** định kỳ và cất file ở nơi an toàn (file chứa dữ liệu bệnh nhân, không đưa lên nơi công khai). **Nạp dữ liệu** sẽ thay thế toàn bộ dữ liệu hiện tại và luôn tự tải bản sao lưu trước khi nạp.
+
+## 9. File không còn dùng
+
+`netlify.toml` không còn tác dụng (không dùng Netlify). Giữ hay xóa tùy bạn.
