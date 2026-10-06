@@ -3,7 +3,7 @@ const ICD_STORAGE_KEY = "pk_icd_list_v1";
 const CLINIC_NAME_CACHE_KEY = "pk_clinic_name";
 const NOTICE_KEY = "pk_notice";
 // ponytail: phân trang client, chuyển sang server-side khi > ~5000 hồ sơ
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const TABS = ["home", "stats", "clinic"];
 const WHEEL_ITEM_HEIGHT = 44;
 const WHEEL_MIN_YEAR = 1920;
@@ -953,6 +953,7 @@ function renderPatientList() {
   const rows = state.filteredPatients.slice(start, start + PAGE_SIZE);
   refs.patientListBody.innerHTML = rows.map(buildPatientRow).join("")
     || '<div class="patient-row patient-row--empty">Không có bệnh nhân phù hợp.</div>';
+  refs.patientListBody.scrollTop = 0;
   renderPager(total, pages, start, rows.length);
 }
 
@@ -980,9 +981,9 @@ function renderPager(total, pages, start, count) {
     <div class="pager__range">Hiển thị ${formatNumber(start + 1)}–${formatNumber(start + count)} / ${formatNumber(total)} hồ sơ</div>
     ${pages > 1 ? `
       <div class="pager__list">
-        <button class="pager__btn" type="button" data-page="prev" aria-label="Trang trước" ${current === 1 ? "disabled" : ""}>${iconHtml("chevron-left")}<span class="pager__txt">Trước</span></button>
+        <button class="pager__btn" type="button" data-page="prev" aria-label="Trang trước" ${current === 1 ? "disabled" : ""}>${iconHtml("chevron-left")}</button>
         ${items.map(pageButton).join("")}
-        <button class="pager__btn" type="button" data-page="next" aria-label="Trang sau" ${current === pages ? "disabled" : ""}><span class="pager__txt">Sau</span>${iconHtml("chevron-right")}</button>
+        <button class="pager__btn" type="button" data-page="next" aria-label="Trang sau" ${current === pages ? "disabled" : ""}>${iconHtml("chevron-right")}</button>
       </div>` : ""}
   `;
 }
