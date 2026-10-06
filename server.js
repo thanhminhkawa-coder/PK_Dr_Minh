@@ -72,7 +72,11 @@ app.use((req, res, next) => {
 });
 const jsonParser = express.json({ limit: "2mb" });
 app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
-app.use(express.static(__dirname, { dotfiles: "deny", index: false }));
+// chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
+const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js"];
+PUBLIC_FILES.forEach((name) => {
+  app.get(`/${name}`, (_req, res) => res.sendFile(path.join(__dirname, name)));
+});
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "minh.html"));
 });
@@ -391,7 +395,12 @@ function readCookie(req, name) {
   for (const part of String(req.headers.cookie || "").split(";")) {
     const index = part.indexOf("=");
     if (index > 0 && part.slice(0, index).trim() === name) {
-      return decodeURIComponent(part.slice(index + 1).trim());
+      const raw = part.slice(index + 1).trim();
+      try {
+        return decodeURIComponent(raw);
+      } catch {
+        return raw;
+      }
     }
   }
   return "";
@@ -413,6 +422,12 @@ function isRateLimited(key) {
 }
 
 function recordRateHit(key) {
+  if (rateBuckets.size > 5000) {
+    const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+    rateBuckets.forEach((times, bucketKey) => {
+      if (!times.some((time) => time > cutoff)) rateBuckets.delete(bucketKey);
+    });
+  }
   const hits = rateBuckets.get(key) || [];
   hits.push(Date.now());
   rateBuckets.set(key, hits);
