@@ -452,7 +452,6 @@ app.get("/api/dashboard", async (_req, res, next) => {
       drugCount,
       todayRevenueAgg,
       monthRevenueAgg,
-      recentVisits,
       lowStockDrugs,
       scopedVisits,
       scopedPatientCount
@@ -460,7 +459,6 @@ app.get("/api/dashboard", async (_req, res, next) => {
       Drug.countDocuments(),
       revenueTotalBetween(startToday, new Date(), visitMatch),
       revenueTotalBetween(startMonth, new Date(), visitMatch),
-      Visit.find(visitMatch).sort({ visitDate: -1, createdAt: -1 }).limit(6).lean(),
       Drug.find({}).sort({ quantity: 1, updatedAt: -1 }).limit(6).lean(),
       Visit.find(visitMatch).lean(),
       Visit.aggregate([
@@ -488,7 +486,6 @@ app.get("/api/dashboard", async (_req, res, next) => {
         todayRevenue: todayRevenueAgg.totalRevenue,
         monthRevenue: monthRevenueAgg.totalRevenue
       },
-      recentVisits,
       lowStockDrugs
     });
   } catch (error) {
