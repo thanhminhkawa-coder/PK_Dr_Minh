@@ -616,6 +616,7 @@ app.use((error, _req, res, _next) => {
 
 async function startServer() {
   await connectWithFallback();
+  console.log(`Connected to MongoDB host: ${mongoose.connection.host}, db: ${mongoose.connection.name}`);
   app.listen(PORT, () => {
     console.log(`PK Dr. Minh is running at http://localhost:${PORT}`);
   });
@@ -1038,8 +1039,11 @@ function createHttpError(statusCode, message) {
 }
 
 function loadLocalEnv() {
-  const envPath = path.join(__dirname, ".env");
-  if (!fs.existsSync(envPath)) {
+  // .env.local (dev local) thắng hoàn toàn; chỉ khi không có mới dùng .env
+  const envPath = [".env.local", ".env"]
+    .map((name) => path.join(__dirname, name))
+    .find((p) => fs.existsSync(p));
+  if (!envPath) {
     return;
   }
 
