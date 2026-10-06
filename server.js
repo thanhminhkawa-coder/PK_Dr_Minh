@@ -904,6 +904,81 @@ app.get("/api/revenue", async (req, res, next) => {
   }
 });
 
+const EXPORT_MODELS = { patients: Patient, visits: Visit, drugs: Drug, settings: Settings };
+// users/sessions không bao giờ nằm trong file xuất (mật khẩu, token)
+const NEVER_EXPORT_COLLECTIONS = new Set(["users", "sessions"]);
+
+app.get("/api/export", async (_req, res) => {
+  const collections = {};
+  for (const [name, Model] of Object.entries(EXPORT_MODELS)) {
+    collections[name] = await Model.find().sort({ _id: 1 }).lean();
+  }
+
+  // báo nếu DB có collection nào khác chưa được xuất, để "toàn bộ" thật sự đủ
+  const exported = new Set(Object.values(EXPORT_MODELS).map((Model) => Model.collection.name));
+  const present = (await mongoose.connection.db.listCollections().toArray()).map((item) => item.name);
+  const missing = present.filter((name) => !exported.has(name) && !NEVER_EXPORT_COLLECTIONS.has(name) && !name.startsWith("system."));
+  if (missing.length) {
+    console.warn(`/api/export: collection chưa được xuất: ${missing.join(", ")}`);
+  }
+
+  // sắp key cố định để hai lần xuất cùng dữ liệu cho ra file giống hệt nhau
+  const sortKeys = (_key, value) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : value;
+  const payload = { app: EXPORT_APP, version: EXPORT_VERSION, exportedAt: new Date().toISOString(), collections };
+  res.type("json").send(JSON.stringify(payload, sortKeys));
+});
+
+app.post("/api/import", express.json({ limit: "50mb" }), async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    const { app: appName, version, collections } = req.body || {};
+    if (appName !== EXPORT_APP || version !== EXPORT_VERSION) {
+      throw createHttpError(400, "File không phải bản xuất của PK Dr. Minh (sai app hoặc phiên bản).");
+    }
+    for (const name of Object.keys(EXPORT_MODELS)) {
+      if (!Array.isArray(collections?.[name])) {
+        throw createHttpError(400, `File thiếu danh sách "${name}".`);
+      }
+    }
+
+    // ép kiểu _id/ngày giờ qua schema; giữ nguyên _id, createdAt, updatedAt gốc
+    const prepared = {};
+    for (const [name, Model] of Object.entries(EXPORT_MODELS)) {
+      prepared[name] = collections[name].map((raw, index) => {
+        const doc = new Model(raw);
+        const invalid = doc.validateSync();
+        if (invalid) {
+          throw createHttpError(400, `Dữ liệu "${name}" dòng ${index + 1} không hợp lệ: ${invalid.message}`);
+        }
+        return doc.toObject();
+      });
+    }
+
+    // lỗi bất kỳ trong transaction thì abort, DB giữ nguyên như cũ
+    await session.withTransaction(async () => {
+      for (const [name, Model] of Object.entries(EXPORT_MODELS)) {
+        await Model.collection.deleteMany({}, { session });
+        for (let i = 0; i < prepared[name].length; i += 1000) {
+          await Model.collection.insertMany(prepared[name].slice(i, i + 1000), { session });
+        }
+      }
+    });
+
+    res.json({
+      ok: true,
+      counts: Object.fromEntries(Object.keys(EXPORT_MODELS).map((name) => [name, prepared[name].length]))
+    });
+  } catch (error) {
+    next(error);
+  } finally {
+    await session.endSession();
+  }
+});
+
 app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
   res.sendFile(path.join(__dirname, "minh.html"));
 });
