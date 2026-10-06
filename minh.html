@@ -359,20 +359,18 @@
         </section>
 
         <section class="tab-panel hidden" id="panel-clinic" data-panel="clinic">
-          <section class="card clinic-card">
+          <section class="card page-section clinic-card">
             <div class="card-title clinic-card__title">
-              <div>
+              <div class="clinic-card__head">
                 <h2>Thông tin phòng khám</h2>
-                <div class="sub">Dùng cho giao diện và mẫu in toa</div>
-              </div>
-              <div class="row-actions">
                 <select class="field field--compact clinic-profile-select" id="clinicProfileSelect" aria-label="Hồ sơ thông tin phòng khám">
                   <option value="">Hồ sơ thông tin</option>
                 </select>
-                <button class="btn" id="addClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm thông tin</span></button>
-                <button class="btn" id="deleteClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa thông tin</span></button>
-                <button class="btn soft" id="toggleClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Sửa thông tin</span></button>
-                <button class="btn primary" id="saveClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu thông tin</span></button>
+              </div>
+              <div class="row-actions">
+                <button class="btn small primary" id="addClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
+                <button class="btn small danger" id="deleteClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+                <button class="btn small" id="toggleClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Sửa</span></button>
               </div>
             </div>
             <div class="clinic-meta">
@@ -382,16 +380,9 @@
               <div><span class="clinic-meta-label">Giờ làm việc</span><strong id="clinicDisplayHours">Chưa cập nhật</strong></div>
               <div><span class="clinic-meta-label">Điện thoại</span><strong id="clinicDisplayPhone">Chưa cập nhật</strong></div>
             </div>
-            <div class="clinic-form hidden" id="clinicForm">
-              <div><label class="label" for="clinicNameInput">Tên phòng khám</label><input class="field" id="clinicNameInput" /></div>
-              <div><label class="label" for="clinicDoctorInput">Tên bác sĩ</label><input class="field" id="clinicDoctorInput" /></div>
-              <div><label class="label" for="clinicAddressInput">Địa chỉ</label><input class="field" id="clinicAddressInput" /></div>
-              <div><label class="label" for="clinicHoursInput">Giờ làm việc</label><input class="field" id="clinicHoursInput" /></div>
-              <div><label class="label" for="clinicPhoneInput">Số điện thoại</label><input class="field" id="clinicPhoneInput" /></div>
-            </div>
           </section>
 
-          <section class="card account-card">
+          <section class="card page-section account-card">
             <div class="card-title">
               <div>
                 <h2>Tài khoản</h2>
@@ -467,6 +458,38 @@
       <button class="btn" id="stockManualBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Nhập từng thuốc</span></button>
       <span class="modal__spacer"></span>
       <button class="btn primary" id="stockPasteApplyBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Dán vào bảng</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="clinicModal" class="modal modal--sheet" aria-labelledby="clinicModalTitle">
+    <div class="modal__head">
+      <strong id="clinicModalTitle">Sửa thông tin phòng khám</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body stack">
+        <div><label class="label" for="clinicNameInput">Tên phòng khám</label><input class="field" id="clinicNameInput" /></div>
+        <div><label class="label" for="clinicDoctorInput">Tên bác sĩ</label><input class="field" id="clinicDoctorInput" /></div>
+        <div><label class="label" for="clinicAddressInput">Địa chỉ</label><input class="field" id="clinicAddressInput" /></div>
+        <div><label class="label" for="clinicHoursInput">Giờ làm việc</label><input class="field" id="clinicHoursInput" /></div>
+        <div><label class="label" for="clinicPhoneInput">Số điện thoại</label><input class="field" id="clinicPhoneInput" /></div>
+    </div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
+      <button class="btn primary" id="saveClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="clinicDeleteModal" class="modal modal--sheet" aria-labelledby="clinicDeleteTitle">
+    <div class="modal__head">
+      <strong id="clinicDeleteTitle">Xác nhận xóa</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body"><p id="clinicDeleteText"></p></div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
+      <button class="btn danger" id="clinicDeleteConfirmBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
     </div>
   </dialog>
 

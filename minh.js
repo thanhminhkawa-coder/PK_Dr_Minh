@@ -278,7 +278,7 @@ function cacheRefs() {
     "summaryPatients", "summaryDrugs",
     "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
     "rxCloseBtn", "clinicDisplayName", "clinicDisplayDoctor", "clinicDisplayAddress", "clinicDisplayHours",
-    "clinicDisplayPhone", "clinicForm", "clinicProfileSelect", "addClinicBtn", "deleteClinicBtn",
+    "clinicDisplayPhone", "clinicModal", "clinicModalTitle", "clinicDeleteModal", "clinicDeleteText", "clinicDeleteConfirmBtn", "clinicProfileSelect", "addClinicBtn", "deleteClinicBtn",
     "toggleClinicBtn", "saveClinicBtn", "clinicNameInput", "clinicDoctorInput",
     "clinicAddressInput", "clinicHoursInput", "clinicPhoneInput", "statWeekCount", "statWeekTrend", "statMonthCount",
     "statMonthTrend", "statProfit", "statProfitTrend", "statRevisitRate", "statRevisitTrend", "statOnTimeCount",
@@ -420,10 +420,14 @@ function bindEvents() {
     refs.importConfirmBtn.disabled = refs.importConfirm.value !== "NAP";
   });
   refs.importConfirmBtn.addEventListener("click", confirmImport);
-  refs.toggleClinicBtn.addEventListener("click", () => refs.clinicForm.classList.toggle("hidden"));
+  refs.toggleClinicBtn.addEventListener("click", () => openClinicModal("edit"));
   refs.clinicProfileSelect.addEventListener("change", handleClinicProfileChange);
-  refs.addClinicBtn.addEventListener("click", addClinicProfile);
-  refs.deleteClinicBtn.addEventListener("click", deleteClinicProfile);
+  refs.addClinicBtn.addEventListener("click", () => openClinicModal("add"));
+  refs.deleteClinicBtn.addEventListener("click", openClinicDelete);
+  refs.clinicDeleteConfirmBtn.addEventListener("click", deleteClinicProfile);
+  refs.clinicModal.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target.tagName === "INPUT") saveClinicInfo();
+  });
   refs.saveClinicBtn.addEventListener("click", saveClinicInfo);
 
   document.addEventListener("click", (event) => {
@@ -2979,11 +2983,16 @@ async function saveClinicInfo() {
       hours: refs.clinicHoursInput.value.trim() || DEFAULT_CLINIC_INFO.hours,
       phone: refs.clinicPhoneInput.value.trim() || DEFAULT_CLINIC_INFO.phone
     };
+    if (clinicModalMode === "add") {
+      const id = createClinicProfileId();
+      state.clinicProfiles.push({ id, label: "", ...DEFAULT_CLINIC_INFO });
+      state.activeClinicProfileId = id;
+    }
     upsertActiveClinicProfile(updatedClinicInfo);
     await persistSettings();
     renderClinicInfo();
-    refs.clinicForm.classList.add("hidden");
-    showToast("Đã lưu thông tin phòng khám vào hệ thống.", "success");
+    refs.clinicModal.close();
+    showToast(clinicModalMode === "add" ? "Đã thêm thông tin phòng khám." : "Đã lưu thông tin phòng khám vào hệ thống.", "success");
   } catch (error) {
     handleError(error);
   }
@@ -3138,35 +3147,40 @@ async function handleClinicProfileChange(event) {
   renderClinicInfo();
 }
 
-function addClinicProfile() {
-  const newProfile = {
-    id: createClinicProfileId(),
-    label: `Thông tin ${state.clinicProfiles.length + 1}`,
-    ...DEFAULT_CLINIC_INFO
-  };
-  state.clinicProfiles.push(newProfile);
-  state.activeClinicProfileId = newProfile.id;
-  state.clinicInfo = normalizeClinicInfo(newProfile);
-  refs.clinicForm.classList.remove("hidden");
-  renderClinicInfo();
-  refs.clinicNameInput.focus();
+let clinicModalMode = "edit";
+
+function openClinicModal(mode) {
+  clinicModalMode = mode;
+  const info = mode === "add" ? DEFAULT_CLINIC_INFO : state.clinicInfo;
+  refs.clinicNameInput.value = info.name;
+  refs.clinicDoctorInput.value = info.doctor;
+  refs.clinicAddressInput.value = info.address;
+  refs.clinicHoursInput.value = info.hours;
+  refs.clinicPhoneInput.value = info.phone;
+  refs.clinicModalTitle.textContent = mode === "add" ? "Thêm thông tin phòng khám" : "Sửa thông tin phòng khám";
+  refs.clinicModal.showModal();
   refs.clinicNameInput.select();
 }
 
-async function deleteClinicProfile() {
-  if (state.clinicProfiles.length <= 1) {
-    showToast("Cần giữ lại ít nhất một bộ thông tin phòng khám.", "error");
-    return;
-  }
+function openClinicDelete() {
+  if (state.clinicProfiles.length <= 1) return showToast("Cần giữ lại ít nhất một bộ thông tin phòng khám.", "error");
   const activeProfile = state.clinicProfiles.find((profile) => profile.id === state.activeClinicProfileId);
-  const profileName = activeProfile?.label || activeProfile?.doctor || activeProfile?.name || "bộ thông tin này";
-  if (!window.confirm(`Xóa ${profileName}?`)) return;
-  state.clinicProfiles = state.clinicProfiles.filter((profile) => profile.id !== state.activeClinicProfileId);
-  state.activeClinicProfileId = resolveActiveClinicProfileId("", state.clinicProfiles);
-  state.clinicInfo = getActiveClinicProfile();
-  await persistSettings();
-  renderClinicInfo();
-  showToast("Đã xóa bộ thông tin phòng khám.", "success");
+  refs.clinicDeleteText.textContent = `Xóa ${activeProfile?.label || activeProfile?.doctor || activeProfile?.name || "bộ thông tin này"}?`;
+  refs.clinicDeleteModal.showModal();
+}
+
+async function deleteClinicProfile() {
+  try {
+    state.clinicProfiles = state.clinicProfiles.filter((profile) => profile.id !== state.activeClinicProfileId);
+    state.activeClinicProfileId = resolveActiveClinicProfileId("", state.clinicProfiles);
+    state.clinicInfo = getActiveClinicProfile();
+    await persistSettings();
+    refs.clinicDeleteModal.close();
+    renderClinicInfo();
+    showToast("Đã xóa bộ thông tin phòng khám.", "success");
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 function hasMeaningfulClinicInfo(input = {}) {
