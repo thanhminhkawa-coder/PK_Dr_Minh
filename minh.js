@@ -270,8 +270,8 @@ function cacheRefs() {
     "newPrescriptionBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "addCodeBtn", "toggleCodeDataBtn",
     "codeDataBox", "previewPrintBtn", "addDrugBtn", "toggleStockBtn", "drugRows", "stockDataBox", "warningBox",
-    "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney", "reloadHistoryBtn",
-    "historyRows", "summaryPatients", "summaryDrugs",
+    "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
+    "summaryPatients", "summaryDrugs",
     "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
     "rxCloseBtn", "clinicDisplayName", "clinicDisplayDoctor", "clinicDisplayAddress", "clinicDisplayHours",
     "clinicDisplayPhone", "clinicForm", "clinicProfileSelect", "addClinicBtn", "deleteClinicBtn",
@@ -323,7 +323,6 @@ function bindEvents() {
   refs.patientListBody.addEventListener("click", handlePatientListClick);
   refs.patientListBody.addEventListener("keydown", handlePatientListKeydown);
   refs.patientPager.addEventListener("click", handlePagerClick);
-  refs.historyRows.addEventListener("click", handleHistoryClick);
   refs.cancelEditBtn.addEventListener("click", cancelEditMode);
   refs.birthYear.addEventListener("input", handleBirthYearInput);
   refs.birthYear.addEventListener("focus", () => {
@@ -386,7 +385,6 @@ function bindEvents() {
   refs.rxCloseBtn.addEventListener("click", () => refs.rxModal.close());
   refs.rxPrintBtn.addEventListener("click", () => printPrescription().catch(handleError));
   refs.rxShareBtn.addEventListener("click", sharePrescriptionToZalo);
-  refs.reloadHistoryBtn.addEventListener("click", renderHistory);
   refs.newBtn.addEventListener("click", createNewPatient);
   refs.newPrescriptionBtn.addEventListener("click", createNewPrescription);
   refs.saveBtn.addEventListener("click", saveEncounter);
@@ -1063,7 +1061,6 @@ async function selectPatient(patientId, quiet = false, { editVisitId = "" } = {}
   state.editingVisitId = editing?._id || "";
   fillFormFromRecord(state.selectedPatientDetail.patient, visit);
   renderPatientList();
-  renderHistory();
   renderPrescriptionVisitTabs();
   renderEditBanner();
   updateSaveButtons();
@@ -1074,54 +1071,6 @@ async function selectPatient(patientId, quiet = false, { editVisitId = "" } = {}
 
 function findHistoryVisit(visitId) {
   return (state.selectedPatientDetail?.visits || []).find((item) => item._id === visitId) || null;
-}
-
-function handleHistoryClick(event) {
-  const button = event.target.closest("button[data-action]");
-  const row = event.target.closest(".history-row[data-id]");
-  if (!row) return;
-  const visit = findHistoryVisit(row.dataset.id);
-  if (!visit || !button) return;
-  state.selectedVisitId = visit._id;
-  fillFormFromRecord(state.selectedPatientDetail.patient, visit);
-
-  if (button.dataset.action === "edit-visit") {
-    state.editingVisitId = visit._id;
-    showToast(`Đang sửa toa lần ${visit.visitNo || 1}.`, "success");
-    refs.editBanner.scrollIntoView({ block: "center" });
-  } else {
-    state.editingVisitId = "";
-    showToast("Đã nạp dữ liệu lần khám vào form.", "success");
-  }
-  renderHistory();
-  renderEditBanner();
-  updateSaveButtons();
-  updateTotals();
-  updateWarning();
-}
-
-function renderHistory() {
-  const visits = state.selectedPatientDetail?.visits || [];
-  refs.historyRows.innerHTML = visits.map((visit) => `
-    <div class="history-row ${visit._id === state.editingVisitId ? "is-editing" : ""}" data-id="${visit._id}">
-      <div>${formatDate(visit.visitDate)}<span class="history-visit-tag">L${String(visit.visitNo || 0)}</span></div>
-      <div class="history-visit-no">L${String(visit.visitNo || 0)}<span class="history-total-inline">${formatMoney(visit.totalMoney)}</span></div>
-      <div>${escapeHtml(visit.diagnosis || "")}${visit.doctor ? `<div class="muted">BS ${escapeHtml(visit.doctor)}</div>` : ""}${buildHistoryDrugSummary(visit)}<div class="history-total-inline">${formatMoney(visit.totalMoney)}</div></div>
-      <div>${formatMoney(visit.totalMoney)}</div>
-      <div class="history-row__actions">
-        <button class="btn small" type="button" data-action="open-visit" aria-label="Mở toa lần ${escapeAttribute(visit.visitNo || 0)}">${iconHtml("eye")}<span>Mở</span></button>
-        <button class="btn small soft" type="button" data-action="edit-visit" aria-label="Sửa toa lần ${escapeAttribute(visit.visitNo || 0)}" title="Sửa toa">${iconHtml("pencil")}<span>Sửa</span></button>
-      </div>
-    </div>
-  `).join("") || '<div class="history-row"><div></div><div></div><div>Chưa có lịch sử khám.</div><div></div><div></div></div>';
-}
-
-function buildHistoryDrugSummary(visit) {
-  const names = [...new Set((visit?.drugs || [])
-    .map((drug) => String(drug?.activeIngredient || "").trim())
-    .filter(Boolean))];
-  if (!names.length) return "";
-  return `<div class="history-drugs muted">${escapeHtml(names.join("; "))}</div>`;
 }
 
 function renderPrescriptionVisitTabs() {
@@ -1144,7 +1093,6 @@ function exitEditMode() {
   state.editingVisitId = "";
   renderEditBanner();
   updateSaveButtons();
-  renderHistory();
 }
 
 // hủy sửa: trở về trạng thái mở bệnh nhân (toa gần nhất làm mẫu)
@@ -1257,7 +1205,6 @@ function createNewPatient() {
   state.draftRows = [createDraftRow()];
   renderDrugRows();
   renderStockData();
-  renderHistory();
   renderPrescriptionVisitTabs();
   renderPatientList();
   renderEditBanner();
@@ -1285,7 +1232,6 @@ function createNewPrescription() {
   renderDrugRows();
   renderPrescriptionVisitTabs();
   renderEditBanner();
-  renderHistory();
   updateSaveButtons();
   updateTotals();
   updateWarning();

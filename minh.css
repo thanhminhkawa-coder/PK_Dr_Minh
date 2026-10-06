@@ -501,7 +501,7 @@ h1, h2 { overflow-wrap: anywhere; }
 .badge-neg { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--danger); color: #fff; font-size: 12px; font-weight: 800; vertical-align: middle; }
 .stock-row.is-negative .stock-row__qty { color: #b42318; font-weight: 800; }
 
-/* ---------- Money, history ---------- */
+/* ---------- Money ---------- */
 .fee-grid { display: grid; grid-template-columns: 1.2fr .9fr; gap: 14px; }
 .money-box { display: grid; gap: 10px; margin-top: 10px; }
 .money-picker { position: relative; display: inline-block; }
@@ -536,23 +536,6 @@ h1, h2 { overflow-wrap: anywhere; }
 .warning-box:empty { min-height: 0; margin: 0; }
 .warning-box .is-neg { color: #b42318; }
 
-.history-table { width: 100%; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; }
-.history-head, .history-row {
-  display: grid;
-  grid-template-columns: 120px 80px minmax(0, 1.6fr) 140px 180px;
-  gap: 12px;
-  padding: 12px 14px;
-  align-items: center;
-  font-size: 16px;
-}
-.history-head { background: #f6fafc; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--line); }
-.history-row { border-bottom: 1px solid #edf2f7; }
-.history-row:last-child { border-bottom: none; }
-.history-row.is-editing { background: #fff9ec; }
-.history-row > div { min-width: 0; overflow-wrap: anywhere; }
-.history-row__actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.history-visit-tag, .history-total-inline { display: none; }
-.history-drugs { margin-top: 4px; font-size: 13px; line-height: 1.45; }
 
 /* ---------- Stats ---------- */
 .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -704,7 +687,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 /* ---------- ≤1023px: bảng chuyển thành thẻ ---------- */
 @media (max-width: 1023px) {
-  .patient-head, .history-head { display: none; }
+  .patient-head { display: none; }
   .pr-table { display: none; }
   .pr-card { display: block; padding: 12px 12px 12px 14px; }
   .pc__l1 { display: flex; align-items: flex-start; gap: 8px; }
@@ -722,13 +705,6 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .info-grid-2, .info-grid-3, .fee-grid, .code-manager__form, .clinic-meta, .clinic-form { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .history-row { grid-template-columns: 1fr; gap: 6px; padding: 12px; }
-  .history-row > div { display: grid; gap: 2px; }
-  .history-row > div:nth-child(2), .history-row > div:nth-child(4) { display: none; }
-  .history-row > div:nth-child(1) { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 700; }
-  .history-visit-tag { display: inline-flex; padding: 2px 10px; border-radius: 999px; background: rgba(15, 139, 141, .1); color: var(--primary-strong); font-size: 13px; font-weight: 800; }
-  .history-total-inline { display: block; font-weight: 800; }
-  .history-row__actions .btn { flex: 1; }
 }
 
 /* ---------- 768–1023: thanh drug-row vừa khít ---------- */
