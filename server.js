@@ -1,7 +1,11 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const nodemailer = require("nodemailer");
 
 loadLocalEnv();
 
@@ -14,12 +18,31 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || "")
   .map((item) => item.trim())
   .filter(Boolean);
 
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
+const IS_PROD = process.env.NODE_ENV === "production";
+const APP_BASE_URL = String(process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
+const ACCESS_TOKEN_SECONDS = 15 * 60;
+const SESSION_DAYS = 30;
+const RESET_TOKEN_MINUTES = 30;
+const BCRYPT_COST = 12;
+const REFRESH_COOKIE = "pk_rt";
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const MIN_PASSWORD_LENGTH = 8;
+const EXPORT_APP = "pk-dr-minh";
+const EXPORT_VERSION = 1;
+
 if (!MONGODB_URI) {
   throw new Error("Missing MONGODB_URI. Add it to the local .env file.");
 }
 
+if (!JWT_ACCESS_SECRET) {
+  throw new Error("Missing JWT_ACCESS_SECRET. Add it to the local .env file.");
+}
+
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use((req, res, next) => {
   const requestPath = req.path || "";
   if (path.basename(requestPath).startsWith(".")) {
@@ -47,7 +70,8 @@ app.use((req, res, next) => {
 
   return next();
 });
-app.use(express.json({ limit: "2mb" }));
+const jsonParser = express.json({ limit: "2mb" });
+app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
 app.use(express.static(__dirname, { dotfiles: "deny", index: false }));
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "minh.html"));
@@ -175,10 +199,245 @@ const Drug = mongoose.model("Drug", drugSchema);
 const Visit = mongoose.model("Visit", visitSchema);
 const Settings = mongoose.model("Settings", settingsSchema);
 
+const userSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    passwordHash: { type: String, required: true },
+    passwordResetTokenHash: { type: String, default: "" },
+    passwordResetExpires: { type: Date, default: null }
+  },
+  { timestamps: true }
+);
+
+const sessionSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    tokenHash: { type: String, required: true, unique: true },
+    familyId: { type: String, required: true, index: true },
+    absoluteExpiresAt: { type: Date, required: true, expires: 0 },
+    revokedAt: { type: Date, default: null },
+    replacedByHash: { type: String, default: "" }
+  },
+  { timestamps: true }
+);
+
+const User = mongoose.model("User", userSchema);
+const Session = mongoose.model("Session", sessionSchema);
+
 app.get("/api/health", async (_req, res) => {
   const mongoState = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
   res.json({ ok: true, mongoState });
 });
+
+// ---- Auth: access token (JWT, trong bộ nhớ trình duyệt) + refresh token (opaque, cookie HttpOnly) ----
+
+const authRouter = express.Router();
+// ponytail: rate limit in-memory, mất khi restart; đủ cho 1 user
+const rateBuckets = new Map();
+const GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng";
+const FORGOT_MESSAGE = "Nếu email tồn tại trong hệ thống, đường dẫn đặt lại mật khẩu đã được gửi.";
+let dummyPasswordHash = "";
+
+authRouter.post("/login", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const password = String(req.body?.password || "");
+  const limitKey = `login|${req.ip}|${email}`;
+  if (isRateLimited(limitKey)) {
+    throw createHttpError(429, "Thử quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
+  }
+
+  const user = email ? await User.findOne({ email }) : null;
+  // luôn chạy bcrypt để thời gian phản hồi không lộ email có tồn tại hay không
+  dummyPasswordHash = dummyPasswordHash || bcrypt.hashSync(crypto.randomBytes(8).toString("hex"), BCRYPT_COST);
+  const passwordOk = await bcrypt.compare(password, user ? user.passwordHash : dummyPasswordHash);
+  if (!user || !passwordOk) {
+    recordRateHit(limitKey);
+    throw createHttpError(401, GENERIC_LOGIN_ERROR);
+  }
+
+  rateBuckets.delete(limitKey);
+  const absoluteExpiresAt = new Date(Date.now() + SESSION_DAYS * 86400000);
+  await issueRefreshToken(res, user._id, crypto.randomUUID(), absoluteExpiresAt);
+  res.json({ accessToken: signAccessToken(user._id), user: { email: user.email } });
+});
+
+authRouter.post("/refresh", async (req, res) => {
+  const token = readCookie(req, REFRESH_COOKIE);
+  const reject = () => {
+    clearRefreshCookie(res);
+    return res.status(401).json({ error: "Phiên đăng nhập đã hết hạn." });
+  };
+  if (!token) return reject();
+
+  const tokenHash = sha256(token);
+  const now = new Date();
+  // thu hồi nguyên tử: chỉ một request thắng khi cùng lúc dùng chung một token
+  const current = await Session.findOneAndUpdate(
+    { tokenHash, revokedAt: null, absoluteExpiresAt: { $gt: now } },
+    { $set: { revokedAt: now } }
+  );
+  if (!current) {
+    const reused = await Session.findOne({ tokenHash }).lean();
+    if (reused) {
+      await Session.updateMany({ familyId: reused.familyId, revokedAt: null }, { $set: { revokedAt: now } });
+    }
+    return reject();
+  }
+
+  const user = await User.findById(current.userId).lean();
+  if (!user) return reject();
+
+  // giữ nguyên absoluteExpiresAt: không gia hạn khi refresh
+  const nextHash = await issueRefreshToken(res, current.userId, current.familyId, current.absoluteExpiresAt);
+  await Session.updateOne({ _id: current._id }, { $set: { replacedByHash: nextHash } });
+  res.json({ accessToken: signAccessToken(user._id), user: { email: user.email } });
+});
+
+authRouter.post("/logout", async (req, res) => {
+  const token = readCookie(req, REFRESH_COOKIE);
+  if (token) {
+    const session = await Session.findOne({ tokenHash: sha256(token) }).lean();
+    if (session) {
+      await Session.updateMany({ familyId: session.familyId, revokedAt: null }, { $set: { revokedAt: new Date() } });
+    }
+  }
+  clearRefreshCookie(res);
+  res.json({ ok: true });
+});
+
+authRouter.get("/me", requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId).lean();
+  if (!user) throw createHttpError(401, "Phiên đăng nhập không hợp lệ.");
+  res.json({ user: { email: user.email } });
+});
+
+authRouter.post("/forgot-password", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const limitKey = `forgot|${req.ip}|${email}`;
+  if (isRateLimited(limitKey)) {
+    throw createHttpError(429, "Thử quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
+  }
+  recordRateHit(limitKey);
+
+  const user = email ? await User.findOne({ email }) : null;
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    user.passwordResetTokenHash = sha256(token);
+    user.passwordResetExpires = new Date(Date.now() + RESET_TOKEN_MINUTES * 60000);
+    await user.save();
+    // không await: thời gian phản hồi không phụ thuộc email có tồn tại hay không
+    sendResetEmail(user.email, `${APP_BASE_URL}/?reset=${token}`).catch((error) => {
+      console.error("Không gửi được email đặt lại mật khẩu:", error.message);
+    });
+  }
+  res.json({ message: FORGOT_MESSAGE });
+});
+
+authRouter.post("/reset-password", async (req, res) => {
+  const token = String(req.body?.token || "");
+  const password = String(req.body?.password || "");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw createHttpError(400, `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`);
+  }
+
+  const user = token
+    ? await User.findOne({ passwordResetTokenHash: sha256(token), passwordResetExpires: { $gt: new Date() } })
+    : null;
+  if (!user) {
+    throw createHttpError(400, "Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
+  }
+
+  user.passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  user.passwordResetTokenHash = "";
+  user.passwordResetExpires = null;
+  await user.save();
+  await Session.updateMany({ userId: user._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
+  res.json({ ok: true });
+});
+
+app.use("/api/auth", authRouter);
+app.use("/api", requireAuth);
+
+function requireAuth(req, res, next) {
+  const match = /^Bearer (.+)$/.exec(req.headers.authorization || "");
+  try {
+    const payload = jwt.verify(match ? match[1] : "", JWT_ACCESS_SECRET, { algorithms: ["HS256"] });
+    req.userId = payload.sub;
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Cần đăng nhập." });
+  }
+}
+
+function signAccessToken(userId) {
+  return jwt.sign({ sub: String(userId) }, JWT_ACCESS_SECRET, { algorithm: "HS256", expiresIn: ACCESS_TOKEN_SECONDS });
+}
+
+async function issueRefreshToken(res, userId, familyId, absoluteExpiresAt) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = sha256(token);
+  await Session.create({ userId, tokenHash, familyId, absoluteExpiresAt });
+  const maxAge = Math.max(0, Math.floor((absoluteExpiresAt.getTime() - Date.now()) / 1000));
+  res.append("Set-Cookie", `${REFRESH_COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/auth; Max-Age=${maxAge}${IS_PROD ? "; Secure" : ""}`);
+  return tokenHash;
+}
+
+function clearRefreshCookie(res) {
+  res.append("Set-Cookie", `${REFRESH_COOKIE}=; HttpOnly; SameSite=Strict; Path=/api/auth; Max-Age=0${IS_PROD ? "; Secure" : ""}`);
+}
+
+function readCookie(req, name) {
+  for (const part of String(req.headers.cookie || "").split(";")) {
+    const index = part.indexOf("=");
+    if (index > 0 && part.slice(0, index).trim() === name) {
+      return decodeURIComponent(part.slice(index + 1).trim());
+    }
+  }
+  return "";
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(String(value)).digest("hex");
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isRateLimited(key) {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+  const hits = (rateBuckets.get(key) || []).filter((time) => time > cutoff);
+  rateBuckets.set(key, hits);
+  return hits.length >= RATE_LIMIT_MAX;
+}
+
+function recordRateHit(key) {
+  const hits = rateBuckets.get(key) || [];
+  hits.push(Date.now());
+  rateBuckets.set(key, hits);
+}
+
+async function sendResetEmail(to, link) {
+  if (!process.env.SMTP_HOST) {
+    console.log(`[dev] Chưa cấu hình SMTP. Link đặt lại mật khẩu cho ${to}: ${link}`);
+    return;
+  }
+
+  const port = Number(process.env.SMTP_PORT || 587);
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  });
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to,
+    subject: "Đặt lại mật khẩu PK Dr. Minh",
+    text: `Mở đường dẫn sau để đặt lại mật khẩu (hết hạn sau ${RESET_TOKEN_MINUTES} phút, chỉ dùng một lần):\n${link}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
+    html: `<p>Mở đường dẫn sau để đặt lại mật khẩu (hết hạn sau ${RESET_TOKEN_MINUTES} phút, chỉ dùng một lần):</p><p><a href="${link}">${link}</a></p><p>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`
+  });
+}
 
 app.get("/api/dashboard", async (_req, res, next) => {
   try {
@@ -610,7 +869,7 @@ app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
 app.use((error, _req, res, _next) => {
   const statusCode = error.statusCode || 500;
   const message = error.message || "Da co loi xay ra tren may chu.";
-  console.error(error);
+  if (statusCode >= 500) console.error(error);
   res.status(statusCode).json({ error: message });
 });
 
@@ -622,10 +881,14 @@ async function startServer() {
   });
 }
 
-startServer().catch((error) => {
-  console.error("Cannot start server:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  startServer().catch((error) => {
+    console.error("Cannot start server:", error);
+    process.exit(1);
+  });
+}
+
+module.exports = { User, Session, connectWithFallback, BCRYPT_COST, MIN_PASSWORD_LENGTH };
 
 async function revenueTotalBetween(from, to, extraMatch = {}) {
   const result = await Visit.aggregate([
