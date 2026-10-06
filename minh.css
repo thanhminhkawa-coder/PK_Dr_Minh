@@ -1,5 +1,5 @@
 :root {
-  --line: #d8e1e8;
+  --line: #d8e1e8;  /* màu viền trung tính DUY NHẤT của app (chuẩn: viền bảng Danh sách bệnh nhân) */
   --text: #1f2937;
   --primary: #0f8b8d;
   --primary-strong: #0b6b6d;
@@ -21,8 +21,6 @@
   --row-gap: var(--space-4);
   --col-gap: var(--space-4);
   --btn-gap: var(--space-2);
-  --divider: #e3e8ee;
-  --field-border: #cbd5e1;
 
   /* ---- Typography ---- */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
@@ -65,8 +63,6 @@
   --bg-splash: #eef4f8;
   --bg-auth: linear-gradient(180deg, #eef4f8 0%, #f7fafc 100%);
   /* viền */
-  --divider-soft: #edf2f7;
-  --input-border-soft: var(--line);  /* ô nhập trong hàng tiền */
   --field-border-focus: #87d7d3;
   --focus-ring: rgba(15, 139, 141, .45);
   --focus-glow: rgba(15, 139, 141, .12);
@@ -102,7 +98,7 @@
   --bg-topnav: rgba(36, 37, 40, .92); --bg-tabbar: rgba(36, 37, 40, .97);
   --bg-overlay: rgba(0, 0, 0, .6); --bg-overlay-sheet: rgba(0, 0, 0, .6);
   --bg-paper-frame: #28292c; --bg-splash: #202124; --bg-auth: linear-gradient(180deg, #202124 0%, #252629 100%);
-  --line: #3c4043; --divider: #34373b; --divider-soft: #34373b; --field-border: #80858c; --input-border-soft: #80858c;
+  --line: #3c4043;
   --field-border-focus: #5ccfc9; --focus-ring: rgba(92, 207, 201, .5); --focus-glow: rgba(92, 207, 201, .18);
   --brand-border: #2c5a5b; --wheel-band: rgba(92, 207, 201, .14); --wheel-edge: rgba(92, 207, 201, .4); --spinner-track: #3c4043;
   --text: #e8eaed; --text-muted: #aeb3b9; --text-brand: #5ccfc9; --text-on-primary: #ffffff;
@@ -234,7 +230,7 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
 
 .field, .mini {
   width: 100%;
-  border: 1px solid var(--field-border);
+  border: 1px solid var(--line);
   border-radius: var(--control-radius);
   padding: 0 14px;
   height: var(--ctl-h);
@@ -388,7 +384,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   left: 50%;
   width: 100vw;
   margin-left: -50vw;
-  border-top: 1px solid var(--divider);
+  border-top: 1px solid var(--line);
 }
 .page-section > .card-title { min-height: 44px; margin-bottom: var(--title-gap); }
 .fee-grid h2 { margin-bottom: var(--title-gap); }
@@ -417,7 +413,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .suggest-item {
   padding: 12px 14px;
   min-height: 44px;
-  border-bottom: 1px solid var(--divider-soft);
+  border-bottom: 1px solid var(--line);
   cursor: pointer;
   overflow-wrap: anywhere;
   font-size: var(--fs-base);
@@ -455,7 +451,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   font-size: var(--fs-sm);
 }
 .patient-head { padding: 14px 14px; background: var(--bg-subtle); border-bottom: 1px solid var(--line); color: var(--text-muted); font-weight: var(--fw-medium); }
-.patient-row { border-bottom: 1px solid var(--divider-soft); background: var(--bg-page); cursor: pointer; }
+.patient-row { border-bottom: 1px solid var(--line); background: var(--bg-page); cursor: pointer; }
 .patient-row:last-child { border-bottom: none; }
 .patient-row:hover { background: var(--bg-row-hover); }
 .patient-row.active { background: var(--bg-brand-soft); }
@@ -632,7 +628,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--divider-soft);
+  border-bottom: 1px solid var(--line);
   font-size: var(--fs-base);
 }
 .code-row:last-child { border-bottom: none; }
@@ -690,7 +686,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   padding: 10px 14px;
 }
 .stock-head { background: var(--bg-subtle); border-bottom: 1px solid var(--line); color: var(--text-muted); font-weight: var(--fw-medium); font-size: var(--fs-sm); }
-.stock-row { border-bottom: 1px solid var(--divider-soft); font-size: var(--fs-base); }
+.stock-row { border-bottom: 1px solid var(--line); font-size: var(--fs-base); }
 .stock-row:last-child { border-bottom: none; }
 .stock-row.is-negative { background: var(--danger-bg-2); }
 .stock-row__name { min-width: 0; overflow-wrap: anywhere; font-weight: var(--fw-medium); }
@@ -724,7 +720,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .money-input {
   width: 180px;
   height: var(--control-h);
-  border: 1px solid var(--input-border-soft);
+  border: 1px solid var(--line);
   border-radius: var(--control-radius);
   padding: 0 12px;
   text-align: right;
@@ -990,7 +986,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 .date-field { position: relative; }
 .date-field .field { padding-right: 50px; }
-.date-native { position: absolute; right: 6px; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.date-native { border: 0; position: absolute; right: 6px; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .code-row:hover { background: var(--bg-row-hover); }
 .stock-row__act { justify-self: end; }
 
@@ -1005,7 +1001,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-head { padding-block: 10px; background: var(--bg-subtle); border-bottom: 1px solid var(--line); color: var(--text-muted); font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .drug-head > :nth-child(n+3):nth-child(-n+5) { text-align: center; }
 .drug-head > :nth-child(n+6):nth-child(-n+8) { text-align: right; }
-.drug-row { border-bottom: 1px solid var(--divider); }
+.drug-row { border-bottom: 1px solid var(--line); }
 .drug-row:last-child { border-bottom: 0; }
 .drug-row__line { --ctl-h: var(--control-h-sm); padding-block: 8px; min-height: 56px; }
 .drug-cell--index { color: var(--text-muted); }
@@ -1084,7 +1080,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-toggle__text { display: inline; font-size: var(--fs-sm); font-weight: var(--fw-medium); }
   .drug-field--dose, .drug-field--quantity {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    height: 56px; border: 1px solid var(--field-border); border-radius: 12px; background: var(--bg-input);
+    height: 56px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-input);
   }
   .drug-field--dose:focus-within, .drug-field--quantity:focus-within { border-color: var(--field-border-focus); box-shadow: 0 0 0 3px var(--focus-glow); }
   .drug-field:has(.is-overdose) { border-color: var(--danger-border-strong); background: var(--danger-bg-2); }
@@ -1097,7 +1093,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-field--dose-night .dose-quick { left: auto; right: 0; }
   .drug-field--quantity .quantity-quick { left: auto; right: 0; width: 180px; }
   .drug-row.is-open .drug-detail { margin: 0 var(--space-3) var(--space-3); }
-  .drug-row--search { border: 1px dashed var(--field-border); padding: 0; background: transparent; }
+  .drug-row--search { border: 1px dashed var(--line); padding: 0; background: transparent; }
   .drug-search > .icon { display: none; }
   .drug-search .mini { height: var(--control-h); padding-left: var(--space-3); border: 0; background: transparent; text-align: center; }
 }
