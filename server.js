@@ -98,7 +98,8 @@ const drugSchema = new mongoose.Schema(
     brandName: { type: String, required: true, trim: true },
     unit: { type: String, trim: true, default: "Vien" },
     usage: { type: String, trim: true, default: "" },
-    quantity: { type: Number, min: 0, default: 0 },
+    // tồn kho được phép âm (kê vượt kho vẫn lưu, chỉ cảnh báo)
+    quantity: { type: Number, default: 0 },
     price: { type: Number, min: 0, default: 0 },
     notes: { type: String, trim: true, default: "" }
   },
@@ -659,17 +660,7 @@ app.post("/api/patients/:id/visits", async (req, res, next) => {
       const drugTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
       const totalMoney = drugTotal + payload.serviceFee;
 
-      for (const item of items) {
-        const updated = await Drug.updateOne(
-          { _id: item.drugId, quantity: { $gte: item.quantity } },
-          { $inc: { quantity: -item.quantity } },
-          { session }
-        );
-
-        if (!updated.modifiedCount) {
-          throw createHttpError(400, `Thuoc "${item.brandName}" khong du so luong ton kho.`);
-        }
-      }
+      await applyStockDeltas(buildStockDeltas([], items), session);
 
       createdVisit = await Visit.create(
         [
@@ -705,7 +696,8 @@ app.post("/api/patients/:id/visits", async (req, res, next) => {
       );
     });
 
-    res.status(201).json(createdVisit[0]);
+    const warnings = await findNegativeStockWarnings(createdVisit[0].drugs.map((item) => item.drugId));
+    res.status(201).json({ ...createdVisit[0].toObject(), warnings });
   } catch (error) {
     next(error);
   } finally {
@@ -945,10 +937,6 @@ async function buildVisitDrugItems(drugs, session) {
       throw createHttpError(400, `So luong cua thuoc "${drug.brandName}" phai lon hon 0.`);
     }
 
-    if (quantity > drug.quantity) {
-      throw createHttpError(400, `Thuoc "${drug.brandName}" khong du ton kho.`);
-    }
-
     return {
       drugId: drug._id,
       activeIngredient: drug.activeIngredient,
@@ -964,6 +952,32 @@ async function buildVisitDrugItems(drugs, session) {
       subtotal: drug.price * quantity
     };
   });
+}
+
+// delta > 0: toa dùng thêm thuốc (trừ kho); delta < 0: hoàn kho
+function buildStockDeltas(oldItems, newItems) {
+  const deltas = new Map();
+  const add = (item, sign) => {
+    const key = String(item.drugId);
+    deltas.set(key, (deltas.get(key) || 0) + sign * item.quantity);
+  };
+  oldItems.forEach((item) => add(item, -1));
+  newItems.forEach((item) => add(item, 1));
+  return deltas;
+}
+
+async function applyStockDeltas(deltas, session) {
+  for (const [drugId, delta] of deltas) {
+    if (delta !== 0) {
+      await Drug.updateOne({ _id: drugId }, { $inc: { quantity: -delta } }, { session });
+    }
+  }
+}
+
+async function findNegativeStockWarnings(drugIds) {
+  const ids = [...new Set(drugIds.map(String))];
+  const drugs = await Drug.find({ _id: { $in: ids }, quantity: { $lt: 0 } }).lean();
+  return drugs.map((drug) => ({ drugId: drug._id, brandName: drug.brandName, quantity: drug.quantity }));
 }
 
 function sanitizePatientPayload(body = {}) {
