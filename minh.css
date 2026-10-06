@@ -200,6 +200,10 @@ h1, h2 { overflow-wrap: anywhere; }
 .topnav__actions { display: flex; justify-content: flex-end; gap: 4px; flex: 1 1 0; min-width: max-content; }
 .topnav__actions .btn { padding-inline: 10px; }
 .btn__label { display: none; }
+@media (max-width: 899px) {
+  /* tên phòng khám chỉ còn icon khi nav hẹp; vẫn giữ cho trình đọc màn hình */
+  .topnav__brand span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 .tab {
   display: inline-flex;
   align-items: center;
@@ -853,7 +857,8 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .modal--full .modal__head .btn > span { display: none; }
   .modal--full .modal__head .btn { padding: 8px 12px; }
   .drug-form-grid { grid-template-columns: 1fr; }
-  .modal__foot .btn { flex: 1; }
+  .modal__spacer { display: none; }
+  .modal__foot .btn { flex: 1 1 0; white-space: nowrap; }
   .modal__foot #dmDeleteBtn { flex: 0 0 auto; }
 
   .auth__card { padding: 24px 18px; }
