@@ -685,6 +685,8 @@ async function loadSettings() {
   state.activeClinicProfileId = resolveActiveClinicProfileId(activeClinicProfileId, state.clinicProfiles);
   state.clinicInfo = getActiveClinicProfile();
   state.icdList = icdList;
+  // nhớ tên phòng khám để hiện trên màn hình đăng nhập lần sau (chưa đăng nhập thì chưa gọi được API)
+  try { localStorage.setItem(CLINIC_NAME_CACHE_KEY, state.clinicInfo.name); } catch {}
 
   const shouldMigrateClinic = localStorage.getItem(CLINIC_STORAGE_KEY)
     && (!Array.isArray(serverSettings?.clinicProfiles) || !serverSettings.clinicProfiles.length);
@@ -1715,7 +1717,7 @@ function buildDoseFieldHtml(row, field) {
   return `
     <div class="drug-field drug-field--dose drug-field--${field} drug-field--dose-${field}">
       <label class="label">${DOSE_LABELS[field]}</label>
-      <input class="mini" data-field="${field}" list="doseList" aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
+      <input class="mini" data-field="${field}" ${phoneLayoutQuery.matches ? "" : 'list="doseList"'} aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
       <div class="dose-quick hidden">
         ${DOSE_OPTIONS.map((option) => `<button class="dose-quick__btn" type="button" data-action="set-dose" data-dose-field="${field}" data-dose-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
       </div>
@@ -3002,8 +3004,7 @@ async function saveClinicInfo() {
 function renderClinicInfo() {
   state.clinicInfo = getActiveClinicProfile();
   document.querySelectorAll("[data-clinic-name]").forEach((element) => { element.textContent = state.clinicInfo.name; });
-  refs.authClinicName.textContent = state.clinicInfo.name;
-  try { localStorage.setItem(CLINIC_NAME_CACHE_KEY, state.clinicInfo.name); } catch {}
+
   document.title = `${state.clinicInfo.name} | Hồ sơ khám và kê toa`;
   refs.clinicDisplayName.textContent = state.clinicInfo.name;
   refs.clinicDisplayDoctor.textContent = state.clinicInfo.doctor;
