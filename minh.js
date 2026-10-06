@@ -272,7 +272,7 @@ function cacheRefs() {
     "codeDataBox", "previewPrintBtn", "addDrugBtn", "toggleStockBtn", "drugRows", "stockDataBox", "warningBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney", "reloadHistoryBtn",
     "historyRows", "summaryPatients", "summaryDrugs",
-    "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxBody", "rxPrintBtn", "rxShareBtn",
+    "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
     "rxCloseBtn", "clinicDisplayName", "clinicDisplayDoctor", "clinicDisplayAddress", "clinicDisplayHours",
     "clinicDisplayPhone", "clinicForm", "clinicProfileSelect", "addClinicBtn", "deleteClinicBtn",
     "toggleClinicBtn", "saveClinicBtn", "clinicNameInput", "clinicDoctorInput",
@@ -2712,7 +2712,8 @@ async function deletePatient(patientId) {
 }
 
 function showPrescriptionPreview() {
-  refs.rxBody.innerHTML = buildPrescriptionHtml();
+  // iframe riêng: CSS của toa không rò sang giao diện chính
+  refs.rxFrame.srcdoc = buildPrescriptionHtml();
   refs.rxModal.showModal();
 }
 
@@ -2872,20 +2873,18 @@ function buildPrescriptionHtml() {
       <td>${buildDoseText(row)}</td>
     </tr>
   `).join("");
-  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}h1{font-size:22px;margin:0 0 8px;text-align:center}.meta{margin-bottom:12px;line-height:1.55}.meta div{margin-bottom:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px}.sheet{width:100%;min-height:auto}.meta{line-height:1.45}table{font-size:11px}th,td{padding:4px}.footer{flex-direction:column;gap:12px}.footer-note{max-width:none}.sign{min-width:0;width:100%}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="sheet"><h1>${escapeHtml(state.clinicInfo.name)}</h1><div class="meta"><div><strong>Bác sĩ:</strong> ${escapeHtml(currentDoctor)}</div><div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div><div><strong>Điện thoại:</strong> ${clinicPhone}</div><div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(refs.gender.value)} - ${escapeHtml(refs.age.value)} tuổi</div><div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div><div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div><div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div><div><strong>Chẩn đoán:</strong> ${escapeHtml(refs.icdInput.value)}</div></div><table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ điều trị</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div></body></html>`;
+  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}h1{font-size:22px;margin:0 0 8px;text-align:center}.meta{margin-bottom:12px;line-height:1.55}.meta div{margin-bottom:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.meta{line-height:1.45}table{font-size:11px}th,td{padding:4px}.footer{flex-direction:column;gap:12px}.footer-note{max-width:none}.sign{min-width:0;width:100%}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="sheet"><h1>${escapeHtml(state.clinicInfo.name)}</h1><div class="meta"><div><strong>Bác sĩ:</strong> ${escapeHtml(currentDoctor)}</div><div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div><div><strong>Điện thoại:</strong> ${clinicPhone}</div><div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(refs.gender.value)} - ${escapeHtml(refs.age.value)} tuổi</div><div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div><div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div><div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div><div><strong>Chẩn đoán:</strong> ${escapeHtml(refs.icdInput.value)}</div></div><table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ điều trị</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div></body></html>`;
 }
 
 async function printPrescription() {
   if (state.selectedVisitId) {
     try { await fetchJson(`/api/visits/${state.selectedVisitId}/print`, { method: "POST" }); } catch {}
   }
-  const printWindow = window.open("", "_blank", "width=900,height=700");
-  if (!printWindow) throw new Error("Trinh duyet dang chan cua so in.");
-  printWindow.document.open();
-  printWindow.document.write(buildPrescriptionHtml());
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 300);
+  // in thẳng từ iframe xem toa: không mở cửa sổ mới, không đụng tới trang chính
+  const frameWindow = refs.rxFrame.contentWindow;
+  if (!frameWindow) throw new Error("Chưa dựng được toa để in.");
+  frameWindow.focus();
+  frameWindow.print();
 }
 
 function timestampForFile() {
