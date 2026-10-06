@@ -283,15 +283,15 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .clinic-card, .account-card { margin-bottom: 14px; }
 .main-layout { display: block; }
 
-/* các phần lớn của tab Home: cùng mép, ngăn cách bằng đường kẻ */
-.card.home-section { padding: 0; border-radius: 0; }
-.card.home-section { position: relative; }
-.home-section + .home-section {
+/* các phần lớn của tab Home và Thống kê: cùng mép, ngăn cách bằng đường kẻ */
+.card.page-section { padding: 0; border-radius: 0; }
+.card.page-section { position: relative; }
+.page-section + .page-section {
   margin-top: var(--section-gap);
   padding-top: var(--section-gap);
 }
 /* đường chia tràn hết chiều ngang màn hình; .page cắt phần 100vw dư (thanh cuộn) */
-.home-section + .home-section::before {
+.page-section + .page-section::before {
   content: "";
   position: absolute;
   top: 0;
@@ -300,7 +300,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   margin-left: -50vw;
   border-top: 1px solid var(--divider);
 }
-.home-section > .card-title { min-height: 44px; margin-bottom: var(--title-gap); }
+.page-section > .card-title { min-height: 44px; margin-bottom: var(--title-gap); }
 .fee-grid h2 { margin-bottom: var(--title-gap); }
 .stack { display: grid; gap: var(--row-gap); }
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -651,15 +651,15 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 
 
 /* ---------- Stats ---------- */
-.stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.stats-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 1024px) { .stats-grid-2 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.stat { padding: 12px; border-radius: 16px; background: #fbfcfd; border: 1px solid var(--line); min-width: 0; }
-.stat .k { margin-top: 6px; overflow-wrap: anywhere; font-size: var(--fs-num); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
+.stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--col-gap); }
+@media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { padding: var(--col-gap); border-radius: 16px; background: #fbfcfd; border: 1px solid var(--line); min-width: 0; }
+.stat .k { margin-top: var(--space-2); overflow-wrap: anywhere; font-size: var(--fs-num); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
 .trend { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; font-size: var(--fs-xs); font-weight: var(--fw-medium); }
 .trend.up { background: #e8fbef; color: var(--text-success); }
 .trend.down { background: #fff4de; color: var(--text-warn); }
-.stats-more { margin-top: 14px; }
+.stats-more { margin-top: var(--title-gap); }
 .stats-more summary {
   display: flex;
   align-items: center;
@@ -678,7 +678,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stats-more summary::-webkit-details-marker { display: none; }
 .stats-more summary .icon { transition: transform .2s; }
 .stats-more[open] summary .icon { transform: rotate(180deg); }
-.stats-more .stats-grid { margin-top: 12px; }
+.stats-more .stats-grid { margin-top: var(--title-gap); }
 
 /* ---------- Clinic ---------- */
 .clinic-card { background: linear-gradient(180deg, rgba(253, 254, 254, .92) 0%, rgba(246, 251, 253, .95) 100%); }
@@ -807,7 +807,6 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .pc__addr { flex: 1 1 100%; overflow-wrap: anywhere; }
 
   .fee-grid, .code-manager__form, .clinic-meta, .clinic-form { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 }
 
@@ -855,7 +854,6 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .f-date { order: -1; }
   .f-addr { order: 2; }
   .f-prov { order: 3; }
-  .stats-grid, .stats-grid-2 { grid-template-columns: 1fr; }
   .card-title .row-actions, .searchbar { width: 100%; }
   .clinic-card__title .row-actions { justify-content: flex-start; }
   .clinic-card__title .row-actions .btn, .clinic-profile-select { flex: 1 1 100%; min-width: 0; width: 100%; }
