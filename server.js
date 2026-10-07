@@ -520,81 +520,18 @@ async function sendMail({ to, subject, text, html, devNote }) {
   await transporter.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, text, html });
 }
 
-app.get("/api/dashboard", async (_req, res, next) => {
-  try {
-    const doctorFilter = String(_req.query.doctor || "").trim();
-    const now = new Date();
-    const startToday = atStartOfDay(now);
-    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const visitMatch = buildDoctorVisitMatch(doctorFilter);
+const dayKeyFmt = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+const vnDayKey = (value) => dayKeyFmt.format(new Date(value)); // "YYYY-MM-DD" theo giờ VN, không phụ thuộc TZ của tiến trình
+const vnMonthKey = (value) => vnDayKey(value).slice(0, 7); // "YYYY-MM"
 
-    const [
-      drugCount,
-      todayRevenueAgg,
-      monthRevenueAgg,
-      lowStockDrugs,
-      scopedVisits,
-      scopedPatientCount
-    ] = await Promise.all([
-      Drug.countDocuments(),
-      revenueTotalBetween(startToday, new Date(), visitMatch),
-      revenueTotalBetween(startMonth, new Date(), visitMatch),
-      Drug.find({}).sort({ quantity: 1, updatedAt: -1 }).limit(6).lean(),
-      Visit.find(visitMatch).lean(),
-      Visit.aggregate([
-        { $match: visitMatch },
-        { $group: { _id: "$patientId" } },
-        { $count: "total" }
-      ])
+app.get("/api/stats", async (_req, res, next) => {
+  try {
+    const [total, visits] = await Promise.all([
+      Patient.countDocuments(),
+      // ponytail: tải toàn bộ lượt khám vào bộ nhớ, chuyển sang aggregate khi > ~50k lượt
+      Visit.find({}, { patientId: 1, visitNo: 1, visitDate: 1, followUpDate: 1, totalMoney: 1 }).lean()
     ]);
-    const patientCount = scopedPatientCount[0]?.total || 0;
-    const visitTodayCount = scopedVisits.filter((visit) => {
-      const visitDate = new Date(visit.visitDate || visit.createdAt || Date.now());
-      return visitDate >= startToday && visitDate <= now;
-    }).length;
-    const visitsThisMonthCount = scopedVisits.filter((visit) => {
-      const visitDate = new Date(visit.visitDate || visit.createdAt || Date.now());
-      return visitDate >= startMonth && visitDate <= now;
-    }).length;
-
-    res.json({
-      summary: {
-        patientCount,
-        drugCount,
-        visitTodayCount,
-        visitsThisMonthCount,
-        todayRevenue: todayRevenueAgg.totalRevenue,
-        monthRevenue: monthRevenueAgg.totalRevenue
-      },
-      lowStockDrugs
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.get("/api/quick-stats", async (_req, res, next) => {
-  try {
-    const doctorFilter = String(_req.query.doctor || "").trim();
-    const visits = await Visit.find(buildDoctorVisitMatch(doctorFilter)).sort({ visitDate: 1, createdAt: 1 }).lean();
-    const now = new Date();
-    const thisWeekStart = new Date(now);
-    thisWeekStart.setDate(now.getDate() - 7);
-    const lastWeekStart = new Date(now);
-    lastWeekStart.setDate(now.getDate() - 14);
-    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const endPrevMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    res.json({
-      weekCount: countVisitsBetween(visits, thisWeekStart, now),
-      previousWeekCount: countVisitsBetween(visits, lastWeekStart, thisWeekStart),
-      monthCount: countVisitsBetween(visits, startMonth, now),
-      previousMonthCount: countVisitsBetween(visits, startPrevMonth, endPrevMonth),
-      monthProfit: profitBetween(visits, startMonth, now),
-      previousMonthProfit: profitBetween(visits, startPrevMonth, endPrevMonth),
-      revisit: buildRevisitStats(visits)
-    });
+    res.json(buildStats(total, visits, new Date()));
   } catch (error) {
     next(error);
   }
@@ -1085,21 +1022,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { User, Session, connectWithFallback, BCRYPT_COST, MIN_PASSWORD_LENGTH };
-
-async function revenueTotalBetween(from, to, extraMatch = {}) {
-  const result = await Visit.aggregate([
-    { $match: { ...extraMatch, visitDate: { $gte: from, $lte: to } } },
-    {
-      $group: {
-        _id: null,
-        totalRevenue: { $sum: "$totalMoney" }
-      }
-    }
-  ]);
-
-  return result[0] || { totalRevenue: 0 };
-}
+module.exports = { User, Session, connectWithFallback, BCRYPT_COST, MIN_PASSWORD_LENGTH, buildStats };
 
 async function aggregateRevenue(match, format) {
   return Visit.aggregate([
@@ -1375,16 +1298,6 @@ function normalizeSearchText(value = "") {
     .trim();
 }
 
-function buildDoctorVisitMatch(doctorFilter = "") {
-  const normalized = normalizeSearchText(doctorFilter);
-  if (!normalized) {
-    return {};
-  }
-  return {
-    doctor: { $regex: escapeRegex(doctorFilter), $options: "i" }
-  };
-}
-
 function summarizeMedicationHistory(visits) {
   const grouped = new Map();
 
@@ -1428,71 +1341,52 @@ function buildPatientSearch(search) {
   };
 }
 
-function countVisitsBetween(visits, from, to) {
-  return visits.filter((visit) => {
-    const date = new Date(visit.visitDate || visit.createdAt || Date.now());
-    return date >= from && date < to;
-  }).length;
-}
+function buildStats(totalPatients, visits, now) {
+  const today = vnDayKey(now);
+  const month = today.slice(0, 7);
+  const quick = { visitsToday: 0, appointmentsToday: 0, appointmentsArrived: 0, revenueToday: 0, visitsThisMonth: 0 };
+  const patients = { total: totalPatients, newThisMonth: 0, revisitRate: 0, revisitReturned: 0, revisitDue: 0 };
+  const finance = { revenueThisMonth: 0 };
 
-function profitBetween(visits, from, to) {
-  return visits
-    .filter((visit) => {
-      const date = new Date(visit.visitDate || visit.createdAt || Date.now());
-      return date >= from && date < to;
-    })
-    .reduce((sum, visit) => sum + (Number(visit.totalMoney || 0) - Number(visit.drugTotal || 0)), 0);
-}
-
-function buildRevisitStats(visits) {
   const byPatient = new Map();
   visits.forEach((visit) => {
     const key = String(visit.patientId);
-    if (!byPatient.has(key)) {
-      byPatient.set(key, []);
-    }
+    if (!byPatient.has(key)) byPatient.set(key, []);
     byPatient.get(key).push(visit);
+    const dayKey = vnDayKey(visit.visitDate);
+    const money = Number(visit.totalMoney || 0);
+    if (dayKey === today) {
+      quick.visitsToday += 1;
+      quick.revenueToday += money;
+    }
+    if (dayKey.slice(0, 7) === month) {
+      quick.visitsThisMonth += 1;
+      finance.revenueThisMonth += money;
+    }
   });
 
-  let scheduled = 0;
-  let returned = 0;
-  let onTime = 0;
-  let late = 0;
-  let missed = 0;
-
   byPatient.forEach((items) => {
-    const ordered = items.slice().sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate));
-    ordered.forEach((visit, index) => {
-      if (!visit.followUpDate) {
-        return;
-      }
+    items.sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate) || a.visitNo - b.visitNo);
+    if (vnMonthKey(items[0].visitDate) === month) patients.newThisMonth += 1;
 
-      scheduled += 1;
-      const follow = atStartOfDay(visit.followUpDate);
-      const later = ordered.slice(index + 1).find((nextVisit) => atStartOfDay(nextVisit.visitDate) >= follow);
-      if (!later) {
-        missed += 1;
-        return;
-      }
+    // Lịch hẹn hôm nay: lấy từ lần khám gần nhất TRƯỚC hôm nay (lần khám hôm nay mang lịch hẹn mới)
+    const before = items.filter((visit) => vnDayKey(visit.visitDate) < today).pop();
+    if (before?.followUpDate && vnDayKey(before.followUpDate) === today) {
+      quick.appointmentsToday += 1;
+      if (items.some((visit) => vnDayKey(visit.visitDate) === today)) quick.appointmentsArrived += 1;
+    }
 
-      returned += 1;
-      const diffDays = Math.round((atStartOfDay(later.visitDate) - follow) / 86400000);
-      if (diffDays <= 0) {
-        onTime += 1;
-      } else {
-        late += 1;
-      }
+    // Tái khám: có lượt khám nào SAU lượt này là "có quay lại"; chưa tới ngày hẹn và chưa quay lại thì chưa tính
+    items.forEach((visit, index) => {
+      if (!visit.followUpDate) return;
+      const returned = index < items.length - 1;
+      if (returned || vnDayKey(visit.followUpDate) < today) patients.revisitDue += 1;
+      if (returned) patients.revisitReturned += 1;
     });
   });
 
-  return {
-    scheduled,
-    returned,
-    rate: scheduled ? Math.round((returned / scheduled) * 100) : 0,
-    onTime,
-    late,
-    missed
-  };
+  patients.revisitRate = patients.revisitDue ? Math.round((patients.revisitReturned / patients.revisitDue) * 100) : 0;
+  return { today, quick, patients, finance };
 }
 
 function buildRange(fromInput, toInput) {
@@ -1509,12 +1403,6 @@ function buildRange(fromInput, toInput) {
   }
 
   return { from, to };
-}
-
-function atStartOfDay(date) {
-  const clone = new Date(date);
-  clone.setHours(0, 0, 0, 0);
-  return clone;
 }
 
 function clampNumber(value) {
