@@ -214,8 +214,6 @@ const PROVINCES = [
 const BIRTH_YEARS = Array.from({ length: 2020 - 1936 + 1 }, (_, index) => String(2020 - index));
 
 const state = {
-  dashboard: null,
-  quickStats: null,
   patients: [],
   filteredPatients: [],
   page: 1,
@@ -279,14 +277,12 @@ function cacheRefs() {
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
     "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
-    "summaryPatients", "summaryDrugs",
-    "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
+    "statVisitsToday", "statAppointmentsToday", "statAppointmentsArrived", "statRevenueToday", "statVisitsMonth", "statVisitsMonthLabel",
+    "statPatientsTotal", "statPatientsNew", "statRevisitRate", "statRevisitSub", "statRevenueMonth", "statRevenueMonthLabel", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
     "rxCloseBtn", "clinicDisplayName", "clinicDisplayDoctor", "clinicDisplayAddress", "clinicDisplayHours",
     "clinicDisplayPhone", "clinicModal", "clinicModalTitle", "clinicDeleteModal", "clinicDeleteText", "clinicDeleteConfirmBtn", "clinicProfileSelect", "addClinicBtn", "deleteClinicBtn",
     "toggleClinicBtn", "saveClinicBtn", "clinicNameInput", "clinicDoctorInput",
-    "clinicAddressInput", "clinicHoursInput", "clinicPhoneInput", "statWeekCount", "statWeekTrend", "statMonthCount",
-    "statMonthTrend", "statProfit", "statProfitTrend", "statRevisitRate", "statRevisitTrend", "statOnTimeCount",
-    "statOnTimeTrend", "statLateMissedCount", "statLateMissedTrend", "activeIngredientList",
+    "clinicAddressInput", "clinicHoursInput", "clinicPhoneInput", "activeIngredientList",
     "doctorList", "serviceFeeList", "serviceFeeSuggestBox",
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
@@ -1098,6 +1094,7 @@ function showTab(tab) {
     else link.removeAttribute("aria-current");
   });
   refs.saveFab.classList.toggle("hidden", tab !== "home");
+  if (tab === "stats" && accessToken) loadStats().catch(handleError);
   if (tab === "home") syncFollowDateWidth();
   window.scrollTo(0, 0);
   if (tab === "home") {
@@ -1108,7 +1105,7 @@ function showTab(tab) {
 
 async function initializeApp() {
   try {
-    await Promise.all([loadHealth(), loadDashboard(), loadQuickStats(), loadDrugs(), loadPatients(), loadSettings()]);
+    await Promise.all([loadHealth(), loadStats(), loadDrugs(), loadPatients(), loadSettings()]);
     renderClinicInfo();
     renderCodeData();
     renderDrugPickers();
@@ -1154,32 +1151,23 @@ async function loadHealth() {
   const health = await fetchJson("/api/health");
 }
 
-async function loadDashboard() {
-  state.dashboard = await fetchJson("/api/dashboard");
-  refs.summaryPatients.textContent = formatNumber(state.dashboard.summary.patientCount);
-  refs.summaryDrugs.textContent = formatNumber(state.dashboard.summary.drugCount);
-  refs.summaryVisitToday.textContent = formatNumber(state.dashboard.summary.visitTodayCount);
-  refs.summaryRevenueMonth.textContent = formatMoney(state.dashboard.summary.monthRevenue);
-}
-
-async function loadQuickStats() {
-  state.quickStats = await fetchJson("/api/quick-stats");
-  const stats = state.quickStats;
-  refs.statWeekCount.textContent = formatNumber(stats.weekCount);
-  refs.statMonthCount.textContent = formatNumber(stats.monthCount);
-  refs.statProfit.textContent = formatMoney(stats.monthProfit);
-  refs.statRevisitRate.textContent = `${stats.revisit.rate}%`;
-  refs.statRevisitTrend.textContent = `${stats.revisit.returned}/${stats.revisit.scheduled} ca quay lại`;
-  refs.statRevisitTrend.className = `trend ${stats.revisit.rate >= 50 ? "up" : "down"}`;
-  refs.statOnTimeCount.textContent = formatNumber(stats.revisit.onTime);
-  refs.statOnTimeTrend.textContent = `${stats.revisit.onTime} ca đúng hẹn`;
-  refs.statOnTimeTrend.className = `trend ${stats.revisit.onTime > 0 ? "up" : "down"}`;
-  refs.statLateMissedCount.textContent = formatNumber(stats.revisit.late + stats.revisit.missed);
-  refs.statLateMissedTrend.textContent = `${stats.revisit.late} trễ, ${stats.revisit.missed} không quay lại`;
-  refs.statLateMissedTrend.className = "trend down";
-  setTrend(refs.statWeekTrend, stats.weekCount, stats.previousWeekCount, "tuần trước");
-  setTrend(refs.statMonthTrend, stats.monthCount, stats.previousMonthCount, "tháng trước");
-  setTrend(refs.statProfitTrend, stats.monthProfit, stats.previousMonthProfit, "tháng trước");
+async function loadStats() {
+  const { today, quick, patients, finance } = await fetchJson("/api/stats");
+  const monthLabel = `Tháng ${Number(today.slice(5, 7))}/${today.slice(0, 4)}`;
+  refs.statVisitsToday.textContent = formatNumber(quick.visitsToday);
+  refs.statAppointmentsToday.textContent = formatNumber(quick.appointmentsToday);
+  refs.statAppointmentsArrived.textContent = `Đã đến: ${formatNumber(quick.appointmentsArrived)}`;
+  refs.statRevenueToday.textContent = formatMoney(quick.revenueToday);
+  refs.statVisitsMonth.textContent = formatNumber(quick.visitsThisMonth);
+  refs.statVisitsMonthLabel.textContent = monthLabel;
+  refs.statPatientsTotal.textContent = formatNumber(patients.total);
+  refs.statPatientsNew.textContent = formatNumber(patients.newThisMonth);
+  refs.statRevisitRate.textContent = patients.revisitDue ? `${patients.revisitRate}%` : "—";
+  refs.statRevisitSub.textContent = patients.revisitDue
+    ? `${formatNumber(patients.revisitReturned)}/${formatNumber(patients.revisitDue)} lịch hẹn có quay lại`
+    : "Chưa có lịch hẹn tới hạn";
+  refs.statRevenueMonth.textContent = formatMoney(finance.revenueThisMonth);
+  refs.statRevenueMonthLabel.textContent = monthLabel;
 }
 
 async function loadPatients() {
@@ -3488,7 +3476,7 @@ async function saveEncounter() {
     } else {
       showToast(editingId ? `Đã lưu thay đổi lần khám L${saved.visitNo}.` : "Đã lưu lượt khám và toa thuốc.", "success");
     }
-    await Promise.all([loadDashboard(), loadQuickStats(), loadDrugs(), loadPatients()]);
+    await Promise.all([loadStats(), loadDrugs(), loadPatients()]);
   } catch (error) {
     handleError(error);
   } finally {
@@ -3502,7 +3490,7 @@ async function deletePatient(patientId) {
   await fetchJson(`/api/patients/${patientId}`, { method: "DELETE" });
   if (state.selectedPatientId === patientId) createNewPatient();
   showToast("Đã xóa hồ sơ bệnh nhân.", "success");
-  await Promise.all([loadDashboard(), loadQuickStats(), loadPatients()]);
+  await Promise.all([loadStats(), loadPatients()]);
 }
 
 function showPrescriptionPreview() {
@@ -4019,13 +4007,6 @@ function getFollowStatus(dateValue) {
   if (diff > 0) return { label: `Còn ${diff} ngày`, cls: "up" };
   if (diff === 0) return { label: "Hôm nay", cls: "down" };
   return { label: `Quá ${Math.abs(diff)} ngày`, cls: "down" };
-}
-
-function setTrend(element, current, previous, label) {
-  const percent = previous === 0 ? (current > 0 ? 100 : 0) : Math.round(((current - previous) / previous) * 100);
-  const up = percent >= 0;
-  element.className = `trend ${up ? "up" : "down"}`;
-  element.textContent = `${up ? "+" : "-"} ${Math.abs(percent)}% so với ${label}`;
 }
 
 async function fetchJson(url, options = {}) {
