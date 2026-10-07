@@ -773,15 +773,17 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 
 
 /* ---------- Stats ---------- */
-.stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--col-gap); }
-@media (min-width: 768px) { .stats-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stats-grid { display: grid; grid-auto-rows: 1fr; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--col-gap); }
+@media (max-width: 767px) { .stat__head { min-height: 2lh; } }
 @media (min-width: 1024px) { .stats-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.stat { container-type: inline-size; display: flex; flex-direction: column; padding: var(--col-gap); border-radius: 16px; background: var(--bg-subtle-2); border: 1px solid var(--line); min-width: 0; }
+.stat { container-type: inline-size; display: flex; flex-direction: column; justify-content: center; padding: var(--col-gap); border-radius: 16px; background: var(--bg-subtle-2); border: 1px solid var(--line); min-width: 0; }
 .stat__head { display: flex; align-items: center; gap: var(--btn-gap); font-size: var(--fs-sm); }
 .stat__head .icon { flex: none; color: var(--text-brand); }
 .stat .k { margin-top: var(--space-2); overflow-wrap: anywhere; font-size: clamp(20px, 17cqw, var(--fs-num)); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
-.stat__sub { margin-top: var(--space-1); font-size: var(--fs-sm); }
+.stat__sub { min-height: 1lh; margin-top: var(--space-1); font-size: var(--fs-sm); }
 .stats-group { position: relative; }
+.stats-group::before { display: none; }
+.page-section.stats-group + .stats-group { padding-top: 0; }
 .stats-group > summary { border-radius: 8px; display: flex; align-items: center; gap: var(--btn-gap); min-height: var(--control-h); margin-bottom: var(--title-gap); cursor: pointer; list-style: none; }
 .stats-group > summary::-webkit-details-marker { display: none; }
 .stats-group > summary h2 { margin: 0; font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: var(--lh-heading); color: var(--text-brand); }
@@ -928,15 +930,22 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .patient-head { display: none; }
   .pr-table { display: none; }
   #patientListBody { overscroll-behavior: auto; }
-  .pr-card { display: block; padding: 12px 12px 12px 14px; }
-  .pc__l1 { display: flex; align-items: flex-start; gap: 8px; }
-  .pc__name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-lg); font-weight: var(--fw-medium); line-height: var(--lh-heading); }
-  .pc__age { white-space: nowrap; padding-top: 2px; color: var(--text-muted); font-size: var(--fs-sm); }
-  .pc__l2, .pc__l3 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; min-width: 0; font-size: var(--fs-sm); color: var(--text-muted); }
+  .pr-card { display: block; padding: var(--space-3); }
+  .pc__l1 { display: flex; align-items: center; gap: var(--space-2); }
+  .pc__main { flex: 1; min-width: 0; }
+  .pc__name { display: block; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-lg); font-weight: var(--fw-medium); line-height: var(--lh-heading); }
+  .pc__age { white-space: nowrap; margin-left: 4px; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+  .pc__act { display: flex; gap: var(--space-2); }
+  .pc__act .icon-btn { width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
+  .pc__act > :not(.pt-more) { display: none; }
+  .pc__act > .pt-more { display: inline-flex; }
+  .patient-row.is-open .pc__act > .pt-toggle { display: inline-flex; }
+  .pc__total { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+  .pr-card .follow-badge, .pr-card .visit-tag { min-height: 0; padding: 3px 8px; margin-left: 0; }
+  .pc__l2, .pc__l3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); min-width: 0; font-size: var(--fs-sm); color: var(--text-muted); }
   .pc__l3 { margin-top: 8px; }
   .pc__icd { flex: 1 1 100%; overflow-wrap: anywhere; color: var(--text); font-size: var(--fs-base); }
-  .pc__money { margin-left: auto; font-weight: var(--fw-medium); color: var(--text); font-size: var(--fs-base); }
-  .pc__addr { flex: 1 1 100%; overflow-wrap: anywhere; }
+    .pc__addr { flex: 1 1 100%; overflow-wrap: anywhere; }
 
   .fee-grid, .code-manager__form, .clinic-meta { grid-template-columns: 1fr; }
 
@@ -1232,6 +1241,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .patient-row { user-select: none; -webkit-user-select: none; }
 #visitFormCard { scroll-margin-top: calc(var(--nav-h) - 15px); } /* cuộn xuống sát hơn dưới thanh nav */
 
+.pt-more { display: none; }
 .wheel-actions { display: none; }
 .wheel-kb { display: none; }
 .wheel-layer.is-sheet .wheel-kb { display: block; margin: 10px auto 0; padding: 4px 8px; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-sm); text-decoration: underline; cursor: pointer; }

@@ -316,6 +316,7 @@
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-stethoscope"/></svg><span class="muted">Lượt khám hôm nay</span></div>
                 <div class="k" id="statVisitsToday">0</div>
+              <div class="stat__sub" aria-hidden="true"></div>
               </div>
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-calendar-check"/></svg><span class="muted">Lịch hẹn hôm nay</span></div>
@@ -325,6 +326,7 @@
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><span class="muted">Doanh thu hôm nay</span></div>
                 <div class="k" id="statRevenueToday">0</div>
+              <div class="stat__sub" aria-hidden="true"></div>
               </div>
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span class="muted">Lượt khám tháng</span></div>
@@ -335,14 +337,16 @@
           </details>
           <details class="stats-group page-section">
             <summary><h2>Bệnh nhân</h2><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
-            <div class="stats-grid stats-grid--3">
+            <div class="stats-grid stats-grid--4">
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span class="muted">Tổng hồ sơ</span></div>
                 <div class="k" id="statPatientsTotal">0</div>
+              <div class="stat__sub" aria-hidden="true"></div>
               </div>
               <div class="stat">
-                <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-user-plus"/></svg><span class="muted">Bệnh nhân mới tháng này</span></div>
+                <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-user-plus"/></svg><span class="muted">BN mới tháng này</span></div>
                 <div class="k" id="statPatientsNew">0</div>
+              <div class="stat__sub" aria-hidden="true"></div>
               </div>
               <div class="stat">
                 <div class="stat__head"><svg class="icon" aria-hidden="true"><use href="#i-repeat"/></svg><span class="muted">Tỷ lệ tái khám</span></div>
@@ -421,6 +425,11 @@
       <button class="btn ghost" type="button" role="menuitem" data-clinic-action="addClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
       <button class="btn ghost" type="button" role="menuitem" data-clinic-action="toggleClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Chỉnh sửa</span></button>
       <button class="btn ghost" type="button" role="menuitem" data-clinic-action="deleteClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+    </div>
+
+    <div class="stock-menu hidden" id="patientRowMenu" role="menu">
+      <button class="btn ghost" type="button" role="menuitem" data-action="toggle"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg><span>Xem chi tiết</span></button>
+      <button class="btn ghost" type="button" role="menuitem" data-action="remove"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
     </div>
 
     <div class="stock-menu hidden" id="drugRowMenu" role="menu">

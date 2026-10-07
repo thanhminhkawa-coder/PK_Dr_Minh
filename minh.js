@@ -259,6 +259,7 @@ const wheelOnlyQuery = window.matchMedia("(pointer: coarse), (max-width: 767px)"
 window.addEventListener("DOMContentLoaded", () => {
   cacheRefs();
   bindEvents();
+  bindScrollChaining();
   renderClinicInfo();
   seedForm();
   syncBirthYearMode();
@@ -329,6 +330,30 @@ function applyTheme(pref = getThemePref()) {
     light.content = pref === "dark" ? "#242528" : "#ffffff";
     night.content = pref === "light" ? "#ffffff" : "#242528";
   }
+}
+
+// Điện thoại: bảng cuộn lồng trong trang. Safari/Chrome "dính" cử chỉ vào bảng nên đang vuốt liên tục mà chạm đáy/đầu bảng thì trang không cuộn tiếp.
+// Khi bảng đã hết chỗ cuộn theo hướng đang vuốt, tự cuộn trang thay (không còn quán tính khi trang cuộn kiểu này).
+function bindScrollChaining() {
+  const SCROLLERS = "#patientListBody, .code-manager__list, .stock-list";
+  const atEdge = (el, dy) => (dy > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 1 : el.scrollTop <= 0);
+  let lastY = 0;
+  document.addEventListener("touchstart", (event) => { lastY = event.touches[0].clientY; }, { passive: true });
+  document.addEventListener("touchmove", (event) => {
+    const y = event.touches[0].clientY;
+    const dy = lastY - y;
+    lastY = y;
+    const box = phoneLayoutQuery.matches && event.target.closest?.(SCROLLERS);
+    if (!box || !dy || !atEdge(box, dy)) return;
+    event.preventDefault();
+    window.scrollBy(0, dy);
+  }, { passive: false });
+  document.addEventListener("wheel", (event) => {
+    const box = phoneLayoutQuery.matches && event.target.closest?.(SCROLLERS);
+    if (!box || !event.deltaY || !atEdge(box, event.deltaY)) return;
+    event.preventDefault();
+    window.scrollBy(0, event.deltaY);
+  }, { passive: false });
 }
 
 function bindEvents() {
@@ -601,6 +626,12 @@ function bindEvents() {
   refs.drugRows.addEventListener("focusin", handleDrugRowChange);
   refs.drugRows.addEventListener("focusout", handleDrugRowChange);
   refs.drugRows.addEventListener("click", handleDrugRowClick);
+  document.getElementById("patientRowMenu").addEventListener("click", (event) => {
+    const item = event.target.closest("[data-action]");
+    const menu = event.currentTarget;
+    menu.classList.add("hidden");
+    refs.patientListBody.querySelector(`.patient-row[data-id="${menu.dataset.id}"] .pr-card ${item?.dataset.action === "remove" ? ".del-patient" : ".pt-toggle"}`)?.click();
+  });
   document.getElementById("drugRowMenu").addEventListener("click", (event) => {
     const item = event.target.closest("[data-action]");
     const menu = event.currentTarget;
@@ -693,7 +724,7 @@ function bindEvents() {
     }
     if (!event.target.closest("#symptom") && !event.target.closest("#symptomSuggestBox")) refs.symptomSuggestBox.classList.add("hidden");
     if (!event.target.closest("#icdInput") && !event.target.closest("#icdSuggestBox")) refs.icdSuggestBox.classList.add("hidden");
-    if (!event.target.closest(".stock-menu, .stock-more, .code-more, .drug-more, .clinic-more")) document.querySelectorAll(".stock-menu").forEach((menu) => menu.classList.add("hidden"));
+    if (!event.target.closest(".stock-menu, .stock-more, .code-more, .drug-more, .clinic-more, .pt-more")) document.querySelectorAll(".stock-menu").forEach((menu) => menu.classList.add("hidden"));
     if (!event.target.closest(".drug-search")) document.querySelectorAll(".drug-suggest").forEach((box) => box.classList.add("hidden"));
     if (!event.target.closest(".drug-field--dose")) closeDoseQuickPickers();
     if (!event.target.closest(".drug-field--quantity")) closeQuantityQuickPickers();
@@ -1164,7 +1195,7 @@ async function loadStats() {
   refs.statPatientsNew.textContent = formatNumber(patients.newThisMonth);
   refs.statRevisitRate.textContent = patients.revisitDue ? `${patients.revisitRate}%` : "—";
   refs.statRevisitSub.textContent = patients.revisitDue
-    ? `${formatNumber(patients.revisitReturned)}/${formatNumber(patients.revisitDue)} lịch hẹn có quay lại`
+    ? `${formatNumber(patients.revisitReturned)}/${formatNumber(patients.revisitDue)}`
     : "Chưa có lịch hẹn tới hạn";
   refs.statRevenueMonth.textContent = formatMoney(finance.revenueThisMonth);
   refs.statRevenueMonthLabel.textContent = monthLabel;
@@ -1269,6 +1300,21 @@ function togglePatientRow(row) {
 }
 
 function handlePatientListClick(event) {
+  const moreBtn = event.target.closest(".pt-more");
+  if (moreBtn) {
+    const menu = document.getElementById("patientRowMenu");
+    const row = moreBtn.closest(".patient-row");
+    const opening = menu.classList.contains("hidden") || menu.dataset.id !== row.dataset.id;
+    menu.classList.toggle("hidden", !opening);
+    if (!opening) return;
+    menu.dataset.id = row.dataset.id;
+    menu.querySelector('[data-action="toggle"] span').textContent = state.patientOpen.has(row.dataset.id) ? "Thu gọn chi tiết" : "Xem chi tiết";
+    const rect = moreBtn.getBoundingClientRect();
+    const below = rect.bottom + 6;
+    menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    menu.style.top = `${below + menu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menu.offsetHeight - 6) : below}px`;
+    return;
+  }
   const toggleBtn = event.target.closest(".pt-toggle");
   const clickedRow = event.target.closest(".patient-row[data-id]");
   // chỉ nút mũi tên mới mở/đóng chi tiết
@@ -1384,16 +1430,21 @@ function buildPatientRow(patient) {
       </div>
       <div class="pr-card">
         <div class="pc__l1">
-          <strong class="pc__name">${escapeHtml(patient.fullName)} <span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></strong>
-          ${age !== "" ? `<span class="pc__age">${escapeHtml(String(age))} tuổi</span>` : ""}
-          <button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button>
-          <button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button>
+          <div class="pc__main">
+            <strong class="pc__name">${escapeHtml(patient.fullName)}${age !== "" ? ` <span class="pc__age">${escapeHtml(String(age))} tuổi</span>` : ""}</strong>
+            <div class="pc__l2">
+              <span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span>
+              <span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span>
+            </div>
+          </div>
+          <div class="pc__act">
+            <button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button>
+            <button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button>
+            <button class="icon-btn pt-more" type="button" aria-label="Tùy chọn ${escapeAttribute(patient.fullName)}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button>
+          </div>
         </div>
-        <div class="pc__l3">
-          <span class="pc__icd">${escapeHtml(patient.lastDiagnosis || "Chưa có chẩn đoán")}</span>
-          <span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span>
-          <span class="pc__money">${formatMoney(patient.totalRevenue)}</span>
-        </div>
+        <div class="pc__l3"><span class="pc__icd">${escapeHtml(patient.lastDiagnosis || "Chưa có chẩn đoán")}</span></div>
+        <div class="pc__total">Tổng tiền: ${formatMoney(patient.totalRevenue)}</div>
       </div>
       <div class="patient-detail">
         ${ro("Số điện thoại", "pd-1", patient.phone)}${ro("Giới tính", "pd-1", patient.gender)}${ro("Năm sinh", "pd-1", patient.birthYear)}${ro("Số lần khám", "pd-1", formatNumber(patient.visitCount))}${ro("Địa chỉ", "pd-full", patient.address)}
