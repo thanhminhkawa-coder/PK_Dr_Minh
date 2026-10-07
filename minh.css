@@ -469,8 +469,12 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .pr-act { display: flex; gap: var(--space-1); justify-content: flex-end; --ctl-h: var(--control-h-sm); }
 .pt-toggle .icon { transition: transform .2s; }
 .patient-row.is-open .pt-toggle .icon { transform: rotate(180deg); }
+.pt-rx-close .icon { transition: transform .2s; }
+.patient-row.is-rx-open .pt-rx-close .icon { transform: rotate(180deg); }
 .stock-detail strong, .patient-detail strong { display: block; margin-top: var(--space-1); overflow-wrap: anywhere; font-size: var(--fs-base); font-weight: var(--fw-medium); }
-.patient-detail { display: none; cursor: default; --ctl-h: var(--control-h-sm); }
+.patient-detail, .patient-rx { display: none; cursor: default; --ctl-h: var(--control-h-sm); }
+.patient-rx > .drug-field { grid-column: 1 / -1; }
+.patient-rx .rx-item { font-size: var(--fs-base); font-weight: var(--fw-regular); }
 .patient-meta strong { display: block; font-size: var(--fs-lg); font-weight: var(--fw-medium); line-height: var(--lh-heading); }
 .patient-meta small { display: block; color: var(--text-muted); font-size: var(--fs-sm); line-height: var(--lh-base); }
 .patient-meta__sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -940,6 +944,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .pc__act > :not(.pt-more) { display: none; }
   .pc__act > .pt-more { display: inline-flex; }
   .patient-row.is-open .pc__act > .pt-toggle { display: inline-flex; }
+  .patient-row.is-rx-open .pc__act > .pt-rx-close { display: inline-flex; }
   .pc__total { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
   .pr-card .follow-badge, .pr-card .visit-tag { min-height: 0; padding: 3px 8px; margin-left: 0; }
   .pc__l2, .pc__l3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); min-width: 0; font-size: var(--fs-sm); color: var(--text-muted); }
@@ -1134,7 +1139,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .stock-more, .code-more, .drug-more, .clinic-more, .stock-menu { display: none; }
 .stock-item.is-open .stock-toggle .icon { transform: rotate(180deg); }
 .stock-detail { --ctl-h: var(--control-h-sm); }
-.drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail {
+.drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--row-gap) var(--col-gap);
@@ -1155,10 +1160,10 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-cell--price, .drug-subtotal, .drug-calc, .drug-row__line .mini { font-variant-numeric: tabular-nums; }
 @media (min-width: 768px) and (max-width: 1023px) {
   .drug-head, .drug-row__line { grid-template-columns: 24px minmax(0, 1fr) 48px 48px 48px 48px 76px 92px 72px; gap: 6px; padding-inline: 10px; }
-  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail { padding-inline: 10px; }
+  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx { padding-inline: 10px; }
 }
 @media (min-width: 768px) {
-  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail {
+  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
   .drug-field--ingredient, .drug-field--brand { grid-column: span 2; }
@@ -1212,7 +1217,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-field--dose-night .dose-quick { left: auto; right: 0; }
   .drug-field--quantity .quantity-quick { left: auto; right: 0; width: 180px; }
   /* nền xám của chi tiết tràn hết chiều ngang dòng, giống PC */
-  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail { margin: 0; padding: var(--space-3) 14px; border-radius: 0; }
+  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx { margin: 0; padding: var(--space-3) 14px; border-radius: 0; }
   .drug-row.is-open .drug-detail { border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px); }
   /* ô thêm thuốc: giống thanh tìm kiếm của Kho thuốc (ô tìm + nút vuông), nằm trên cùng danh sách thuốc */
   .drug-row--search, .drug-row--search:last-child { order: -1; display: flex; align-items: center; gap: var(--space-2); border: 0; padding: 0; background: transparent; }

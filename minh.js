@@ -231,6 +231,8 @@ const state = {
   pendingStockRows: [],
   stockOpen: new Set(),
   patientOpen: new Set(),
+  patientRxOpen: new Set(),
+  patientRxCache: new Map(), // id -> { date, items } toa lần khám gần nhất
   editingDrugId: "",
   icdList: getDefaultIcdList(),
   selectedIcdCode: "",
@@ -333,21 +335,53 @@ function applyTheme(pref = getThemePref()) {
 }
 
 // Điện thoại: bảng cuộn lồng trong trang. Safari/Chrome "dính" cử chỉ vào bảng nên đang vuốt liên tục mà chạm đáy/đầu bảng thì trang không cuộn tiếp.
-// Khi bảng đã hết chỗ cuộn theo hướng đang vuốt, tự cuộn trang thay (không còn quán tính khi trang cuộn kiểu này).
+// Khi bảng đã hết chỗ cuộn theo hướng đang vuốt, tự cuộn trang thay, rồi cho trôi tiếp (quán tính giả lập) lúc nhả tay.
 function bindScrollChaining() {
   const SCROLLERS = "#patientListBody, .code-manager__list, .stock-list";
   const atEdge = (el, dy) => (dy > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 1 : el.scrollTop <= 0);
   let lastY = 0;
-  document.addEventListener("touchstart", (event) => { lastY = event.touches[0].clientY; }, { passive: true });
+  let lastT = 0;
+  let velocity = 0; // px/ms, dương = cuộn xuống
+  let driving = false; // trang đang được cuộn bằng tay trong cử chỉ này
+  let glide = 0;
+  const stopGlide = () => { cancelAnimationFrame(glide); glide = 0; };
+  const startGlide = () => {
+    let prev = performance.now();
+    const step = (now) => {
+      const dt = Math.min(now - prev, 32);
+      prev = now;
+      window.scrollBy(0, velocity * dt);
+      velocity *= Math.pow(0.95, dt / 16);
+      glide = Math.abs(velocity) > 0.02 ? requestAnimationFrame(step) : 0;
+    };
+    glide = requestAnimationFrame(step);
+  };
+  document.addEventListener("touchstart", (event) => {
+    stopGlide();
+    lastY = event.touches[0].clientY;
+    lastT = event.timeStamp;
+    velocity = 0;
+    driving = false;
+  }, { passive: true });
   document.addEventListener("touchmove", (event) => {
     const y = event.touches[0].clientY;
     const dy = lastY - y;
+    const dt = event.timeStamp - lastT;
     lastY = y;
+    lastT = event.timeStamp;
     const box = phoneLayoutQuery.matches && event.target.closest?.(SCROLLERS);
-    if (!box || !dy || !atEdge(box, dy)) return;
+    if (!box || !dy || !atEdge(box, dy)) { driving = false; return; }
     event.preventDefault();
     window.scrollBy(0, dy);
+    if (dt > 0) velocity = velocity * 0.6 + (dy / dt) * 0.4;
+    driving = true;
   }, { passive: false });
+  const release = () => {
+    if (driving && Math.abs(velocity) > 0.05) startGlide();
+    driving = false;
+  };
+  document.addEventListener("touchend", release, { passive: true });
+  document.addEventListener("touchcancel", release, { passive: true });
   document.addEventListener("wheel", (event) => {
     const box = phoneLayoutQuery.matches && event.target.closest?.(SCROLLERS);
     if (!box || !event.deltaY || !atEdge(box, event.deltaY)) return;
@@ -630,7 +664,7 @@ function bindEvents() {
     const item = event.target.closest("[data-action]");
     const menu = event.currentTarget;
     menu.classList.add("hidden");
-    refs.patientListBody.querySelector(`.patient-row[data-id="${menu.dataset.id}"] .pr-card ${item?.dataset.action === "remove" ? ".del-patient" : ".pt-toggle"}`)?.click();
+    refs.patientListBody.querySelector(`.patient-row[data-id="${menu.dataset.id}"] .pr-card ${{ remove: ".del-patient", rx: ".pt-rx" }[item?.dataset.action] || ".pt-toggle"}`)?.click();
   });
   document.getElementById("drugRowMenu").addEventListener("click", (event) => {
     const item = event.target.closest("[data-action]");
@@ -1203,6 +1237,7 @@ async function loadStats() {
 
 async function loadPatients() {
   state.patients = await fetchJson("/api/patients");
+  state.patientRxCache.clear();
   refreshKnownDoctors();
   renderDoctorControls();
   applySearch(state.search || "", { keepPage: true });
@@ -1277,9 +1312,18 @@ function applySearch(rawValue, { keepPage = false } = {}) {
   state.filteredPatients = keyword
     ? state.patients.filter((patient) => normalizeText(buildPatientHaystack(patient)).includes(keyword))
     : state.patients.slice();
-  // bệnh nhân hẹn tái khám hôm nay lên đầu (sort ổn định, giữ nguyên thứ tự còn lại)
-  const dueToday = (p) => getFollowStatus(p.lastFollowUpDate).label === "Hôm nay";
-  state.filteredPatients.sort((a, b) => dueToday(b) - dueToday(a));
+  // còn hẹn (từ hôm nay trở đi): ngày tái khám tăng dần; sau đó quá hẹn (tăng dần); cuối cùng chưa hẹn. Sort ổn định.
+  const today = startOfDay(new Date()).getTime();
+  const rank = (p) => {
+    const t = p.lastFollowUpDate ? startOfDay(new Date(p.lastFollowUpDate)).getTime() : NaN;
+    if (Number.isNaN(t)) return [2, 0];
+    return [t >= today ? 0 : 1, t];
+  };
+  state.filteredPatients.sort((a, b) => {
+    const [ga, ta] = rank(a);
+    const [gb, tb] = rank(b);
+    return ga - gb || ta - tb;
+  });
   refs.patientCountText.textContent = `${formatNumber(state.filteredPatients.length)} hồ sơ`;
   if (!keepPage) state.page = 1;
   renderPatientList();
@@ -1299,6 +1343,40 @@ function togglePatientRow(row) {
   fitPatientListHeight();
 }
 
+function buildPatientRxHtml(id) {
+  const rx = state.patientRxCache.get(id);
+  if (!rx) return '<div class="drug-field"><span class="clinic-meta-label">Đang tải toa thuốc…</span></div>';
+  const head = `<div class="drug-field"><span class="clinic-meta-label">Toa thuốc lần khám gần nhất${rx.date ? ` (${formatDate(rx.date)})` : ""}</span></div>`;
+  if (!rx.items.length) return `${head}<div class="drug-field"><span class="muted">Chưa có toa thuốc.</span></div>`;
+  return head + rx.items.map((name) => `<div class="drug-field"><span class="rx-item">${escapeHtml(name)}</span></div>`).join("");
+}
+
+async function loadPatientRx(id) {
+  try {
+    const detail = await fetchJson(`/api/patients/${id}`);
+    const latest = detail.visits?.[0]; // API đã sắp lần khám mới nhất lên đầu
+    state.patientRxCache.set(id, { date: latest?.visitDate || "", items: (latest?.drugs || []).map((d) => d.activeIngredient || d.brandName || "—") });
+  } catch (error) {
+    state.patientRxOpen.delete(id);
+    handleError(error);
+  }
+  const row = refs.patientListBody.querySelector(`.patient-row[data-id="${id}"]`);
+  if (!row) return;
+  row.classList.toggle("is-rx-open", state.patientRxOpen.has(id));
+  row.querySelector(".patient-rx").innerHTML = buildPatientRxHtml(id);
+  fitPatientListHeight();
+}
+
+function togglePatientRx(row) {
+  const id = row.dataset.id;
+  const open = !state.patientRxOpen.has(id);
+  state.patientRxOpen[open ? "add" : "delete"](id);
+  row.classList.toggle("is-rx-open", open);
+  row.querySelectorAll(".pt-rx").forEach((btn) => btn.setAttribute("aria-expanded", open));
+  if (open && !state.patientRxCache.has(id)) loadPatientRx(id);
+  fitPatientListHeight();
+}
+
 function handlePatientListClick(event) {
   const moreBtn = event.target.closest(".pt-more");
   if (moreBtn) {
@@ -1309,12 +1387,19 @@ function handlePatientListClick(event) {
     if (!opening) return;
     menu.dataset.id = row.dataset.id;
     menu.querySelector('[data-action="toggle"] span').textContent = state.patientOpen.has(row.dataset.id) ? "Thu gọn chi tiết" : "Xem chi tiết";
+    menu.querySelector('[data-action="rx"] span').textContent = state.patientRxOpen.has(row.dataset.id) ? "Ẩn toa thuốc" : "Xem toa thuốc";
     const rect = moreBtn.getBoundingClientRect();
     const below = rect.bottom + 6;
     menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
     menu.style.top = `${below + menu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menu.offsetHeight - 6) : below}px`;
     return;
   }
+  const rxBtn = event.target.closest(".pt-rx");
+  if (rxBtn && event.type === "click") {
+    togglePatientRx(rxBtn.closest(".patient-row[data-id]"));
+    return;
+  }
+  if (rxBtn) return;
   const toggleBtn = event.target.closest(".pt-toggle");
   const clickedRow = event.target.closest(".patient-row[data-id]");
   // chỉ nút mũi tên mới mở/đóng chi tiết
@@ -1358,6 +1443,7 @@ function renderPatientList() {
   refs.patientListBody.scrollTop = 0;
   fitPatientListHeight();
   renderPager(total, pages, start, rows.length);
+  rows.filter((p) => state.patientRxOpen.has(p._id) && !state.patientRxCache.has(p._id)).forEach((p) => loadPatientRx(p._id));
 }
 
 // khung danh sách cao đúng bằng 5 dòng đầu (dòng cao thấp khác nhau tùy nội dung/khổ màn hình)
@@ -1366,7 +1452,8 @@ function fitPatientListHeight() {
   refs.patientListBody.style.maxHeight = "";
   if (rows.length <= 5 || !rows[0].offsetHeight) return;
   const h = (el) => el.getBoundingClientRect().height;
-  const first = rows.slice(0, 5).reduce((sum, row) => sum + h(row) - (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0), 0);
+  const extra = (row) => (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0) + (row.classList.contains("is-rx-open") ? h(row.querySelector(".patient-rx")) : 0);
+  const first = rows.slice(0, 5).reduce((sum, row) => sum + h(row) - extra(row), 0);
   refs.patientListBody.style.maxHeight = `${Math.ceil(first) + 1}px`;
 }
 
@@ -1414,19 +1501,21 @@ function buildPatientRow(patient) {
   const visitTags = buildVisitTags(patient.visitCount);
   const deleteLabel = `Xóa bệnh nhân ${patient.fullName}`;
   const open = state.patientOpen.has(patient._id);
+  const rxOpen = state.patientRxOpen.has(patient._id);
+  const rxBtn = `<button class="icon-btn pt-rx" type="button" aria-expanded="${rxOpen}" aria-label="Toa thuốc lần khám gần nhất của ${escapeAttribute(patient.fullName)}" title="Toa thuốc lần khám gần nhất">${iconHtml("pill")}</button>`;
   const ro = (label, cls, value) => `<div class="drug-field ${cls}"><span class="clinic-meta-label">${label}</span><strong>${escapeHtml(String(value ?? "") || "—")}</strong></div>`;
   return `
-    <div class="patient-row ${patient._id === state.selectedPatientId ? "active" : ""} ${open ? "is-open" : ""}" data-id="${patient._id}" role="button" tabindex="0" title="Nhấp đúp để mở hồ sơ">
+    <div class="patient-row ${patient._id === state.selectedPatientId ? "active" : ""} ${open ? "is-open" : ""} ${rxOpen ? "is-rx-open" : ""}" data-id="${patient._id}" role="button" tabindex="0" title="Nhấp đúp để mở hồ sơ">
       <div class="pr-table">
         <div>${formatDate(patient.lastVisitAt)}</div>
         <div class="patient-meta">
           <strong>${escapeHtml(patient.fullName)} <span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></strong>
         </div>
         <div>${escapeHtml(String(age || ""))}</div>
-        <div>${formatMoney(patient.totalRevenue)}</div>
-        <div>${escapeHtml(patient.lastDiagnosis || "")}</div>
         <div><span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span></div>
-        <div class="pr-act"><button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button><button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
+        <div>${escapeHtml(patient.lastDiagnosis || "")}</div>
+        <div>${formatMoney(patient.totalRevenue)}</div>
+        <div class="pr-act">${rxBtn}<button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button><button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
       </div>
       <div class="pr-card">
         <div class="pc__l1">
@@ -1438,6 +1527,8 @@ function buildPatientRow(patient) {
             </div>
           </div>
           <div class="pc__act">
+            ${rxBtn}
+            <button class="icon-btn pt-rx pt-rx-close" type="button" aria-expanded="${rxOpen}" aria-label="Thu gọn toa thuốc của ${escapeAttribute(patient.fullName)}" title="Thu gọn toa thuốc">${iconHtml("chevron-down")}</button>
             <button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button>
             <button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button>
             <button class="icon-btn pt-more" type="button" aria-label="Tùy chọn ${escapeAttribute(patient.fullName)}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button>
@@ -1446,6 +1537,7 @@ function buildPatientRow(patient) {
         <div class="pc__l3"><span class="pc__icd">${escapeHtml(patient.lastDiagnosis || "Chưa có chẩn đoán")}</span></div>
         <div class="pc__total">Tổng tiền: ${formatMoney(patient.totalRevenue)}</div>
       </div>
+      <div class="patient-rx">${rxOpen ? buildPatientRxHtml(patient._id) : ""}</div>
       <div class="patient-detail">
         ${ro("Số điện thoại", "pd-1", patient.phone)}${ro("Giới tính", "pd-1", patient.gender)}${ro("Năm sinh", "pd-1", patient.birthYear)}${ro("Số lần khám", "pd-1", formatNumber(patient.visitCount))}${ro("Địa chỉ", "pd-full", patient.address)}
       </div>
