@@ -524,28 +524,12 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .pager__gap { min-width: 24px; text-align: center; color: var(--text-muted); }
 
 /* ---------- Form ---------- */
-.edit-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: var(--row-gap);
-  padding: 10px 14px;
-  border: 1px solid var(--warn-border);
-  border-radius: 14px;
-  background: var(--warn-bg);
-  color: var(--text-warn);
-  font-weight: var(--fw-medium);
-  font-size: var(--fs-base);
-}
-.edit-banner span { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
 /* một lưới cho cả phần: điện thoại 1 cột, tablet 6 cột, desktop 12 cột; mỗi ô khai báo số cột --t / --d */
 .info-grid { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: var(--col-gap); row-gap: var(--row-gap); }
 .info-grid > * { min-width: 0; }
 .info-grid .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f-name    { --t: 6; --d: 6; }
 .f-phone   { --t: 3; --d: 3; }
-.f-date    { --t: 3; --d: 3; }
 .f-year    { --t: 3; --d: 3; }
 .f-gender  { --t: 3; --d: 3; }
 .f-prov    { --t: 6; --d: 6; }
@@ -564,7 +548,6 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   .info-grid { grid-template-columns: calc(100% / 6) calc(100% / 6 - var(--col-gap)) calc(100% / 6) calc(100% / 6); }
   .info-grid > .f-name { grid-column: 1 / 3; }
   .info-grid > .f-phone { grid-column: 3; }
-  .info-grid > .f-date { grid-column: 4; }
   .info-grid > .f-year { grid-column: 1; order: 1; }
   .info-grid > .f-gender { grid-column: 2 / 4; order: 2; }
   .info-grid > .f-addr { grid-column: 1 / 3; order: 3; }
@@ -578,6 +561,44 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 @media (min-width: 1024px) { .diag-grid { grid-template-columns: repeat(2, calc(100% / 3)); } }
 
 .form-actions { margin-left: auto; }
+
+/* thanh chọn Lần khám: L1…Ln, bản nháp (nét đứt) và ô + */
+.visit-picker { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.visit-chip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.visit-chip:hover { background: var(--bg-hover); }
+.visit-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.visit-chip[aria-checked="true"] { background: var(--primary); border-color: transparent; color: var(--text-on-primary); }
+.visit-chip.is-draft, .visit-chip--add { border-style: dashed; }
+.visit-chip.is-draft[aria-checked="true"] { cursor: default; }
+.visit-chip.is-draft[aria-checked="true"]::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-on-primary);
+}
+.visit-chip--add { color: var(--text-brand); }
+.visit-meta { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-2) var(--col-gap); margin-top: var(--row-gap); }
+.visit-date { width: 240px; max-width: 100%; }
+.visit-hint { margin: 0; min-height: var(--control-h); display: flex; align-items: center; flex: 1 1 240px; color: var(--text-muted); font-size: var(--fs-sm); }
 
 /* năm sinh: badge tuổi và nút lịch nằm trong ô */
 .year-field { position: relative; }
@@ -944,7 +965,6 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .toast { bottom: calc(var(--tabbar-h) + 16px + 52px + 12px + var(--safe-b)); left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
 
   .searchbar { display: grid; grid-template-columns: 1fr 1fr; }
-  .form-actions { display: grid; grid-template-columns: 1fr auto; }
   .form-actions .btn { white-space: nowrap; }
   .birth-year-btn { display: none; }
   .year-field .field { padding-right: 90px; }

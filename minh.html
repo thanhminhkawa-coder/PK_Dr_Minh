@@ -170,15 +170,8 @@
               <div class="card-title">
                 <h2>Thông tin bệnh nhân</h2>
                 <div class="row-actions form-actions">
-                  <button class="btn small primary" id="saveBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Lưu / Hoàn tất khám</span></button>
                   <button class="btn small" id="newBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Bệnh nhân mới</span></button>
                 </div>
-              </div>
-
-              <div class="edit-banner hidden" id="editBanner" role="status">
-                <svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg>
-                <span id="editBannerText">Đang sửa toa</span>
-                <button class="btn small" id="cancelEditBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg><span>Hủy sửa</span></button>
               </div>
 
               <input id="visitDoctor" type="hidden" list="doctorList" />
@@ -200,10 +193,6 @@
                   </div>
                   <div class="suggest-box hidden" id="yearSuggestBox"></div>
                 </div>
-                <div class="f-date">
-                  <label class="label" for="visitDate">Ngày khám</label>
-                  <input class="field" id="visitDate" type="date" />
-                </div>
                 <fieldset class="radio-group f-gender" id="gender">
                   <legend class="label">Giới tính</legend>
                   <label class="radio"><input type="radio" name="gender" value="Nam" checked> <span>Nam</span></label>
@@ -219,6 +208,20 @@
                   <label class="label" for="addressWard">Địa chỉ + xã / phường</label>
                   <input class="field" id="addressWard" placeholder="Số nhà, đường, xã / phường" />
                 </div>
+              </div>
+            </section>
+
+            <section class="card page-section" id="visitPickerCard">
+              <div class="card-title">
+                <h2>Lần khám</h2>
+              </div>
+              <div class="visit-picker" id="visitPicker" role="radiogroup" aria-label="Chọn lần khám"></div>
+              <div class="visit-meta">
+                <div class="visit-date">
+                  <label class="label" for="visitDate">Ngày khám</label>
+                  <input class="field" id="visitDate" type="date" />
+                </div>
+                <p class="visit-hint" id="visitModeHint" role="status"></p>
               </div>
             </section>
 
@@ -249,10 +252,10 @@
 
             <section class="card page-section">
               <div class="card-title">
-                <h2 id="drugSectionTitle">Chỉ định thuốc</h2>
+                <h2>Chỉ định thuốc</h2>
                 <div class="row-actions">
                   <button class="btn small primary hidden" id="addDrugBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm thuốc</span></button>
-                  <button class="btn small" id="newPrescriptionBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pill"/></svg><span>Toa mới</span></button>
+                  <button class="btn small" id="newPrescriptionBtn" type="button" title="Xóa hết thuốc để kê toa mới cho lần khám đang chọn" aria-label="Xóa hết thuốc để kê toa mới cho lần khám đang chọn"><svg class="icon" aria-hidden="true"><use href="#i-pill"/></svg><span>Toa mới</span></button>
                   <button class="btn small" id="previewPrintBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-printer"/></svg><span>Xem / In toa</span></button>
                 </div>
               </div>

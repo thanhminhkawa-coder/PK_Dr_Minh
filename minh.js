@@ -273,7 +273,7 @@ function cacheRefs() {
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "resetForm",
     "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
-    "patientListBody", "patientPager", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
+    "patientListBody", "patientPager", "newBtn", "visitPicker", "visitModeHint",
     "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
     "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox", "warningBox",
@@ -286,7 +286,7 @@ function cacheRefs() {
     "clinicAddressInput", "clinicHoursInput", "clinicPhoneInput", "statWeekCount", "statWeekTrend", "statMonthCount",
     "statMonthTrend", "statProfit", "statProfitTrend", "statRevisitRate", "statRevisitTrend", "statOnTimeCount",
     "statOnTimeTrend", "statLateMissedCount", "statLateMissedTrend", "activeIngredientList", "doseList",
-    "doctorList", "serviceFeeList", "serviceFeeSuggestBox", "drugSectionTitle",
+    "doctorList", "serviceFeeList", "serviceFeeSuggestBox",
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
     "importModal", "importMeta", "importTable", "importConfirm", "importConfirmBtn", "importMsg",
@@ -381,7 +381,8 @@ function bindEvents() {
   refs.patientListBody.addEventListener("dblclick", handlePatientListClick);
   refs.patientListBody.addEventListener("keydown", handlePatientListKeydown);
   refs.patientPager.addEventListener("click", handlePagerClick);
-  refs.cancelEditBtn.addEventListener("click", cancelEditMode);
+  refs.visitPicker.addEventListener("click", handleVisitPickerClick);
+  refs.visitPicker.addEventListener("keydown", handleVisitPickerKeydown);
   [refs.visitDate, refs.followDate].forEach(enhanceDateInput);
   syncFollowDateWidth();
   refs.birthYear.addEventListener("input", handleBirthYearInput);
@@ -472,7 +473,6 @@ function bindEvents() {
   refs.rxShareBtn.addEventListener("click", sharePrescriptionToZalo);
   refs.newBtn.addEventListener("click", createNewPatient);
   refs.newPrescriptionBtn.addEventListener("click", createNewPrescription);
-  refs.saveBtn.addEventListener("click", saveEncounter);
   refs.saveFab.addEventListener("click", saveEncounter);
   refs.importFile.addEventListener("change", handleImportFileChosen);
   refs.importConfirm.addEventListener("input", () => {
@@ -1189,19 +1189,10 @@ async function selectPatient(patientId, quiet = false, { editVisitId = "" } = {}
   state.selectedPatientDetail = await fetchJson(`/api/patients/${patientId}`);
   refreshKnownDoctors();
   renderDoctorControls();
-  const visits = state.selectedPatientDetail?.visits || [];
-  // mặc định nạp toa gần nhất làm mẫu (lưu sẽ tạo lượt khám mới); chỉ vào chế độ sửa khi được yêu cầu
-  const editing = visits.find((item) => item._id === editVisitId) || null;
-  const visit = editing || visits[0] || null;
-  state.selectedVisitId = visit?._id || "";
-  state.editingVisitId = editing?._id || "";
-  fillFormFromRecord(state.selectedPatientDetail.patient, visit);
+  // mặc định mở bản nháp lần khám mới (điền sẵn từ lần gần nhất); chỉ chọn lần khám đã lưu khi được yêu cầu
+  if (findHistoryVisit(editVisitId)) selectVisit(editVisitId);
+  else startNewVisitDraft();
   renderPatientList();
-  renderPrescriptionVisitTabs();
-  renderEditBanner();
-  updateSaveButtons();
-  updateTotals();
-  updateWarning();
   if (!quiet) showToast("Đã mở hồ sơ bệnh nhân.", "success");
 }
 
@@ -1209,47 +1200,85 @@ function findHistoryVisit(visitId) {
   return (state.selectedPatientDetail?.visits || []).find((item) => item._id === visitId) || null;
 }
 
-function renderPrescriptionVisitTabs() {
-  const visits = state.selectedPatientDetail?.visits || [];
-  const currentVisit = visits.find((visit) => visit._id === state.selectedVisitId) || visits[0];
-  refs.drugSectionTitle.textContent = currentVisit
-    ? `Chỉ định thuốc L${currentVisit.visitNo || 1}`
-    : "Chỉ định thuốc";
+// ---- Thanh chọn Lần khám ----
+// selectedVisitId = editingVisitId: id lần khám đã lưu đang chọn (Lưu = PUT), hoặc "" khi đang ở bản nháp lần mới (Lưu = POST)
+
+function renderVisitPicker() {
+  const visits = [...(state.selectedPatientDetail?.visits || [])].sort((a, b) => (a.visitNo || 0) - (b.visitNo || 0));
+  const isDraft = !state.editingVisitId;
+  const draftNo = visits.length + 1;
+  const chips = visits.map((visit) => {
+    const on = visit._id === state.editingVisitId;
+    return `<button type="button" class="visit-chip" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-visit-id="${escapeAttribute(visit._id)}" title="L${visit.visitNo} · ${escapeAttribute(formatDate(visit.visitDate))}">L${visit.visitNo}</button>`;
+  });
+  if (isDraft) chips.push(`<button type="button" class="visit-chip is-draft" role="radio" aria-checked="true" tabindex="0" title="Lần khám mới (chưa lưu)">L${draftNo}</button>`);
+  else chips.push('<button type="button" class="visit-chip visit-chip--add" tabindex="-1" aria-label="Tạo lần khám mới" title="Tạo lần khám mới"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>');
+  const hadFocus = refs.visitPicker.contains(document.activeElement);
+  refs.visitPicker.innerHTML = chips.join("");
+  if (hadFocus) refs.visitPicker.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+  const current = findHistoryVisit(state.editingVisitId);
+  refs.visitModeHint.textContent = current
+    ? `Đang xem L${current.visitNo} · Lưu sẽ cập nhật lần khám này`
+    : `Lần khám mới · Lưu sẽ tạo L${draftNo} và trừ kho thuốc`;
 }
 
-// ---- Chế độ sửa toa ----
-
-function renderEditBanner() {
-  const visit = state.editingVisitId ? findHistoryVisit(state.editingVisitId) : null;
-  refs.editBanner.classList.toggle("hidden", !visit);
-  if (visit) refs.editBannerText.textContent = `Đang sửa toa lần ${visit.visitNo || 1} – ${formatDate(visit.visitDate)}`;
+function handleVisitPickerClick(event) {
+  const chip = event.target.closest(".visit-chip");
+  if (!chip) return;
+  if (chip.classList.contains("visit-chip--add")) startNewVisitDraft();
+  else if (chip.dataset.visitId && chip.dataset.visitId !== state.editingVisitId) selectVisit(chip.dataset.visitId);
 }
 
-function exitEditMode() {
-  state.editingVisitId = "";
-  renderEditBanner();
+// ← → chỉ di chuyển focus giữa các ô; Enter / Space (click mặc định của nút) mới chọn
+function handleVisitPickerKeydown(event) {
+  const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[event.key];
+  if (!step) return;
+  const chips = [...refs.visitPicker.querySelectorAll(".visit-chip")];
+  const next = chips[chips.indexOf(document.activeElement) + step];
+  if (!next) return;
+  event.preventDefault();
+  next.focus();
+}
+
+function refreshVisitView() {
+  renderVisitPicker();
   updateSaveButtons();
-}
-
-// hủy sửa: trở về trạng thái mở bệnh nhân (toa gần nhất làm mẫu)
-function cancelEditMode() {
-  const visits = state.selectedPatientDetail?.visits || [];
-  state.selectedVisitId = visits[0]?._id || "";
-  fillFormFromRecord(state.selectedPatientDetail?.patient, visits[0] || null);
-  exitEditMode();
   updateTotals();
   updateWarning();
 }
 
-function updateSaveButtons() {
-  const editing = Boolean(state.editingVisitId);
-  const label = editing ? "Lưu thay đổi" : phoneLayoutQuery.matches ? "Lưu" : "Lưu / Hoàn tất khám";
-  [refs.saveBtn, refs.saveFab].forEach((button) => {
-    button.querySelector(".save-label").textContent = label;
-    button.disabled = state.saving;
-    button.classList.toggle("is-busy", state.saving);
-    button.setAttribute("aria-busy", String(state.saving));
+// bấm ô Lk: đổ lại đúng dữ liệu đã lưu của Lk; thay đổi chưa lưu bị bỏ, không hỏi
+function selectVisit(visitId) {
+  const visit = findHistoryVisit(visitId);
+  if (!visit) return;
+  state.selectedVisitId = state.editingVisitId = visit._id;
+  fillFormFromRecord(state.selectedPatientDetail.patient, visit);
+  refreshVisitView();
+}
+
+// bản nháp lần khám mới: copy lần gần nhất, trừ ngày khám (hôm nay) và ngày tái khám (trống)
+function startNewVisitDraft() {
+  const latest = state.selectedPatientDetail?.visits?.[0] || null;
+  state.selectedVisitId = state.editingVisitId = "";
+  fillFormFromRecord(state.selectedPatientDetail?.patient, latest);
+  refs.visitDate.value = toDateInput(new Date());
+  refs.followDate.value = "";
+  // lần khám mới được server tính theo giá kho hiện tại
+  state.draftRows.forEach((row) => {
+    const drug = state.drugs.find((item) => item._id === row.drugId);
+    if (drug) row.price = Number(drug.price || 0);
   });
+  renderDrugRows();
+  refreshVisitView();
+}
+
+function updateSaveButtons() {
+  const label = state.editingVisitId ? "Lưu thay đổi" : phoneLayoutQuery.matches ? "Lưu" : "Lưu / Hoàn tất khám";
+  const button = refs.saveFab;
+  button.querySelector(".save-label").textContent = label;
+  button.disabled = state.saving;
+  button.classList.toggle("is-busy", state.saving);
+  button.setAttribute("aria-busy", String(state.saving));
 }
 
 // Ô ngày dạng dd/mm/yyyy: Backspace xóa dần từ năm sang tháng rồi ngày. `.value` vẫn đọc/ghi yyyy-mm-dd như ô date gốc.
@@ -1356,7 +1385,6 @@ function fillFormFromRecord(patient, visit) {
     price: Number(drug.unitPrice || 0)
   })) : [createDraftRow()];
   renderDrugRows();
-  renderPrescriptionVisitTabs();
 }
 
 function seedForm() {
@@ -1404,34 +1432,16 @@ function createNewPatient() {
   state.draftRows = [createDraftRow()];
   renderDrugRows();
   renderStockData();
-  renderPrescriptionVisitTabs();
   renderPatientList();
-  renderEditBanner();
-  updateSaveButtons();
-  updateTotals();
-  updateWarning();
+  refreshVisitView();
 }
 
+// "Toa mới": chỉ xóa hết dòng thuốc của lần khám đang chọn để kê lại từ đầu
 function createNewPrescription() {
-  state.selectedVisitId = "";
-  state.editingVisitId = "";
-  refs.visitDoctor.value = refs.visitDoctor.value.trim() || (state.selectedPatientDetail?.visits || [])[0]?.doctor || state.clinicInfo?.doctor || state.doctors[0] || "";
-  refs.symptom.value = "";
-  refs.symptomSuggestBox.classList.add("hidden");
-  refs.icdInput.value = "";
-  refs.icdInput.placeholder = "Gõ mã hoặc vài chữ";
-  autoGrowField(refs.icdInput);
-  refs.followDate.value = "";
-  refs.serviceFee.value = "0";
-  refs.serviceMoney.value = "0";
-  setAdviceNote(DEFAULT_ADVICE_NOTE);
-  resetMoneyOverrides();
-  state.autoSuggestedRowKeys = [];
   state.draftRows = [createDraftRow()];
+  state.autoSuggestedRowKeys = [];
+  state.moneyOverrides.drug = null;
   renderDrugRows();
-  renderPrescriptionVisitTabs();
-  renderEditBanner();
-  updateSaveButtons();
   updateTotals();
   updateWarning();
 }
@@ -2980,14 +2990,15 @@ async function saveEncounter() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(visitPayload)
     });
-    // lưu toa mới xong thì chuyển sang sửa chính toa vừa tạo: bấm lưu lần nữa sẽ cập nhật, không sinh toa trùng
-    state.editingVisitId = saved._id;
+    // lưu lần mới xong thì chọn luôn lần vừa tạo: bấm lưu lần nữa sẽ là PUT, không sinh trùng
+    // loadPatients() bên dưới nạp lại bệnh nhân và chọn đúng lần này (selectPatient với editVisitId)
+    state.selectedVisitId = state.editingVisitId = saved._id;
 
     const warnings = saved.warnings || [];
     if (warnings.length) {
       showToast(`Đã lưu. Cảnh báo âm kho: ${warnings.map((item) => `${item.brandName} (${formatNumber(item.quantity)})`).join(", ")}`, "warn", 7000);
     } else {
-      showToast(editingId ? "Đã lưu thay đổi toa." : "Đã lưu lượt khám và toa thuốc.", "success");
+      showToast(editingId ? `Đã lưu thay đổi lần khám L${saved.visitNo}.` : "Đã lưu lượt khám và toa thuốc.", "success");
     }
     await Promise.all([loadDashboard(), loadQuickStats(), loadDrugs(), loadPatients()]);
   } catch (error) {
