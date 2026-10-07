@@ -20,10 +20,8 @@ const CORS_ORIGINS = String(process.env.CORS_ORIGINS || "")
 
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const IS_PROD = process.env.NODE_ENV === "production";
-const APP_BASE_URL = String(process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
 const ACCESS_TOKEN_SECONDS = 15 * 60;
 const SESSION_DAYS = 30;
-const RESET_TOKEN_MINUTES = 30;
 const CHANGE_CODE_MINUTES = 10;
 const CHANGE_CODE_MAX_ATTEMPTS = 5;
 const BCRYPT_COST = 12;
@@ -210,8 +208,6 @@ const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
-    passwordResetTokenHash: { type: String, default: "" },
-    passwordResetExpires: { type: Date, default: null },
     passwordChangeCodeHash: { type: String, default: "" },
     passwordChangeCodeExpires: { type: Date, default: null },
     passwordChangeAttempts: { type: Number, default: 0 }
@@ -245,7 +241,6 @@ const authRouter = express.Router();
 // ponytail: rate limit in-memory, mất khi restart; đủ cho 1 user
 const rateBuckets = new Map();
 const GENERIC_LOGIN_ERROR = "Email hoặc mật khẩu không đúng";
-const FORGOT_MESSAGE = "Nếu email tồn tại trong hệ thống, đường dẫn đặt lại mật khẩu đã được gửi.";
 let dummyPasswordHash = "";
 
 authRouter.post("/login", async (req, res) => {
@@ -321,60 +316,8 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   res.json({ user: { email: user.email } });
 });
 
-authRouter.post("/forgot-password", async (req, res) => {
-  const email = normalizeEmail(req.body?.email);
-  const limitKey = `forgot|${req.ip}|${email}`;
-  if (isRateLimited(limitKey)) {
-    throw createHttpError(429, "Thử quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
-  }
-  recordRateHit(limitKey);
-
-  const user = email ? await User.findOne({ email }) : null;
-  if (user) {
-    const token = crypto.randomBytes(32).toString("hex");
-    user.passwordResetTokenHash = sha256(token);
-    user.passwordResetExpires = new Date(Date.now() + RESET_TOKEN_MINUTES * 60000);
-    await user.save();
-    // không await: thời gian phản hồi không phụ thuộc email có tồn tại hay không
-    sendResetEmail(user.email, `${APP_BASE_URL}/?reset=${token}`).catch((error) => {
-      console.error("Không gửi được email đặt lại mật khẩu:", error.message);
-    });
-  }
-  res.json({ message: FORGOT_MESSAGE });
-});
-
-authRouter.post("/reset-password", async (req, res) => {
-  const token = String(req.body?.token || "");
-  const password = String(req.body?.password || "");
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw createHttpError(400, `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`);
-  }
-
-  const user = token
-    ? await User.findOne({ passwordResetTokenHash: sha256(token), passwordResetExpires: { $gt: new Date() } })
-    : null;
-  if (!user) {
-    throw createHttpError(400, "Đường dẫn đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.");
-  }
-
-  user.passwordHash = await bcrypt.hash(password, BCRYPT_COST);
-  user.passwordResetTokenHash = "";
-  user.passwordResetExpires = null;
-  await user.save();
-  await Session.updateMany({ userId: user._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
-  res.json({ ok: true });
-});
-
-// Đổi mật khẩu khi đã đăng nhập: gửi mã 6 số về email, nhập đúng mã mới được đổi
-authRouter.post("/change-password/request", requireAuth, async (req, res) => {
-  const limitKey = `chgreq|${req.userId}`;
-  if (isRateLimited(limitKey)) {
-    throw createHttpError(429, "Yêu cầu mã quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
-  }
-  recordRateHit(limitKey);
-
-  const user = await User.findById(req.userId);
-  if (!user) throw createHttpError(401, "Phiên đăng nhập không hợp lệ.");
+// tạo mã 6 số, lưu băm và gửi về email (dùng cho cả đổi mật khẩu và quên mật khẩu)
+async function sendChangeCode(user) {
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
   user.passwordChangeCodeHash = sha256(code);
   user.passwordChangeCodeExpires = new Date(Date.now() + CHANGE_CODE_MINUTES * 60000);
@@ -392,12 +335,25 @@ authRouter.post("/change-password/request", requireAuth, async (req, res) => {
     console.error("Không gửi được email mã đổi mật khẩu:", error.message);
     throw createHttpError(502, "Không gửi được email. Vui lòng thử lại sau.");
   }
+}
+
+// Đổi mật khẩu khi đã đăng nhập: gửi mã 6 số về email, nhập đúng mã mới được đổi
+authRouter.post("/change-password/request", requireAuth, async (req, res) => {
+  const limitKey = `chgreq|${req.userId}`;
+  if (isRateLimited(limitKey)) {
+    throw createHttpError(429, "Yêu cầu mã quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
+  }
+  recordRateHit(limitKey);
+
+  const user = await User.findById(req.userId);
+  if (!user) throw createHttpError(401, "Phiên đăng nhập không hợp lệ.");
+  await sendChangeCode(user);
   res.json({ email: user.email, expiresInMinutes: CHANGE_CODE_MINUTES });
 });
 
 // kiểm tra mã (không tiêu thụ mã); mã sai được tính vào số lần thử
 async function assertChangeCode(user, code) {
-  const live = user.passwordChangeCodeHash && user.passwordChangeCodeExpires > new Date() && user.passwordChangeAttempts < CHANGE_CODE_MAX_ATTEMPTS;
+  const live = user && user.passwordChangeCodeHash && user.passwordChangeCodeExpires > new Date() && user.passwordChangeAttempts < CHANGE_CODE_MAX_ATTEMPTS;
   if (!live) throw createHttpError(400, "Mã xác nhận đã hết hạn. Vui lòng gửi lại mã.");
   const expected = Buffer.from(user.passwordChangeCodeHash);
   const given = Buffer.from(sha256(String(code || "").trim()));
@@ -433,6 +389,45 @@ authRouter.post("/change-password/confirm", requireAuth, async (req, res) => {
   // thu hồi mọi phiên (kể cả thiết bị khác), cấp lại phiên mới cho thiết bị đang đổi
   await Session.updateMany({ userId: user._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
   await issueRefreshToken(res, user._id, crypto.randomUUID(), new Date(Date.now() + SESSION_DAYS * 86400000));
+  res.json({ ok: true });
+});
+
+// Quên mật khẩu (chưa đăng nhập): cùng cơ chế mã 6 số. Email không tồn tại vẫn trả về như thành công,
+// bước nhập mã sẽ báo mã hết hạn.
+function findForgotUser(req) {
+  return User.findOne({ email: normalizeEmail(req.body?.email) });
+}
+
+authRouter.post("/forgot-password/request", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const limitKey = `forgot|${req.ip}|${email}`;
+  if (isRateLimited(limitKey)) {
+    throw createHttpError(429, "Thử quá nhiều lần. Vui lòng đợi 15 phút rồi thử lại.");
+  }
+  recordRateHit(limitKey);
+  const user = await findForgotUser(req);
+  if (user) await sendChangeCode(user);
+  res.json({ email, expiresInMinutes: CHANGE_CODE_MINUTES });
+});
+
+authRouter.post("/forgot-password/verify", async (req, res) => {
+  await assertChangeCode(await findForgotUser(req), req.body?.code);
+  res.json({ ok: true });
+});
+
+authRouter.post("/forgot-password/reset", async (req, res) => {
+  const password = String(req.body?.password || "");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw createHttpError(400, `Mật khẩu tối thiểu ${MIN_PASSWORD_LENGTH} ký tự.`);
+  }
+  const user = await findForgotUser(req);
+  await assertChangeCode(user, req.body?.code);
+  user.passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  user.passwordChangeCodeHash = "";
+  user.passwordChangeCodeExpires = null;
+  user.passwordChangeAttempts = 0;
+  await user.save();
+  await Session.updateMany({ userId: user._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
   res.json({ ok: true });
 });
 
@@ -507,16 +502,6 @@ function recordRateHit(key) {
   const hits = rateBuckets.get(key) || [];
   hits.push(Date.now());
   rateBuckets.set(key, hits);
-}
-
-async function sendResetEmail(to, link) {
-  await sendMail({
-    to,
-    subject: "Đặt lại mật khẩu PK Dr. Minh",
-    text: `Mở đường dẫn sau để đặt lại mật khẩu (hết hạn sau ${RESET_TOKEN_MINUTES} phút, chỉ dùng một lần):\n${link}\n\nNếu bạn không yêu cầu, hãy bỏ qua email này.`,
-    html: `<p>Mở đường dẫn sau để đặt lại mật khẩu (hết hạn sau ${RESET_TOKEN_MINUTES} phút, chỉ dùng một lần):</p><p><a href="${link}">${link}</a></p><p>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`,
-    devNote: `Link đặt lại mật khẩu cho ${to}: ${link}`
-  });
 }
 
 async function sendMail({ to, subject, text, html, devNote }) {
@@ -709,6 +694,9 @@ app.put("/api/patients/:id", async (req, res, next) => {
     if (!patient) {
       return res.status(404).json({ error: "Khong tim thay benh nhan de cap nhat." });
     }
+
+    // tên và SĐT được chép vào từng lần khám lúc tạo: đồng bộ lại để mọi lần khám khớp hồ sơ
+    await Visit.updateMany({ patientId: patient._id }, { $set: { patientName: patient.fullName, patientPhone: patient.phone } });
 
     res.json(patient);
   } catch (error) {

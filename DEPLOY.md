@@ -19,7 +19,6 @@ Một web service Render chạy Express, phục vụ cả giao diện tĩnh (`mi
 | `MONGODB_URI_DIRECT` | không | Chuỗi dự phòng dạng `mongodb://host1,host2,...` khi DNS SRV bị lỗi. |
 | `JWT_ACCESS_SECRET` | có | Chuỗi ngẫu nhiên dài. Tạo bằng `openssl rand -hex 32`. Thiếu thì server không khởi động. |
 | `NODE_ENV` | có | `production`. Bật cờ `Secure` cho cookie đăng nhập (cần HTTPS, Render đã có sẵn). |
-| `APP_BASE_URL` | có | Địa chỉ công khai, ví dụ `https://pk-dr-minh.onrender.com` (không có dấu `/` ở cuối). Dùng để tạo link đặt lại mật khẩu. |
 | `SMTP_HOST` | để gửi email quên mật khẩu | `smtp.gmail.com` |
 | `SMTP_PORT` | như trên | `587` (STARTTLS) hoặc `465` (SSL) |
 | `SMTP_USER` | như trên | Địa chỉ Gmail gửi thư |

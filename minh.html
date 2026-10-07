@@ -53,7 +53,6 @@
       <div class="auth__brand">
         <span class="auth__logo"><svg class="icon icon--lg" aria-hidden="true"><use href="#i-building-2"/></svg></span>
         <h1 id="authClinicName">PK Dr. Minh</h1>
-        <p class="sub">Hồ sơ khám và kê toa</p>
       </div>
 
       <form id="loginForm" class="auth__form" novalidate>
@@ -74,28 +73,33 @@
       </form>
 
       <form id="forgotForm" class="auth__form hidden" novalidate>
-        <p class="sub">Nhập email tài khoản. Nếu email tồn tại, chúng tôi sẽ gửi đường dẫn đặt lại mật khẩu (hiệu lực 30 phút).</p>
-        <div>
+        <p class="sub" id="forgotIntro"></p>
+        <div id="forgotStepEmail">
           <label class="label" for="forgotEmail">Email</label>
           <input class="field" id="forgotEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required />
         </div>
-        <p class="auth__msg" id="forgotMsg" role="status"></p>
-        <button class="btn primary btn--block" id="forgotSubmit" type="submit">Gửi đường dẫn</button>
-        <button class="link-btn" data-auth-view="login" type="button">Quay lại đăng nhập</button>
-      </form>
-
-      <form id="resetForm" class="auth__form hidden" novalidate>
-        <p class="sub">Đặt mật khẩu mới (tối thiểu 8 ký tự).</p>
-        <div>
-          <label class="label" for="resetPassword">Mật khẩu mới</label>
-          <input class="field" id="resetPassword" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="stack hidden" id="forgotStepCode">
+          <div class="otp" id="forgotOtp" role="group" aria-label="Mã xác nhận 6 số"></div>
+          <button class="link-btn" id="forgotResendBtn" type="button">Gửi lại mã</button>
         </div>
-        <div>
-          <label class="label" for="resetPassword2">Nhập lại</label>
-          <input class="field" id="resetPassword2" type="password" autocomplete="new-password" minlength="8" required />
+        <div class="stack hidden" id="forgotStepNew">
+          <div>
+            <label class="label" for="resetPassword">Mật khẩu mới</label>
+            <div class="input-with-btn">
+              <input class="field" id="resetPassword" type="password" autocomplete="new-password" />
+              <button class="icon-btn" type="button" data-pw-eye="resetPassword" aria-label="Hiện mật khẩu" title="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button>
+            </div>
+          </div>
+          <div>
+            <label class="label" for="resetPassword2">Nhập lại</label>
+            <div class="input-with-btn">
+              <input class="field" id="resetPassword2" type="password" autocomplete="new-password" />
+              <button class="icon-btn" type="button" data-pw-eye="resetPassword2" aria-label="Hiện mật khẩu" title="Hiện mật khẩu" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></button>
+            </div>
+          </div>
         </div>
-        <p class="auth__msg" id="resetMsg" role="alert"></p>
-        <button class="btn primary btn--block" id="resetSubmit" type="submit">Đặt lại mật khẩu</button>
+        <p class="auth__msg" id="forgotMsg" role="alert"></p>
+        <button class="btn primary btn--block" id="forgotSubmit" type="submit">Gửi mã</button>
         <button class="link-btn" data-auth-view="login" type="button">Quay lại đăng nhập</button>
       </form>
     </div>
@@ -415,7 +419,7 @@
       <a class="tab" href="#clinic" data-tab="clinic"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
     </nav>
 
-    <button class="fab hidden" id="saveFab" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Lưu / Hoàn tất khám</span></button>
+    <button class="fab hidden" id="saveFab" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Hoàn tất khám</span></button>
   </div>
 
   <input type="file" id="importFile" accept=".json,application/json" hidden />

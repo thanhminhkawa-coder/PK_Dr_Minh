@@ -27,8 +27,6 @@ async function main() {
   if (existing) {
     existing.email = email;
     existing.passwordHash = passwordHash;
-    existing.passwordResetTokenHash = "";
-    existing.passwordResetExpires = null;
     await existing.save();
     await Session.updateMany({ userId: existing._id, revokedAt: null }, { $set: { revokedAt: new Date() } });
     console.log(`Đã đổi mật khẩu cho ${email}; mọi phiên đăng nhập cũ đã bị thu hồi.`);

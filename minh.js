@@ -270,8 +270,8 @@ window.addEventListener("DOMContentLoaded", () => {
 function cacheRefs() {
   [
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
-    "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "resetForm",
-    "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
+    "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "forgotIntro", "forgotStepEmail", "forgotStepCode", "forgotStepNew", "forgotOtp", "forgotResendBtn",
+    "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "newBtn", "visitPicker", "visitModeHint",
     "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
@@ -356,10 +356,11 @@ function bindEvents() {
 
   refs.loginForm.addEventListener("submit", handleLoginSubmit);
   refs.forgotForm.addEventListener("submit", handleForgotSubmit);
-  refs.resetForm.addEventListener("submit", handleResetSubmit);
+  refs.forgotResendBtn.addEventListener("click", sendForgotCode);
+  [refs.forgotOtp].forEach((el) => { el.addEventListener("input", handleOtpInput); el.addEventListener("keydown", handleOtpKeydown); });
   refs.showForgotBtn.addEventListener("click", () => {
     refs.forgotEmail.value = refs.loginEmail.value;
-    showAuthView("forgot");
+    openForgot();
   });
   refs.loginPasswordToggle.addEventListener("click", toggleLoginPassword);
   refs.pwSendBtn.addEventListener("click", sendPasswordCode);
@@ -367,7 +368,7 @@ function bindEvents() {
   refs.pwConfirmBtn.addEventListener("click", confirmPasswordChange);
   refs.pwOtp.addEventListener("input", handleOtpInput);
   refs.pwOtp.addEventListener("keydown", handleOtpKeydown);
-  refs.passwordModal.addEventListener("click", (event) => {
+  document.addEventListener("click", (event) => {
     const eye = event.target.closest("[data-pw-eye]");
     if (eye) { const input = document.getElementById(eye.dataset.pwEye); setPasswordVisible(input, input.type === "password"); }
   });
@@ -539,12 +540,6 @@ async function bootAuth() {
     if (cachedName) refs.authClinicName.textContent = cachedName;
   } catch {}
 
-  if (new URLSearchParams(location.search).get("reset")) {
-    showAuthView("reset");
-    refs.splash.classList.add("hidden");
-    return;
-  }
-
   try {
     const data = await refreshAccessToken();
     enterApp(data.user);
@@ -598,8 +593,7 @@ function showAuthView(view) {
   refs.authScreen.classList.remove("hidden");
   refs.loginForm.classList.toggle("hidden", view !== "login");
   refs.forgotForm.classList.toggle("hidden", view !== "forgot");
-  refs.resetForm.classList.toggle("hidden", view !== "reset");
-  const first = { login: refs.loginEmail, forgot: refs.forgotEmail, reset: refs.resetPassword }[view];
+  const first = { login: refs.loginEmail, forgot: refs.forgotEmail }[view];
   if (first && !phoneLayoutQuery.matches) first.focus();
 }
 
@@ -628,8 +622,16 @@ const OTP_LENGTH = 6;
 let pwCode = "";
 let pwVerifying = false;
 
+function otpBoxes(otp) {
+  return [...otp.querySelectorAll(".otp__box")];
+}
+
 function pwBoxes() {
-  return [...refs.pwOtp.querySelectorAll(".otp__box")];
+  return otpBoxes(refs.pwOtp);
+}
+
+function fillOtp(otp) {
+  otp.innerHTML = Array.from({ length: OTP_LENGTH }, (_, i) => `<input class="field otp__box" inputmode="numeric" maxlength="1" autocomplete="${i ? "off" : "one-time-code"}" aria-label="Số thứ ${i + 1}" />`).join("");
 }
 
 function showPasswordStep(step) {
@@ -641,7 +643,7 @@ function showPasswordStep(step) {
 
 function openPasswordModal() {
   pwCode = "";
-  refs.pwOtp.innerHTML = Array.from({ length: OTP_LENGTH }, (_, i) => `<input class="field otp__box" inputmode="numeric" maxlength="1" autocomplete="${i ? "off" : "one-time-code"}" aria-label="Số thứ ${i + 1}" />`).join("");
+  fillOtp(refs.pwOtp);
   [refs.pwNew, refs.pwNew2].forEach((input) => { input.value = ""; setPasswordVisible(input, false); });
   setAuthMessage(refs.pwMsg, "");
   refs.pwIntro.textContent = `Mã xác nhận gồm ${OTP_LENGTH} số sẽ được gửi tới ${refs.accountEmail.textContent}.`;
@@ -701,14 +703,15 @@ async function verifyPasswordCode() {
 function handleOtpInput(event) {
   const box = event.target;
   if (!box.classList.contains("otp__box")) return;
-  const boxes = pwBoxes();
+  const boxes = otpBoxes(box.closest(".otp"));
   const digits = box.value.replace(/\D/g, "");
   box.value = digits.slice(-1);
   // dán nhiều số: rải vào các ô từ ô hiện tại
   if (digits.length > 1) digits.slice(0, OTP_LENGTH).split("").forEach((digit, i) => { if (boxes[i]) boxes[i].value = digit; });
   const next = boxes.find((item) => !item.value);
   (next || boxes[OTP_LENGTH - 1]).focus();
-  verifyPasswordCode();
+  if (box.closest(".otp") === refs.forgotOtp) verifyForgotCode();
+  else verifyPasswordCode();
 }
 
 function handleOtpKeydown(event) {
@@ -737,7 +740,7 @@ async function confirmPasswordChange() {
 
 function setPasswordVisible(input, show) {
   input.type = show ? "text" : "password";
-  const eye = refs.passwordModal.querySelector(`[data-pw-eye="${input.id}"]`);
+  const eye = document.querySelector(`[data-pw-eye="${input.id}"]`);
   eye.setAttribute("aria-pressed", String(show));
   eye.setAttribute("aria-label", show ? "Ẩn mật khẩu" : "Hiện mật khẩu");
   eye.title = show ? "Ẩn mật khẩu" : "Hiện mật khẩu";
@@ -766,48 +769,87 @@ async function handleLoginSubmit(event) {
   }
 }
 
+// ---- Quên mật khẩu: cùng cơ chế gửi mã 6 số (email → mã → mật khẩu mới) ----
+
+let forgotStep = "email";
+let forgotCode = "";
+let forgotVerifying = false;
+
+function showForgotStep(step) {
+  forgotStep = step;
+  refs.forgotStepEmail.classList.toggle("hidden", step !== "email");
+  refs.forgotStepCode.classList.toggle("hidden", step !== "code");
+  refs.forgotStepNew.classList.toggle("hidden", step !== "new");
+  refs.forgotSubmit.classList.toggle("hidden", step === "code");
+  refs.forgotSubmit.textContent = step === "new" ? "Đổi mật khẩu" : "Gửi mã";
+}
+
+function openForgot() {
+  forgotCode = "";
+  [refs.resetPassword, refs.resetPassword2].forEach((input) => { input.value = ""; setPasswordVisible(input, false); });
+  setAuthMessage(refs.forgotMsg, "");
+  refs.forgotIntro.textContent = `Nhập email tài khoản. Mã xác nhận gồm ${OTP_LENGTH} số sẽ được gửi tới email đó.`;
+  showForgotStep("email");
+  showAuthView("forgot");
+}
+
+async function sendForgotCode() {
+  const email = refs.forgotEmail.value.trim();
+  if (!email) return setAuthMessage(refs.forgotMsg, "Nhập email.");
+  setAuthMessage(refs.forgotMsg, "");
+  const button = forgotStep === "code" ? refs.forgotResendBtn : refs.forgotSubmit;
+  setBusy(button, true);
+  try {
+    const data = await authRequest("/api/auth/forgot-password/request", { email });
+    refs.forgotIntro.textContent = `Nếu email tồn tại, mã đã được gửi tới ${data.email}. Mã có hiệu lực ${data.expiresInMinutes} phút.`;
+    fillOtp(refs.forgotOtp);
+    showForgotStep("code");
+    otpBoxes(refs.forgotOtp)[0].focus();
+  } catch (error) {
+    setAuthMessage(refs.forgotMsg, error.message);
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+async function verifyForgotCode() {
+  const boxes = otpBoxes(refs.forgotOtp);
+  const code = boxes.map((box) => box.value).join("");
+  if (code.length < OTP_LENGTH || forgotVerifying) return;
+  forgotVerifying = true;
+  setAuthMessage(refs.forgotMsg, "");
+  try {
+    await authRequest("/api/auth/forgot-password/verify", { email: refs.forgotEmail.value.trim(), code });
+    forgotCode = code;
+    refs.forgotIntro.textContent = "Mã đúng. Nhập mật khẩu mới.";
+    showForgotStep("new");
+    refs.resetPassword.focus();
+  } catch (error) {
+    setAuthMessage(refs.forgotMsg, error.message);
+    boxes.forEach((box) => { box.value = ""; });
+    boxes[0].focus();
+  } finally {
+    forgotVerifying = false;
+  }
+}
+
 async function handleForgotSubmit(event) {
   event.preventDefault();
-  const email = refs.forgotEmail.value.trim();
-  if (!email) {
-    setAuthMessage(refs.forgotMsg, "Nhập email.");
-    return;
-  }
+  if (forgotStep === "email") return sendForgotCode();
+  const password = refs.resetPassword.value;
+  if (password.length < 8) return setAuthMessage(refs.forgotMsg, "Mật khẩu tối thiểu 8 ký tự.");
+  if (password !== refs.resetPassword2.value) return setAuthMessage(refs.forgotMsg, "Hai mật khẩu không khớp.");
+  setAuthMessage(refs.forgotMsg, "");
   setBusy(refs.forgotSubmit, true);
   try {
-    const data = await authRequest("/api/auth/forgot-password", { email });
-    setAuthMessage(refs.forgotMsg, data.message, true);
+    await authRequest("/api/auth/forgot-password/reset", { email: refs.forgotEmail.value.trim(), code: forgotCode, password });
+    refs.loginEmail.value = refs.forgotEmail.value.trim();
+    showAuthView("login");
+    setAuthMessage(refs.loginMsg, "Đã đặt lại mật khẩu. Vui lòng đăng nhập.", true);
   } catch (error) {
     setAuthMessage(refs.forgotMsg, error.message);
   } finally {
     setBusy(refs.forgotSubmit, false);
-  }
-}
-
-async function handleResetSubmit(event) {
-  event.preventDefault();
-  const password = refs.resetPassword.value;
-  if (password.length < 8) {
-    setAuthMessage(refs.resetMsg, "Mật khẩu tối thiểu 8 ký tự.");
-    return;
-  }
-  if (password !== refs.resetPassword2.value) {
-    setAuthMessage(refs.resetMsg, "Hai mật khẩu không khớp.");
-    return;
-  }
-  setBusy(refs.resetSubmit, true);
-  try {
-    const token = new URLSearchParams(location.search).get("reset") || "";
-    await authRequest("/api/auth/reset-password", { token, password });
-    history.replaceState(null, "", `${location.pathname}${location.hash}`);
-    refs.resetPassword.value = "";
-    refs.resetPassword2.value = "";
-    showAuthView("login");
-    setAuthMessage(refs.loginMsg, "Đã đặt lại mật khẩu. Vui lòng đăng nhập.", true);
-  } catch (error) {
-    setAuthMessage(refs.resetMsg, error.message);
-  } finally {
-    setBusy(refs.resetSubmit, false);
   }
 }
 
@@ -1219,7 +1261,7 @@ function renderVisitPicker() {
   const current = findHistoryVisit(state.editingVisitId);
   refs.visitModeHint.textContent = current
     ? `Đang xem L${current.visitNo} · Lưu sẽ cập nhật lần khám này`
-    : `Lần khám mới · Lưu sẽ tạo L${draftNo} và trừ kho thuốc`;
+    : "";
 }
 
 function handleVisitPickerClick(event) {
@@ -1273,7 +1315,7 @@ function startNewVisitDraft() {
 }
 
 function updateSaveButtons() {
-  const label = state.editingVisitId ? "Lưu thay đổi" : phoneLayoutQuery.matches ? "Lưu" : "Lưu / Hoàn tất khám";
+  const label = state.editingVisitId ? "Lưu thay đổi" : "Hoàn tất khám";
   const button = refs.saveFab;
   button.querySelector(".save-label").textContent = label;
   button.disabled = state.saving;
