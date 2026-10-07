@@ -51,6 +51,7 @@
   --bg-input: #ffffff;          /* ô nhập, select */
   --bg-control: #ffffff;        /* nút thường, nút phân trang */
   --bg-hover: #eef4f8;
+  --bg-fee: #eef4f8;            /* nền ô Công khám */
   --bg-badge: #f1f5f9;
   --bg-brand-soft: #eefcfb;     /* dòng đang chọn, gợi ý đang chọn */
   --bg-brand-soft-2: #e9fbfb;   /* ô Tổng tiền */
@@ -93,7 +94,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-page: #202124; --bg-subtle: #28292c; --bg-subtle-2: #28292c; --bg-subtle-3: #28292c; --bg-row-hover: #2c2d30;
-  --bg-raised: #2f3033; --bg-input: #2a2b2e; --bg-control: #2a2b2e; --bg-hover: #3a3b3e; --bg-badge: #35363a;
+  --bg-raised: #2f3033; --bg-input: #2a2b2e; --bg-fee: #2a2b2e; --bg-control: #2a2b2e; --bg-hover: #3a3b3e; --bg-badge: #35363a;
   --bg-brand-soft: #1d393a; --bg-brand-soft-2: #1d393a; --bg-brand-soft-3: #1d393a; --soft: #1d393a;
   --bg-topnav: rgba(36, 37, 40, .92); --bg-tabbar: rgba(36, 37, 40, .97);
   --bg-overlay: rgba(0, 0, 0, .6); --bg-overlay-sheet: rgba(0, 0, 0, .6);
@@ -163,6 +164,7 @@ h1, h2 { overflow-wrap: anywhere; font-weight: var(--fw-bold); }
   stroke-linejoin: round;
 }
 .icon--lg { width: 32px; height: 32px; }
+.icon--phone { display: none; }
 .icon--tab { width: 24px; height: 24px; }
 
 /* ---------- Buttons & fields ---------- */
@@ -350,7 +352,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 }
 .tab:hover { background: var(--bg-hover); }
 .tab.is-active { background: var(--soft); color: var(--text-brand); }
-.tabbar, .mobile-head { display: none; }
+.tabbar { display: none; }
 
 @media (min-width: 1360px) {
   .btn__label { display: inline; }
@@ -419,6 +421,8 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   font-size: var(--fs-base);
 }
 .suggest-item:last-child { border-bottom: none; }
+.suggest-item small { display: block; color: var(--text-muted); font-size: var(--fs-sm); }
+.suggest-head { padding: 10px 14px 6px; color: var(--text-muted); font-size: var(--fs-sm); font-weight: var(--fw-medium); }
 .suggest-item:hover, .suggest-item.is-active { background: var(--bg-brand-soft); }
 .service-fee-suggest { max-height: 260px; overflow-y: auto; padding: 6px; }
 .service-fee-item {
@@ -502,7 +506,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--btn-gap); padding: var(--space-3) 14px; border-top: 1px solid var(--line); background: var(--bg-page); }
 .pager:empty { display: none; }
 .pager__range { color: var(--text-muted); font-size: var(--fs-sm); }
-.pager__list { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pager__list { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; margin-left: auto; }
 .pager__btn {
   display: inline-flex;
   align-items: center;
@@ -602,7 +606,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 
 /* năm sinh: badge tuổi và nút lịch nằm trong ô */
 .year-field { position: relative; }
-.year-field .field { padding-right: 132px; }
+.year-field .field { padding-right: 90px; cursor: pointer; }
 .birth-year-btn, .date-pick-btn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: center; justify-content: center;
@@ -738,7 +742,8 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 0 var(--space-4);
+  --row-pad: var(--space-4);
+  padding: 0 var(--row-pad);
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--bg-page);
@@ -759,10 +764,12 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   font-weight: var(--fw-medium);
   color: inherit;
 }
-.money-total { font-size: var(--fs-lg); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
-.warning-box { min-height: 28px; margin-top: var(--space-3); overflow-wrap: anywhere; color: var(--text-warn); font-size: var(--fs-base); font-weight: var(--fw-medium); }
-.warning-box:empty { min-height: 0; margin: 0; }
-.warning-box .is-neg { color: var(--text-danger); }
+/* ô Công khám: nền xám phủ hết chiều cao và sát mép phải của hàng, không viền; chữ giữ nguyên vị trí */
+.money-row:has(#serviceMoney) { padding-right: 0; overflow: hidden; }
+.money-row:has(#serviceMoney) .money-picker { align-self: stretch; display: flex; }
+.money-row #serviceMoney { width: calc(180px + var(--row-pad)); height: auto; border: 0; border-radius: var(--control-radius) 0 0 var(--control-radius); padding-right: calc(var(--row-pad) + 12px); background: var(--bg-fee); }
+.money-row #serviceMoney:focus { box-shadow: inset 0 0 0 2px var(--field-border-focus); }
+.money-total { padding-right: 12px; /* bằng đệm của ô nhập để 3 số tiền thẳng hàng bên phải */ font-size: var(--fs-lg); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
 
 
 /* ---------- Stats ---------- */
@@ -827,10 +834,10 @@ dialog.modal {
 dialog.modal[open] { display: flex; flex-direction: column; }
 dialog.modal::backdrop { background: var(--bg-overlay); }
 dialog.modal--full { width: min(980px, calc(100% - 24px)); }
-.modal__form { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.modal__form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 .modal__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg-raised); }
 .modal__head strong { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-lg); font-weight: var(--fw-bold); line-height: var(--lh-heading); }
-.modal__body { padding: 16px; overflow: auto; flex: 1; min-height: 0; -webkit-overflow-scrolling: touch; }
+.modal__body { padding: 16px; overflow: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; }
 .modal__foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px calc(12px + var(--safe-b)); background: var(--bg-raised); }
 .modal__spacer { flex: 1; }
 dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh - 32px, 1100px); }
@@ -931,7 +938,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 /* ---------- ≥768px: nav trên cùng ---------- */
 @media (min-width: 768px) {
-  .tabbar, .mobile-head { display: none !important; }
+  .tabbar, #panel-settings { display: none !important; }
 }
 
 /* ---------- <768px: điện thoại ---------- */
@@ -939,9 +946,12 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .page { padding: 0 0 calc(var(--tabbar-h) + 16px + 52px + 24px + var(--safe-b)); }
   :root { --section-gap: var(--space-5); --title-gap: var(--space-3); --row-gap: 14px; --col-gap: var(--space-3); --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 22px; --fs-num: 26px; --control-h-sm: 44px; }
   .shell { padding: var(--space-4); }
-  .card { padding: 12px; }.mobile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: var(--space-4); }
-  .mobile-head h1 { margin: 0; min-width: 0; font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: var(--lh-heading); color: var(--text-brand); }
-  .mobile-head__actions { display: flex; gap: 6px; flex: none; }
+  .card { padding: 12px; }
+  .settings-page { display: grid; gap: var(--space-3); padding-top: var(--space-4); }
+  .settings-page h2 { margin: 0 0 var(--space-2); font-size: var(--fs-2xl); color: var(--text-brand); }
+  .settings-page .btn { justify-content: flex-start; min-height: 52px; border: 1px solid var(--line); background: var(--bg-raised); }
+  .tabbar .tab span { display: none; }
+  body.kb-open .tabbar, body.kb-open .fab { display: none; }
 
   .tabbar {
     position: fixed;
@@ -950,7 +960,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
     bottom: 0;
     z-index: 60;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     min-height: calc(var(--tabbar-h) + var(--safe-b));
     padding-bottom: var(--safe-b);
     background: var(--bg-tabbar);
@@ -961,23 +971,56 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .tabbar .tab.is-active { background: transparent; box-shadow: inset 0 3px 0 var(--primary); }
   .tabbar .tab.is-active .icon, .tabbar .tab.is-active span { color: var(--text-brand); }
 
-  .fab { right: 16px; bottom: calc(var(--tabbar-h) + 16px + var(--safe-b)); padding: 0 20px; }
-  .toast { bottom: calc(var(--tabbar-h) + 16px + 52px + 12px + var(--safe-b)); left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
+  .fab { right: 16px; bottom: calc(var(--tabbar-h) + 16px + var(--safe-b)); width: 52px; padding: 0; justify-content: center; }
+  .fab .save-label { display: none; }
+  .toast { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
 
   .searchbar { display: grid; grid-template-columns: 1fr 1fr; }
   .form-actions .btn { white-space: nowrap; }
-  .birth-year-btn { display: none; }
   .year-field .field { padding-right: 90px; }
   .age-badge { right: 12px; }
+  .visit-date, .fee-col .date-field { width: 50%; }
+  #previewPrintBtn { display: none; }
+  .code-toolbar [data-action="add-drug"] span, .code-toolbar [data-action="create-icd"] span { display: none; }
+  /* nút Thêm cùng kích thước với nút icon trong các dòng (nhập kho, sửa) */
+  .code-toolbar [data-action="add-drug"], .code-toolbar [data-action="create-icd"] {
+    width: var(--control-h-sm); height: var(--control-h-sm); min-height: 0; padding: 0; flex: none;
+  }
+  .code-toolbar { gap: var(--space-2); }
+  /* nút Bệnh nhân mới: vuông, xanh, icon +, sát phải tiêu đề (giống nút Thêm ở Kho thuốc) */
+  .card-title:has(#newBtn) { flex-wrap: nowrap; }
+  .card-title:has(#newBtn) .row-actions { width: auto; flex: none; }
+  #newBtn { width: var(--control-h-sm); height: var(--control-h-sm); min-height: 0; padding: 0; flex: none; background: var(--primary); border-color: transparent; color: var(--text-on-primary); }
+  #newBtn span, #newBtn .icon--pc { display: none; }
+  #newBtn .icon--phone { display: inline-block; }
+  #adviceNote { height: var(--ctl-h); } /* Lời dặn cao bằng ô Ngày tái khám, dài hơn thì cuộn */
+  #adviceNote:focus { height: auto; } /* đang soạn thì giãn ra 4 dòng như cũ */
+  #visitPickerCard { padding-bottom: 9px; } /* khoảng dưới ô Ngày khám = khoảng từ đường kẻ trên đến chữ "Lần khám" */
+  .visit-hint { min-height: 0; flex-basis: 100%; }
+  .visit-hint:empty { display: none; }
+  .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .info-grid > * { grid-column: 1 / -1; }
+  .info-grid > .f-phone, .info-grid > .f-year { grid-column: span 1; }
   .f-date { order: -1; }
   .f-addr { order: 2; }
   .f-prov { order: 3; }
   .card-title .row-actions, .searchbar { width: 100%; }
+  .patient-top > .card-title { flex-wrap: nowrap; }
+  .patient-top > .card-title .row-actions { width: auto; flex: none; }
   .clinic-card__title .row-actions { justify-content: flex-start; }
-  .clinic-card__title .row-actions .btn, .clinic-profile-select { flex: 1 1 100%; min-width: 0; width: 100%; }
+  /* Tab Phòng khám: ba nút gộp thành ⋮ nằm bên phải ô chọn hồ sơ, cùng một hàng */
+  .clinic-card__title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3) var(--space-2); }
+  .clinic-card__head, .clinic-card__title .row-actions { display: contents; }
+  .clinic-card__head h2 { grid-column: 1 / -1; }
+  .clinic-profile-select { grid-column: 1; min-width: 0; width: 100%; }
+  .clinic-card__title .row-actions > .btn { display: none; }
+  .clinic-card__title .row-actions > .clinic-more { display: inline-flex; grid-column: 2; }
+  .stock-menu [data-clinic-action="deleteClinicBtn"] { color: var(--text-danger); }
+  .stock-menu [data-clinic-action]:disabled { opacity: .45; }
 
-  .money-row { padding: 0 var(--space-3); }
+  .money-row { --row-pad: var(--space-3); }
   .money-input { width: 150px; }
+  .money-row #serviceMoney { width: calc(150px + var(--row-pad)); }
 
   /* kho thuốc */
   .stock-head { display: none; }
@@ -986,22 +1029,44 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .stock-row__qty { grid-area: qty; text-align: left; }
   .stock-row__price { grid-area: price; text-align: left; }
   .stock-row__act { grid-area: btn; align-self: center; }
+  /* Kho thuốc: ba nút gộp thành một nút ⋮ mở menu */
+  .stock-row__act > :not(.stock-more) { display: none; }
+  .stock-row__act > .stock-more { display: inline-flex; }
+  /* Dữ liệu mã: cột mã hẹp, hai nút gộp thành ⋮ */
+  .code-head, .code-row { grid-template-columns: var(--code-w, 72px) minmax(0, 1fr) var(--control-h-sm); }
+  .code-row__code { white-space: nowrap; }
+  .code-row__actions > :not(.code-more) { display: none; }
+  .code-row__actions > .code-more { display: inline-flex; }
+  .stock-item.is-open .stock-row__act > .stock-toggle { display: inline-flex; } /* chi tiết đang mở: hiện nút thu gọn bên trái nút ⋮ */
+  .stock-menu:not(.hidden) { position: fixed; z-index: 80; min-width: 200px; display: grid; gap: 2px; padding: 6px; background: var(--bg-raised); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-menu); }
+  .stock-menu .btn { justify-content: flex-start; }
+  .stock-menu [data-action="delete-drug"], .stock-menu [data-action="delete-icd"] { color: var(--text-danger); }
   .stock-row__lbl { display: inline; color: var(--text-muted); font-weight: var(--fw-regular); }
   .stock-row.is-negative .stock-row__lbl { color: var(--text-danger); }
 
   /* dialog: toàn màn hình hoặc bottom sheet */
-  dialog.modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 20px 20px 0 0; max-height: 94vh; max-height: 94dvh; }
-  dialog.modal--full, dialog.modal--full[open] { width: 100%; height: 100%; max-height: 100%; border-radius: 0; margin: 0; }
+  /* hộp thoại: bottom sheet: nền kéo dài 400px xuống dưới đáy màn hình, nên dù Safari dịch khung nhìn khi bàn phím mở cũng không lộ khoảng trống; --kb (JS đặt) nâng nội dung lên trên bàn phím */
+  dialog.modal { width: 100%; max-width: 100%; margin: auto 0 -400px; border-radius: 20px 20px 0 0; max-height: calc(min(94dvh, 100dvh - 380px) + 400px + var(--kb, 0px)); padding-bottom: calc(400px + var(--kb, 0px)); transition: padding-bottom .3s ease, max-height .3s ease; }
+  html:has(dialog.modal[open]) { overflow: hidden; }
+  /* đang gõ trong hộp thoại: Safari để vùng dưới hộp thoại (sau bàn phím trong suốt) lộ trang nền; che trang nền bằng màu của hộp thoại */
+  body.kb-open:has(dialog.modal[open]) { background: var(--bg-raised); }
+  html:has(body.kb-open dialog.modal[open]) { background: var(--bg-raised); }
+  body.kb-open:has(dialog.modal[open]) #appRoot { visibility: hidden; }
+  dialog.modal--full, dialog.modal--full[open] { width: 100%; height: 100%; max-height: 100%; border-radius: 0; margin: 0; padding-bottom: 0; }
   .modal__head { padding: 10px 12px; }
   .modal__head .row-actions { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
   .modal--full .modal__head .btn > span { display: none; }
   .modal--full .modal__head .btn { padding: 8px 12px; }
-  .drug-form-grid { grid-template-columns: 1fr; }
+  /* hộp thoại thuốc: Đơn vị, Tồn kho, Đơn giá chung một dòng; bỏ nút Xóa */
+  .drug-form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .drug-form-grid > div:has(#dmPrice) { grid-column: auto; }
+  #dmDeleteBtn { display: none; }
   .modal__spacer { display: none; }
   .modal__foot .btn { flex: 1 1 0; white-space: nowrap; }
   .modal__foot #dmDeleteBtn { flex: 0 0 auto; }
 
   .auth__card { padding: 24px 18px; }
+  .auth__card { transform: translateY(var(--kb-shift, 0px)); transition: transform .3s ease; }
 }
 
 /* ---------- Typography: tiện ích & chữ số ---------- */
@@ -1014,13 +1079,13 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 .date-field { position: relative; }
 .date-field .field { padding-right: 50px; }
-.date-native { border: 0; position: absolute; right: 6px; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.date-native { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; padding: 0; border: 0; opacity: 0; cursor: pointer; z-index: 1; }
 .stock-row__act { justify-self: end; display: flex; gap: var(--space-2); }
 
 /* ---------- Chỉ định thuốc: dòng gọn, chi tiết mở rộng ---------- */
 .drug-head, .drug-row__line {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 56px 56px 56px 72px 96px 110px 72px;
+  grid-template-columns: 28px minmax(0, 1fr) 56px 56px 56px 56px 96px 110px 72px;
   gap: var(--space-2);
   align-items: center;
   padding-inline: 14px;
@@ -1051,6 +1116,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-row.is-open .drug-toggle .icon { transform: rotate(180deg); }
 .drug-detail, .stock-detail { display: none; }
 .stock-toggle .icon { transition: transform .2s; }
+.stock-more, .code-more, .drug-more, .clinic-more, .stock-menu { display: none; }
 .stock-item.is-open .stock-toggle .icon { transform: rotate(180deg); }
 .stock-detail { --ctl-h: var(--control-h-sm); }
 .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail {
@@ -1066,13 +1132,14 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-field--usage textarea { resize: none; }
 .drug-row--search { border-bottom: 0; padding: var(--space-3) 14px; }
 .drug-search { position: relative; }
+.drug-search__new { display: none; }
 .drug-search > .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
 .drug-search .mini { height: var(--control-h); padding-left: 44px; border-style: dashed; }
 .drug-summary { display: flex; justify-content: flex-end; align-items: baseline; gap: var(--space-2); margin-top: var(--space-3); }
 .drug-summary strong { font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .drug-cell--price, .drug-subtotal, .drug-calc, .drug-row__line .mini { font-variant-numeric: tabular-nums; }
 @media (min-width: 768px) and (max-width: 1023px) {
-  .drug-head, .drug-row__line { grid-template-columns: 24px minmax(0, 1fr) 48px 48px 48px 56px 76px 92px 72px; gap: 6px; padding-inline: 10px; }
+  .drug-head, .drug-row__line { grid-template-columns: 24px minmax(0, 1fr) 48px 48px 48px 48px 76px 92px 72px; gap: 6px; padding-inline: 10px; }
   .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail { padding-inline: 10px; }
 }
 @media (min-width: 768px) {
@@ -1091,21 +1158,30 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-rows { display: grid; gap: var(--space-3); }
   .drug-row { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-page); }
   .drug-row:last-child { border-bottom: 1px solid var(--line); }
-  .drug-row.is-negative { border-color: var(--danger-border-strong); }
   .drug-row__line { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: var(--space-3); gap: var(--space-2); min-height: 0; }
   .drug-cell--index, .drug-cell--price, .drug-cell--subtotal { display: none; }
   .drug-name__idx { display: inline; }
   .drug-cell--drug { grid-column: 1 / 4; grid-row: 1; }
-  .drug-actions { display: contents; }
-  .drug-actions .drug-remove { grid-column: 4; grid-row: 1; justify-self: end; width: var(--ctl-h); height: var(--ctl-h); }
+  /* nút Xóa và Chi tiết (chỉ icon) ở góc phải trên, Chi tiết nằm bên phải Xóa */
+  .drug-actions { display: flex; gap: var(--space-2); grid-column: 4; grid-row: 1; justify-self: end; align-self: center; }
+  .drug-actions .icon-btn { width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
+  .drug-actions > :not(.drug-more) { display: none; }
+  .drug-actions > .drug-more { display: inline-flex; }
+  .drug-row.is-open .drug-actions > .drug-toggle { display: inline-flex; } /* chi tiết đang mở: nút thu gọn nằm bên trái nút ⋮ */
+  .stock-menu [data-action="remove"] { color: var(--text-danger); }
+  /* quá tồn kho: tô đỏ ô Số lượng như ô liều quá liều, không tô viền cả thẻ */
+  .drug-row.is-negative .drug-field--quantity { border-color: var(--danger-border-strong); background: var(--danger-bg-2); }
+  .drug-row.is-negative .drug-field--quantity .mini { color: var(--text-danger); }
+  .drug-cell--drug { padding-right: calc(var(--ctl-h) + var(--space-2)); } /* chừa chỗ cho nút Chi tiết kéo sang trái */
+  /* tên thuốc: số thứ tự một cột, tên và badge cùng thẳng hàng ở cột còn lại */
+  .drug-name { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-1); align-items: baseline; }
+  .drug-badges { grid-column: 1 / -1; margin-top: var(--space-1); }
+  .drug-badges:empty { display: none; }
   .drug-field--morning { grid-column: 1; grid-row: 2; }
   .drug-field--noon { grid-column: 2; grid-row: 2; }
   .drug-field--night { grid-column: 3; grid-row: 2; }
   .drug-field--quantity { grid-column: 4; grid-row: 2; }
-  .drug-calc { display: block; grid-column: 1 / 3; grid-row: 3; color: var(--text-muted); font-size: var(--fs-sm); }
-  .drug-calc strong { color: var(--text); font-weight: var(--fw-medium); font-size: var(--fs-base); }
-  .drug-actions .drug-toggle { grid-column: 3 / 5; grid-row: 3; justify-self: end; width: auto; white-space: nowrap; height: var(--ctl-h); padding: 0 var(--space-3); gap: var(--space-1); }
-  .drug-toggle__text { display: inline; font-size: var(--fs-sm); font-weight: var(--fw-medium); }
+  .drug-calc { display: flex; justify-content: flex-start; gap: var(--space-3); grid-column: 1 / -1; grid-row: 3; color: var(--text-muted); font-size: var(--fs-sm); }
   .drug-field--dose, .drug-field--quantity {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     height: 56px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-input);
@@ -1120,10 +1196,16 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-field--dose-noon .dose-quick { left: 50%; transform: translateX(-50%); }
   .drug-field--dose-night .dose-quick { left: auto; right: 0; }
   .drug-field--quantity .quantity-quick { left: auto; right: 0; width: 180px; }
-  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail { margin: 0 var(--space-3) var(--space-3); padding: var(--space-3); border-radius: 12px; }
-  .drug-row--search { border: 1px dashed var(--line); padding: 0; background: transparent; }
-  .drug-search > .icon { display: none; }
-  .drug-search .mini { height: var(--control-h); padding-left: var(--space-3); border: 0; background: transparent; text-align: center; }
+  /* nền xám của chi tiết tràn hết chiều ngang dòng, giống PC */
+  .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail { margin: 0; padding: var(--space-3) 14px; border-radius: 0; }
+  .drug-row.is-open .drug-detail { border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px); }
+  /* ô thêm thuốc: giống thanh tìm kiếm của Kho thuốc (ô tìm + nút vuông), nằm trên cùng danh sách thuốc */
+  .drug-row--search, .drug-row--search:last-child { order: -1; display: flex; align-items: center; gap: var(--space-2); border: 0; padding: 0; background: transparent; }
+  .drug-search { flex: 1; min-width: 0; }
+  .drug-search > .icon { left: auto; right: 14px; }
+  .drug-search .mini { height: var(--control-h); padding: 0 44px 0 14px; border: 1px solid var(--line); background: var(--bg-input); text-align: left; }
+  .drug-search__new { display: inline-flex; width: var(--control-h-sm); height: var(--control-h-sm); min-height: 0; padding: 0; flex: none; }
+  #newPrescriptionBtn { display: none; }
 }
 
 /* Chẩn đoán dài: khi không focus hiện 1 dòng + … (textarea không hỗ trợ ellipsis nên dùng #icdView), bấm vào thì mở textarea đầy đủ */
@@ -1142,5 +1224,9 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .stock-in-sum strong { color: var(--text); font-variant-numeric: tabular-nums; }
 
 .patient-row { user-select: none; -webkit-user-select: none; }
-.drug-row:not(.drug-row--search) .drug-row__line { cursor: pointer; }
 #visitFormCard { scroll-margin-top: calc(var(--nav-h) - 15px); } /* cuộn xuống sát hơn dưới thanh nav */
+
+.wheel-actions { display: none; }
+.wheel-kb { display: none; }
+.wheel-layer.is-sheet .wheel-kb { display: block; margin: 10px auto 0; padding: 4px 8px; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-sm); text-decoration: underline; cursor: pointer; }
+.wheel-layer.no-kb .wheel-kb { display: none !important; }

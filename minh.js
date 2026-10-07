@@ -4,10 +4,11 @@ const CLINIC_NAME_CACHE_KEY = "pk_clinic_name";
 const NOTICE_KEY = "pk_notice";
 // ponytail: phân trang client, chuyển sang server-side khi > ~5000 hồ sơ
 const PAGE_SIZE = 10;
-const TABS = ["home", "stats", "clinic"];
+const TABS = ["home", "stats", "clinic", "settings"];
 const WHEEL_ITEM_HEIGHT = 44;
 const WHEEL_MIN_YEAR = 1920;
 const WHEEL_DEFAULT_YEAR = 1980;
+const DEFAULT_SERVICE_FEE = 200000;
 const DOSE_FIELDS = ["morning", "noon", "night"];
 const DOSE_LABELS = { morning: "Sáng", noon: "Trưa", night: "Tối" };
 const DOSE_OPTIONS = ["0", "0.5", "1", "2", "3", "4", "5", "6"];
@@ -237,6 +238,7 @@ const state = {
   selectedIcdCode: "",
   editingIcdCode: "",
   deletingIcdCode: "",
+  deletingDrugId: "",
   icdSearch: "",
   stockSearch: "",
   stockInId: "",
@@ -247,7 +249,6 @@ const state = {
   moneyOverrides: { drug: null, service: null },
   user: null,
   importData: null,
-  importBackup: null,
   wheel: null
 };
 
@@ -274,9 +275,9 @@ function cacheRefs() {
     "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "newBtn", "visitPicker", "visitModeHint",
-    "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
+    "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "drugDeleteModal", "drugDeleteText", "drugDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
-    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox", "warningBox",
+    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
     "summaryPatients", "summaryDrugs",
     "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
@@ -285,7 +286,7 @@ function cacheRefs() {
     "toggleClinicBtn", "saveClinicBtn", "clinicNameInput", "clinicDoctorInput",
     "clinicAddressInput", "clinicHoursInput", "clinicPhoneInput", "statWeekCount", "statWeekTrend", "statMonthCount",
     "statMonthTrend", "statProfit", "statProfitTrend", "statRevisitRate", "statRevisitTrend", "statOnTimeCount",
-    "statOnTimeTrend", "statLateMissedCount", "statLateMissedTrend", "activeIngredientList", "doseList",
+    "statOnTimeTrend", "statLateMissedCount", "statLateMissedTrend", "activeIngredientList",
     "doctorList", "serviceFeeList", "serviceFeeSuggestBox",
     "drugModal", "drugForm", "dmActive", "dmBrand", "dmUnit", "dmQuantity", "dmPrice", "dmUsage", "dmNotes", "dmDeleteBtn",
     "dmSaveBtn", "drugModalTitle", "drugModalMsg",
@@ -322,8 +323,10 @@ function setThemePref(value) {
 function applyTheme(pref = getThemePref()) {
   const dark = pref === "dark" || (pref === "system" && darkSchemeQuery.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  refs.themeMenuBtn.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon");
-  refs.themeMenuBtn.querySelector("span").textContent = dark ? "Giao diện sáng" : "Giao diện tối";
+  document.querySelectorAll("[data-theme-btn]").forEach((button) => {
+    button.querySelector("use").setAttribute("href", dark ? "#i-sun" : "#i-moon");
+    button.querySelector("span").textContent = dark ? "Giao diện sáng" : "Giao diện tối";
+  });
   // chọn cố định thì thanh trình duyệt đổi màu theo; theo hệ thống thì mỗi thẻ meta tự theo media
   const [light, night] = document.querySelectorAll('meta[name="theme-color"]');
   if (light && night) {
@@ -356,6 +359,167 @@ function bindEvents() {
 
   refs.loginForm.addEventListener("submit", handleLoginSubmit);
   refs.forgotForm.addEventListener("submit", handleForgotSubmit);
+  // điện thoại: đang gõ (bàn phím mở) thì ẩn thanh nav dưới và nút lưu để chúng không bị đẩy lên theo bàn phím
+  const isTypingField = (el) => el?.matches?.("input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=file],[type=hidden]), textarea, select");
+  let kbTimer;
+  document.addEventListener("focusin", (event) => {
+    if (!phoneLayoutQuery.matches || !isTypingField(event.target)) return;
+    clearTimeout(kbTimer);
+    document.body.classList.add("kb-open");
+  });
+  document.addEventListener("focusout", () => {
+    clearTimeout(kbTimer);
+    kbTimer = setTimeout(() => {
+      if (!isTypingField(document.activeElement)) document.body.classList.remove("kb-open");
+    }, 100);
+  });
+  window.addEventListener("scroll", () => document.querySelectorAll(".stock-menu").forEach((menu) => menu.classList.add("hidden")), { passive: true });
+  // điện thoại: chạm ra ngoài (vùng tối) thì đóng hộp thoại
+  document.addEventListener("click", (event) => {
+    const dialog = event.target;
+    if (!phoneLayoutQuery.matches || dialog.tagName !== "DIALOG" || !dialog.open || dialog.classList.contains("modal--full")) return;
+    const rect = dialog.getBoundingClientRect();
+    const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    if (!inside) dialog.close();
+  });
+  // điện thoại: bàn phím mở thì hộp thoại (bottom sheet) trượt lên trên bàn phím một lần, mượt; đóng bàn phím thì trượt về
+  const openSheet = () => document.querySelector("dialog.modal[open]:not(.modal--full)");
+  const typingInSheet = (dialog) => dialog.contains(document.activeElement) && document.activeElement.matches("input, textarea");
+  const opensKeyboard = (element) => element?.matches?.("input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=file],[type=hidden]), textarea") && !element.readOnly && !element.disabled;
+
+  // (1) Khóa cuộn trang khi có hộp thoại mở. Safari trên iPhone cuộn cả trang để "đưa ô nhập vào tầm nhìn" mỗi lần
+  // chuyển ô (overflow: hidden không chặn được kiểu cuộn này); trang Home dài nên cuộn nhiều, hộp thoại giật mạnh.
+  // Ghim trang ở đầu bằng margin âm cho body, có cuộn nào thì kéo về ngay; đóng hộp thoại thì trả lại vị trí cũ.
+  let lockedScrollY = null;
+  const lockPageScroll = () => {
+    if (lockedScrollY !== null || !phoneLayoutQuery.matches) return;
+    lockedScrollY = window.scrollY;
+    document.body.style.marginTop = `-${lockedScrollY}px`;
+    window.scrollTo(0, 0);
+  };
+  const unlockPageScroll = () => {
+    if (lockedScrollY === null || document.querySelector("dialog.modal[open]")) return;
+    const y = lockedScrollY;
+    lockedScrollY = null;
+    document.body.style.marginTop = "";
+    window.scrollTo(0, y);
+  };
+  window.addEventListener("scroll", () => {
+    if (lockedScrollY !== null && window.scrollY !== 0) window.scrollTo(0, 0);
+  });
+  // chỉ hộp thoại (thẻ <details> cũng có thuộc tính open nhưng không liên quan)
+  new MutationObserver((records) => records.forEach(({ target }) => {
+    if (!target.matches?.("dialog.modal")) return;
+    if (target.open) lockPageScroll();
+    else unlockPageScroll();
+  }))
+    .observe(document.body, { subtree: true, attributes: true, attributeFilter: ["open"] });
+
+  // (2) Không để Safari tự cuộn khi focus ô nhập trong hộp thoại: dời ô ra khỏi màn hình đúng 1 khung hình lúc focus
+  // (Safari thấy ô ở phía trên nên không cuộn gì), giữ nguyên vị trí cuộn bên trong hộp thoại, rồi trả ô về chỗ cũ.
+  const focusWithoutScroll = (input) => {
+    const scroller = input.closest(".modal__body");
+    const keep = scroller?.scrollTop;
+    input.style.transform = "translateY(-2000px)";
+    if (document.activeElement !== input) input.focus({ preventScroll: true });
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true;
+      input.style.transform = "";
+      if (scroller) scroller.scrollTop = keep;
+      // ô chuyển tới bằng mũi tên trên bàn phím có thể nằm ngoài phần đang thấy của hộp thoại: cuộn trong hộp thoại thôi
+      if (!scroller) return;
+      const box = scroller.getBoundingClientRect();
+      const rect = input.getBoundingClientRect();
+      if (rect.bottom > box.bottom) scroller.scrollTop += rect.bottom - box.bottom + 12;
+      else if (rect.top < box.top) scroller.scrollTop -= box.top - rect.top + 12;
+    };
+    requestAnimationFrame(restore);
+    setTimeout(restore, 100); // dự phòng khi trình duyệt không chạy khung hình (tab ẩn)
+  };
+  let sheetTouch = null;
+  document.addEventListener("touchstart", (event) => {
+    sheetTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }, { passive: true, capture: true });
+  document.addEventListener("touchend", (event) => {
+    const target = event.target;
+    if (lockedScrollY === null || !opensKeyboard(target) || target === document.activeElement || !openSheet()?.contains(target)) return;
+    const touch = event.changedTouches[0];
+    // vuốt để cuộn nội dung hộp thoại (bắt đầu trên ô nhập) thì để yên, chỉ xử lý cú chạm
+    if (sheetTouch && Math.hypot(touch.clientX - sheetTouch.x, touch.clientY - sheetTouch.y) > 10) return;
+    event.preventDefault();
+    focusWithoutScroll(target);
+  }, { passive: false, capture: true });
+
+  // (3) Nâng hộp thoại lên trên bàn phím MỘT lần rồi giữ nguyên vị trí (chuyển ô nhập, cuộn đều không đổi);
+  // chỉ hạ xuống khi không còn ô nhập nào giữ con trỏ. Nhớ chiều cao bàn phím lần trước để lần sau nâng ngay cùng lúc bàn phím trượt lên.
+  let settleTimer;
+  let lastKeyboard = 0;
+  const setSheetLift = (dialog, value, locked) => {
+    dialog.style.setProperty("--kb", `${value}px`);
+    if (locked) dialog.dataset.kbLocked = "1";
+    else delete dialog.dataset.kbLocked;
+  };
+  const settleSheet = () => {
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => {
+      const vv = window.visualViewport;
+      const dialog = openSheet();
+      if (!vv || !dialog || !phoneLayoutQuery.matches) return;
+      if (!typingInSheet(dialog)) {
+        setSheetLift(dialog, 0, false);
+        return;
+      }
+      if (dialog.dataset.kbLocked) return;
+      const keyboard = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+      if (keyboard < 80) return; // bàn phím chưa lên hẳn: chờ lần đo sau
+      lastKeyboard = keyboard;
+      setSheetLift(dialog, keyboard, true);
+    }, 250);
+  };
+  window.visualViewport?.addEventListener("resize", settleSheet);
+  // đóng hộp thoại thì xóa độ nâng cũ, nếu không lần mở sau bị lệch
+  document.addEventListener("close", (event) => {
+    if (event.target.style) setSheetLift(event.target, 0, false);
+  }, true);
+  document.addEventListener("focusin", (event) => {
+    const dialog = openSheet();
+    if (!phoneLayoutQuery.matches || !dialog?.contains(event.target) || !opensKeyboard(event.target)) return;
+    // chuyển ô bằng mũi tên trên bàn phím: cũng chặn Safari tự cuộn
+    if (lockedScrollY !== null) focusWithoutScroll(event.target);
+    if (!dialog.dataset.kbLocked && lastKeyboard && (parseFloat(dialog.style.getPropertyValue("--kb")) || 0) === 0) {
+      dialog.style.setProperty("--kb", `${lastKeyboard}px`);
+    }
+    settleSheet();
+  });
+  document.addEventListener("focusout", () => setTimeout(settleSheet, 50));
+  // điện thoại: bàn phím bật lên thì thẻ đăng nhập trượt lên vừa đủ để không bị che, rời ô nhập thì trượt về giữa
+  const authCard = refs.authScreen.querySelector(".auth__card");
+  let authKbTimer;
+  let authShift = 0;
+  const fitAuthCard = () => {
+    const vv = window.visualViewport;
+    if (!vv || !phoneLayoutQuery.matches || !refs.authScreen.contains(document.activeElement)) return;
+    const rect = authCard.getBoundingClientRect();
+    const overflow = rect.bottom + authShift - (vv.offsetTop + vv.height - 16);
+    authShift = Math.min(Math.max(overflow, 0), Math.max(rect.top + authShift - vv.offsetTop - 8, 0));
+    authCard.style.setProperty("--kb-shift", `${-authShift}px`);
+  };
+  refs.authScreen.addEventListener("focusin", (event) => {
+    if (!event.target.matches("input")) return;
+    clearTimeout(authKbTimer);
+    setTimeout(fitAuthCard, 350);
+  });
+  refs.authScreen.addEventListener("focusout", () => {
+    clearTimeout(authKbTimer);
+    authKbTimer = setTimeout(() => {
+      if (refs.authScreen.contains(document.activeElement)) return;
+      authShift = 0;
+      authCard.style.setProperty("--kb-shift", "0px");
+    }, 150);
+  });
+  window.visualViewport?.addEventListener("resize", fitAuthCard);
   refs.forgotResendBtn.addEventListener("click", sendForgotCode);
   [refs.forgotOtp].forEach((el) => { el.addEventListener("input", handleOtpInput); el.addEventListener("keydown", handleOtpKeydown); });
   refs.showForgotBtn.addEventListener("click", () => {
@@ -387,13 +551,13 @@ function bindEvents() {
   [refs.visitDate, refs.followDate].forEach(enhanceDateInput);
   syncFollowDateWidth();
   refs.birthYear.addEventListener("input", handleBirthYearInput);
-  refs.birthYear.addEventListener("focus", () => {
-    if (!wheelOnlyQuery.matches) showYearSuggestions(refs.birthYear.value);
-  });
-  refs.birthYear.addEventListener("click", () => {
-    if (wheelOnlyQuery.matches) openYearWheel();
-  });
-  refs.birthYearBtn.addEventListener("click", () => openYearWheel());
+  refs.birthYear.addEventListener("click", () => { if (!refs.birthYear.dataset.kb) openYearWheel(); });
+  // gõ bằng bàn phím xong (rời ô) thì ô quay lại dùng vòng quay
+  [refs.birthYear, refs.serviceMoney].forEach((input) => input.addEventListener("blur", () => {
+    if (!input.dataset.kb) return;
+    delete input.dataset.kb;
+    syncBirthYearMode();
+  }));
   refs.yearWheelLayer.addEventListener("click", handleYearWheelClick);
   refs.yearWheelLayer.addEventListener("keydown", handleYearWheelKeydown);
   refs.yearWheel.addEventListener("scroll", scheduleYearWheelUpdate, { passive: true });
@@ -418,6 +582,7 @@ function bindEvents() {
   refs.codeDataBox.addEventListener("dblclick", handleCodeDataClick);
   refs.icdEditSaveBtn.addEventListener("click", saveIcdEdit);
   refs.icdDeleteConfirmBtn.addEventListener("click", confirmIcdDelete);
+  refs.drugDeleteConfirmBtn.addEventListener("click", confirmDrugDelete);
   refs.codeDataBox.addEventListener("input", (event) => {
     if (event.target.id !== "icdSearchInput") return;
     state.icdSearch = event.target.value;
@@ -440,9 +605,25 @@ function bindEvents() {
   refs.drugRows.addEventListener("focusin", handleDrugRowChange);
   refs.drugRows.addEventListener("focusout", handleDrugRowChange);
   refs.drugRows.addEventListener("click", handleDrugRowClick);
+  document.getElementById("drugRowMenu").addEventListener("click", (event) => {
+    const item = event.target.closest("[data-action]");
+    const menu = event.currentTarget;
+    menu.classList.add("hidden");
+    // chuyển thành bấm vào nút ẩn tương ứng trong dòng thuốc
+    refs.drugRows.querySelector(`.drug-row[data-key="${menu.dataset.key}"] [data-action="${item?.dataset.action}"]`)?.click();
+  });
+  // gõ tay xong (rời ô) thì ô quay lại dùng vòng quay
+  refs.drugRows.addEventListener("focusout", (event) => {
+    const input = event.target;
+    if (!input.dataset?.kb) return;
+    delete input.dataset.kb;
+    if (phoneLayoutQuery.matches) input.setAttribute("inputmode", "none");
+  });
+  refs.drugRows.addEventListener("focusin", showDrugSearchSuggest);
+  refs.drugRows.addEventListener("input", showDrugSearchSuggest);
   refs.drugRows.addEventListener("pointerdown", (event) => {
     // bấm nút chọn nhanh không làm ô nhập mất focus (và đóng bảng chọn trước khi click kịp xảy ra)
-    if (event.target.closest(".dose-quick, .quantity-quick")) event.preventDefault();
+    if (event.target.closest(".dose-quick, .quantity-quick, .drug-suggest")) event.preventDefault();
   });
   refs.stockDataBox.addEventListener("click", handleStockDataClick);
   refs.stockDataBox.addEventListener("dblclick", handleStockDataClick);
@@ -463,8 +644,8 @@ function bindEvents() {
   refs.dmDeleteBtn.addEventListener("click", deleteDrugFromModal);
   refs.serviceMoney.addEventListener("input", syncServiceFeeFromMoney);
   refs.serviceMoney.addEventListener("input", renderServiceFeeSuggest);
-  refs.serviceMoney.addEventListener("focus", renderServiceFeeSuggest);
-  refs.serviceMoney.addEventListener("click", renderServiceFeeSuggest);
+  refs.serviceMoney.addEventListener("focus", openServiceFeePicker);
+  refs.serviceMoney.addEventListener("click", openServiceFeePicker);
   refs.serviceMoney.addEventListener("focus", () => formatMoneyField(refs.serviceMoney, false));
   refs.serviceMoney.addEventListener("blur", () => formatMoneyField(refs.serviceMoney, true));
   refs.serviceMoney.addEventListener("input", handleMoneyOverrideInput);
@@ -484,6 +665,24 @@ function bindEvents() {
   refs.clinicProfileSelect.addEventListener("change", handleClinicProfileChange);
   refs.addClinicBtn.addEventListener("click", () => openClinicModal("add"));
   refs.deleteClinicBtn.addEventListener("click", openClinicDelete);
+  // điện thoại: nút ⋮ mở menu Thêm / Chỉnh sửa / Xóa hồ sơ phòng khám (cùng kiểu menu Kho thuốc)
+  const clinicMenu = document.getElementById("clinicMenu");
+  document.getElementById("clinicMoreBtn").addEventListener("click", (event) => {
+    const opening = clinicMenu.classList.contains("hidden");
+    clinicMenu.classList.toggle("hidden", !opening);
+    if (!opening) return;
+    clinicMenu.querySelector('[data-clinic-action="deleteClinicBtn"]').disabled = refs.deleteClinicBtn.disabled;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const below = rect.bottom + 6;
+    clinicMenu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    clinicMenu.style.top = `${below + clinicMenu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - clinicMenu.offsetHeight - 6) : below}px`;
+  });
+  clinicMenu.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-clinic-action]");
+    if (!item || item.disabled) return;
+    clinicMenu.classList.add("hidden");
+    refs[item.dataset.clinicAction].click();
+  });
   refs.clinicDeleteConfirmBtn.addEventListener("click", deleteClinicProfile);
   refs.clinicModal.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && event.target.tagName === "INPUT") saveClinicInfo();
@@ -498,6 +697,8 @@ function bindEvents() {
     }
     if (!event.target.closest("#symptom") && !event.target.closest("#symptomSuggestBox")) refs.symptomSuggestBox.classList.add("hidden");
     if (!event.target.closest("#icdInput") && !event.target.closest("#icdSuggestBox")) refs.icdSuggestBox.classList.add("hidden");
+    if (!event.target.closest(".stock-menu, .stock-more, .code-more, .drug-more, .clinic-more")) document.querySelectorAll(".stock-menu").forEach((menu) => menu.classList.add("hidden"));
+    if (!event.target.closest(".drug-search")) document.querySelectorAll(".drug-suggest").forEach((box) => box.classList.add("hidden"));
     if (!event.target.closest(".drug-field--dose")) closeDoseQuickPickers();
     if (!event.target.closest(".drug-field--quantity")) closeQuantityQuickPickers();
   });
@@ -883,7 +1084,7 @@ function endSession() {
 
 function applyTabFromHash() {
   const hash = location.hash.replace("#", "");
-  const tab = TABS.includes(hash) ? hash : "home";
+  const tab = TABS.includes(hash) && (hash !== "settings" || phoneLayoutQuery.matches) ? hash : "home";
   if (hash !== tab) history.replaceState(null, "", `#${tab}`);
   showTab(tab);
 }
@@ -1082,12 +1283,11 @@ function togglePatientRow(row) {
 function handlePatientListClick(event) {
   const toggleBtn = event.target.closest(".pt-toggle");
   const clickedRow = event.target.closest(".patient-row[data-id]");
-  // nhấp 1 lần vào dòng (hoặc nút mũi tên) để mở/đóng chi tiết; cú nhấp thứ 2 của nhấp đúp bỏ qua, và nhấp đúp hoàn lại trạng thái trước đó
+  // chỉ nút mũi tên mới mở/đóng chi tiết
   if (event.type === "click" && clickedRow && !event.target.closest(".del-patient, .patient-detail")) {
-    if (event.detail < 2 || toggleBtn) togglePatientRow(clickedRow);
+    if (toggleBtn) togglePatientRow(clickedRow);
     return;
   }
-  if (event.type === "dblclick" && clickedRow && !toggleBtn && !event.target.closest(".del-patient, .patient-detail")) togglePatientRow(clickedRow);
   if (toggleBtn) return;
   const deleteBtn = event.target.closest(".del-patient");
   if (deleteBtn) {
@@ -1142,26 +1342,16 @@ function renderPager(total, pages, start, count) {
     return;
   }
   const current = state.page;
-  const siblings = phoneLayoutQuery.matches ? 0 : 1;
-  const wanted = new Set([1, pages, ...Array.from({ length: siblings * 2 + 1 }, (_, i) => current - siblings + i)]);
-  const shown = [...wanted].filter((page) => page >= 1 && page <= pages).sort((a, b) => a - b);
-  const items = [];
-  shown.forEach((page, index) => {
-    const prev = shown[index - 1];
-    if (prev && page - prev === 2) items.push(prev + 1);
-    else if (prev && page - prev > 2) items.push("…");
-    items.push(page);
-  });
-
-  const pageButton = (page) => page === "…"
-    ? '<span class="pager__gap" aria-hidden="true">…</span>'
-    : `<button class="pager__btn ${page === current ? "is-current" : ""}" type="button" data-page="${page}" aria-label="Trang ${page}" ${page === current ? 'aria-current="page"' : ""}>${page}</button>`;
+  // điện thoại: trước, trang hiện tại, ⋯, sau; PC: trước, trang liền trước, hiện tại, trang liền sau, ⋯, sau
+  const pageNumbers = phoneLayoutQuery.matches ? [current] : [current - 1, current, current + 1].filter((page) => page >= 1 && page <= pages);
+  const pageButton = (page) => `<button class="pager__btn ${page === current ? "is-current" : ""}" type="button" data-page="${page}" aria-label="Trang ${page}" ${page === current ? 'aria-current="page"' : ""}>${page}</button>`;
   refs.patientPager.innerHTML = `
-    <div class="pager__range">Hiển thị ${formatNumber(start + 1)}–${formatNumber(start + count)} / ${formatNumber(total)} hồ sơ</div>
+    <div class="pager__range">${formatNumber(start + 1)}–${formatNumber(start + count)} / ${formatNumber(total)}</div>
     ${pages > 1 ? `
       <div class="pager__list">
         <button class="pager__btn" type="button" data-page="prev" aria-label="Trang trước" ${current === 1 ? "disabled" : ""}>${iconHtml("chevron-left")}</button>
-        ${items.map(pageButton).join("")}
+        ${pageNumbers.map(pageButton).join("")}
+        <button class="pager__btn pager__more" type="button" data-page="more" aria-label="Chọn trang" aria-haspopup="dialog">…</button>
         <button class="pager__btn" type="button" data-page="next" aria-label="Trang sau" ${current === pages ? "disabled" : ""}>${iconHtml("chevron-right")}</button>
       </div>` : ""}
   `;
@@ -1171,9 +1361,13 @@ function handlePagerClick(event) {
   const button = event.target.closest("[data-page]");
   if (!button || button.disabled) return;
   const target = button.dataset.page;
+  if (target === "more") {
+    openYearWheel("page", { anchor: button });
+    return;
+  }
   state.page = target === "prev" ? state.page - 1 : target === "next" ? state.page + 1 : Number(target);
   renderPatientList();
-  refs.patientListBody.closest(".patient-top").scrollIntoView({ block: "start" });
+  if (phoneLayoutQuery.matches) refs.patientListBody.closest(".patient-top").scrollIntoView({ block: "start" });
 }
 
 function iconHtml(name) {
@@ -1317,6 +1511,8 @@ function updateSaveButtons() {
   const label = state.editingVisitId ? "Lưu thay đổi" : "Hoàn tất khám";
   const button = refs.saveFab;
   button.querySelector(".save-label").textContent = label;
+  button.setAttribute("aria-label", label);
+  button.title = label;
   button.disabled = state.saving;
   button.classList.toggle("is-busy", state.saving);
   button.setAttribute("aria-busy", String(state.saving));
@@ -1329,7 +1525,7 @@ function enhanceDateInput(input) {
   picker.type = "date";
   picker.className = "date-native";
   picker.tabIndex = -1;
-  picker.setAttribute("aria-hidden", "true");
+  picker.setAttribute("aria-label", "Chọn ngày");
   const button = document.createElement("button");
   button.type = "button";
   button.className = "date-pick-btn";
@@ -1360,9 +1556,10 @@ function enhanceDateInput(input) {
   input.addEventListener("input", () => {
     nativeValue.set.call(input, format(nativeValue.get.call(input).replace(/\D/g, "")));
   });
-  button.addEventListener("click", () => {
+  // ô date gốc (trong suốt) nằm đè lên icon: chạm trực tiếp vào nó nên iOS/Android/Safari đều mở được lịch
+  picker.addEventListener("click", () => {
     picker.value = input.value;
-    if (picker.showPicker) picker.showPicker(); else picker.focus();
+    try { picker.showPicker?.(); } catch {}
   });
   picker.addEventListener("change", () => {
     input.value = picker.value;
@@ -1496,6 +1693,7 @@ function syncBirthYearMode() {
   const wheelOnly = wheelOnlyQuery.matches;
   refs.birthYear.readOnly = wheelOnly;
   refs.birthYear.setAttribute("inputmode", wheelOnly ? "none" : "numeric");
+  refs.serviceMoney.readOnly = phoneLayoutQuery.matches;
 }
 
 function showYearSuggestions(value) {
@@ -1510,22 +1708,48 @@ function showYearSuggestions(value) {
 
 // ---- Bánh xe chọn năm sinh: bottom sheet (điện thoại) hoặc popover (desktop) ----
 
-function openYearWheel() {
-  const wheelOnly = wheelOnlyQuery.matches;
-  const lastYear = new Date().getFullYear();
-  const years = Array.from({ length: lastYear - WHEEL_MIN_YEAR + 1 }, (_, index) => WHEEL_MIN_YEAR + index);
-  const current = Number(refs.birthYear.value);
-  const startYear = years.includes(current) ? current : WHEEL_DEFAULT_YEAR;
+function openYearWheel(kind = "year", target = null) {
+  const fee = kind === "fee";
+  const rowOption = kind === "dose" || kind === "qty";
+  const sheet = wheelOnlyQuery.matches;
+  let values;
+  let startIndex;
+  let label = "Năm sinh";
+  if (fee) {
+    label = "Công khám";
+    values = [0, ...SERVICE_FEE_OPTIONS];
+    const current = toNumber(refs.serviceMoney.value) || DEFAULT_SERVICE_FEE;
+    startIndex = values.reduce((best, value, index) => (Math.abs(value - current) < Math.abs(values[best] - current) ? index : best), 0);
+  } else if (kind === "page") {
+    label = "Trang";
+    values = Array.from({ length: Math.max(1, Math.ceil(state.filteredPatients.length / PAGE_SIZE)) }, (_, index) => index + 1);
+    startIndex = Math.min(values.length - 1, Math.max(0, state.page - 1));
+  } else if (rowOption) {
+    const row = state.draftRows.find((item) => item.key === target?.key);
+    if (!row) return;
+    label = kind === "dose" ? DOSE_LABELS[target.field] : "Số lượng";
+    values = kind === "dose" ? ["", ...DOSE_OPTIONS] : QUANTITY_OPTIONS;
+    const current = String(row[target.field] ?? "");
+    startIndex = values.indexOf(current);
+    if (startIndex < 0) startIndex = kind === "qty" ? values.reduce((best, value, index) => (Math.abs(toNumber(value) - toNumber(current)) < Math.abs(toNumber(values[best]) - toNumber(current)) ? index : best), 0) : 0;
+  } else {
+    const lastYear = new Date().getFullYear();
+    values = Array.from({ length: lastYear - WHEEL_MIN_YEAR + 1 }, (_, index) => WHEEL_MIN_YEAR + index);
+    const current = Number(refs.birthYear.value);
+    startIndex = values.indexOf(values.includes(current) ? current : WHEEL_DEFAULT_YEAR);
+  }
 
-  refs.yearWheel.innerHTML = years
-    .map((year) => `<div class="wheel__item" role="option" aria-selected="false" id="wheel-year-${year}" data-year="${year}">${year}</div>`)
+  refs.yearWheel.setAttribute("aria-label", label);
+  refs.yearWheel.innerHTML = values
+    .map((value, index) => `<div class="wheel__item" role="option" aria-selected="false" id="wheel-opt-${index}" data-index="${index}">${fee ? formatMoney(value) : value === "" ? "–" : value}</div>`)
     .join("");
-  state.wheel = { years, index: years.indexOf(startYear), range: [0, -1], frame: 0, opener: document.activeElement };
+  state.wheel = { kind, target, years: values, index: startIndex, range: [0, -1], frame: 0, opener: document.activeElement };
 
   refs.yearWheelLayer.classList.remove("hidden");
-  refs.yearWheelLayer.classList.toggle("is-sheet", wheelOnly);
-  refs.yearWheelLayer.classList.toggle("is-pop", !wheelOnly);
-  if (wheelOnly) document.body.style.overflow = "hidden";
+  refs.yearWheelLayer.classList.toggle("no-kb", kind === "page");
+  refs.yearWheelLayer.classList.toggle("is-sheet", sheet);
+  refs.yearWheelLayer.classList.toggle("is-pop", !sheet);
+  if (sheet) document.body.style.overflow = "hidden";
   else positionYearWheelPopover();
 
   refs.yearWheel.scrollTop = state.wheel.index * WHEEL_ITEM_HEIGHT;
@@ -1534,7 +1758,7 @@ function openYearWheel() {
 }
 
 function positionYearWheelPopover() {
-  const anchor = refs.birthYearWrap.getBoundingClientRect();
+  const anchor = (state.wheel?.kind === "fee" ? refs.serviceMoney : state.wheel?.kind === "page" ? state.wheel.target.anchor : refs.birthYearWrap).getBoundingClientRect();
   const panel = refs.yearWheelPanel;
   panel.style.left = `${Math.max(8, Math.min(anchor.left, window.innerWidth - panel.offsetWidth - 8))}px`;
   const below = anchor.bottom + 6;
@@ -1547,8 +1771,10 @@ function closeYearWheel() {
   refs.yearWheelLayer.classList.add("hidden");
   document.body.style.overflow = "";
   const opener = state.wheel?.opener;
+  const isFee = state.wheel?.kind === "fee";
   state.wheel = null;
-  if (opener && opener !== document.body && !wheelOnlyQuery.matches) opener.focus?.({ preventScroll: true });
+  // ô Công khám mở vòng quay khi được focus nên không trả focus về nó (sẽ mở lại vòng quay)
+  if (opener && opener !== document.body && !isFee && !wheelOnlyQuery.matches) opener.focus?.({ preventScroll: true });
 }
 
 function scheduleYearWheelUpdate() {
@@ -1589,7 +1815,74 @@ function scrollYearWheelTo(index) {
   refs.yearWheel.scrollTo({ top: Math.min(last, Math.max(0, index)) * WHEEL_ITEM_HEIGHT, behavior: "smooth" });
 }
 
+// iOS chỉ bật bàn phím khi focus xảy ra ngay trong thao tác chạm; ô đang bị chặn bàn phím (inputmode "none") đổi chế độ rồi focus thì có khi không hiện.
+// Nên focus một ô tạm (đã bật bàn phím) ngay lập tức, rồi chuyển focus sang ô thật: bàn phím giữ nguyên.
+function focusWithKeyboard(input, inputmode) {
+  const probe = document.createElement("input");
+  probe.setAttribute("inputmode", inputmode);
+  probe.setAttribute("aria-hidden", "true");
+  probe.tabIndex = -1;
+  probe.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;";
+  document.body.append(probe);
+  probe.focus();
+  setTimeout(() => {
+    input.setAttribute("inputmode", inputmode);
+    input.readOnly = false;
+    input.focus();
+    probe.remove();
+  }, 60);
+}
+
 function applyYearWheel(action) {
+  const wheel = state.wheel;
+  if (wheel?.kind === "page") {
+    closeYearWheel();
+    if (action === "done" && wheel.years[wheel.index] !== state.page) {
+      state.page = wheel.years[wheel.index];
+      renderPatientList();
+      if (phoneLayoutQuery.matches) refs.patientListBody.closest(".patient-top").scrollIntoView({ block: "start" });
+    }
+    return;
+  }
+  if (wheel && (wheel.kind === "dose" || wheel.kind === "qty")) {
+    const rowElement = refs.drugRows.querySelector(`.drug-row[data-key="${wheel.target.key}"]`);
+    const row = state.draftRows.find((item) => item.key === wheel.target.key);
+    const input = rowElement?.querySelector(`input[data-field="${wheel.target.field}"]`);
+    closeYearWheel();
+    if (!row || !input) return;
+    if (action === "keyboard") {
+      // inputmode "none" (điện thoại) chặn bàn phím; đổi lại thành số rồi mới focus thì bàn phím hiện
+      input.dataset.kb = "1";
+      focusWithKeyboard(input, wheel.kind === "qty" ? "numeric" : "decimal");
+    } else if (action === "done") {
+      const value = wheel.years[wheel.index];
+      row[wheel.target.field] = wheel.kind === "qty" ? toNumber(value) : value;
+      input.value = row[wheel.target.field];
+      applyDoseAlertStateToRowElement(rowElement, row);
+      refreshRowSubtotal(rowElement, row);
+      updateTotals();
+      updateWarning();
+    }
+    return;
+  }
+  if (action === "keyboard") {
+    const input = state.wheel?.kind === "fee" ? refs.serviceMoney : refs.birthYear;
+    closeYearWheel();
+    input.dataset.kb = "1";
+    focusWithKeyboard(input, "numeric");
+    return;
+  }
+  if (state.wheel?.kind === "fee") {
+    if (action === "done") {
+      refs.serviceMoney.value = String(state.wheel.years[state.wheel.index]);
+      state.moneyOverrides.service = toNumber(refs.serviceMoney.value);
+      syncServiceFeeFromMoney();
+      formatMoneyField(refs.serviceMoney, true);
+      updateTotals();
+    }
+    closeYearWheel();
+    return;
+  }
   if (action === "done" && state.wheel) refs.birthYear.value = String(state.wheel.years[state.wheel.index]);
   if (action === "clear") refs.birthYear.value = "";
   if (action !== "cancel") calcAge();
@@ -1604,10 +1897,11 @@ function handleYearWheelClick(event) {
   }
   const item = event.target.closest(".wheel__item");
   if (item && state.wheel) {
-    scrollYearWheelTo(state.wheel.years.indexOf(Number(item.dataset.year)));
+    scrollYearWheelTo(Number(item.dataset.index));
     return;
   }
-  if (event.target === refs.yearWheelLayer) closeYearWheel();
+  // bấm ra ngoài là chọn năm đang ở giữa
+  if (event.target === refs.yearWheelLayer) applyYearWheel("done");
 }
 
 function handleYearWheelKeydown(event) {
@@ -1755,7 +2049,7 @@ function renderCodeData() {
           <input class="field" id="icdSearchInput" type="search" placeholder="Tìm mã hoặc tên chẩn đoán..." autocomplete="off" aria-label="Tìm mã ICD" value="${escapeAttribute(state.icdSearch)}" />
           ${iconHtml("search")}
         </div>
-        <button class="btn small primary" type="button" data-action="create-icd" title="Thêm mã ICD">${iconHtml("plus")}<span>Thêm</span></button>
+        <button class="btn small primary" type="button" data-action="create-icd" title="Thêm mã ICD" aria-label="Thêm mã ICD">${iconHtml("plus")}<span>Thêm</span></button>
       </div>
       <div class="code-manager__list">
         <div class="code-head">
@@ -1764,6 +2058,10 @@ function renderCodeData() {
           <div></div>
         </div>
         <div id="codeRows"></div>
+      </div>
+      <div class="stock-menu hidden" id="codeMenu" role="menu">
+        <button class="btn ghost" type="button" role="menuitem" data-action="edit-icd">${iconHtml("pencil")}<span>Chỉnh sửa</span></button>
+        <button class="btn ghost" type="button" role="menuitem" data-action="delete-icd">${iconHtml("trash-2")}<span>Xóa</span></button>
       </div>
     </div>
   `;
@@ -1782,6 +2080,7 @@ function renderCodeRows() {
         <div class="code-row__actions">
           <button class="icon-btn" type="button" data-action="edit-icd" data-code="${escapeAttribute(item.code)}" aria-label="Sửa mã ${escapeAttribute(item.code)}" title="Sửa">${iconHtml("pencil")}</button>
           <button class="icon-btn danger" type="button" data-action="delete-icd" data-code="${escapeAttribute(item.code)}" aria-label="Xóa mã ${escapeAttribute(item.code)}" title="Xóa">${iconHtml("trash-2")}</button>
+          <button class="icon-btn code-more" type="button" data-action="code-more" data-code="${escapeAttribute(item.code)}" aria-label="Tùy chọn mã ${escapeAttribute(item.code)}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button>
         </div>
       </div>
     `)
@@ -1789,6 +2088,8 @@ function renderCodeRows() {
   document.getElementById("codeRows").innerHTML = rows || '<div class="code-empty">Không có mã ICD phù hợp.</div>';
   // khung chỉ hiện 5 dòng, còn lại cuộn
   const list = document.querySelector(".code-manager__list");
+  // điện thoại: cột Mã ICD hẹp vừa đủ cho mã dài nhất
+  list.style.setProperty("--code-w", `${Math.max(0, ...state.icdList.map((item) => String(item.code).length)) + 1}ch`);
   list.style.maxHeight = "";
   const items = [...list.querySelectorAll(".code-row")].slice(0, 5);
   if (items.length === 5 && list.offsetHeight) list.style.maxHeight = `${list.querySelector(".code-head").offsetHeight + items.reduce((sum, row) => sum + row.offsetHeight, 0) + 2}px`;
@@ -1797,11 +2098,31 @@ function renderCodeRows() {
 async function handleCodeDataClick(event) {
   const target = event.target.closest("[data-action]");
   const action = target?.dataset.action;
-  if (!action) return;
+  const codeMenu = document.getElementById("codeMenu");
+  if (!action) {
+    codeMenu?.classList.add("hidden");
+    return;
+  }
+  if (codeMenu && action !== "code-more") codeMenu.classList.add("hidden");
   // dùng mã ICD: nhấp đúp vào dòng; các nút khác: nhấp đơn
   if ((action === "use-icd") !== (event.type === "dblclick")) return;
 
   try {
+    if (action === "code-more") {
+      // điện thoại: nút ⋮ mở menu Chỉnh sửa / Xóa của mã này
+      const menu = document.getElementById("codeMenu");
+      const opening = menu.classList.contains("hidden") || menu.dataset.for !== target.dataset.code;
+      menu.classList.toggle("hidden", !opening);
+      if (!opening) return;
+      menu.dataset.for = target.dataset.code;
+      menu.querySelectorAll("[data-action]").forEach((item) => { item.dataset.code = target.dataset.code; });
+      const rect = target.getBoundingClientRect();
+      const below = rect.bottom + 6;
+      menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+      menu.style.top = `${below + menu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menu.offsetHeight - 6) : below}px`;
+      return;
+    }
+
     if (action === "edit-icd" || action === "create-icd") {
       const item = state.icdList.find((entry) => entry.code === target.dataset.code);
       state.editingIcdCode = item ? item.code : "";
@@ -1860,6 +2181,22 @@ async function saveIcdEdit() {
   }
 }
 
+async function confirmDrugDelete() {
+  if (!state.deletingDrugId) return;
+  setBusy(refs.drugDeleteConfirmBtn, true);
+  try {
+    await fetchJson(`/api/drugs/${state.deletingDrugId}`, { method: "DELETE" });
+    refs.drugDeleteModal.close();
+    state.deletingDrugId = "";
+    await loadDrugs();
+    showToast("Đã xóa thuốc khỏi kho.", "success");
+  } catch (error) {
+    handleError(error);
+  } finally {
+    setBusy(refs.drugDeleteConfirmBtn, false);
+  }
+}
+
 async function confirmIcdDelete() {
   try {
     state.icdList = state.icdList.filter((item) => item.code !== state.deletingIcdCode);
@@ -1908,7 +2245,7 @@ function isPristineDraftRow(row) {
 function buildDoseFieldHtml(row, field) {
   return `
     <div class="drug-field drug-field--dose drug-field--${field} drug-field--dose-${field}">
-      <input class="mini" data-field="${field}" placeholder="–" ${phoneLayoutQuery.matches ? "" : 'list="doseList"'} aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
+      <input class="mini" data-field="${field}" placeholder="–" ${phoneLayoutQuery.matches ? 'inputmode="none"' : ""} aria-label="${DOSE_LABELS[field]}" value="${escapeAttribute(row[field] || "")}" />
       <span class="drug-lbl">${DOSE_LABELS[field]}</span>
       <div class="dose-quick hidden">
         ${DOSE_OPTIONS.map((option) => `<button class="dose-quick__btn" type="button" data-action="set-dose" data-dose-field="${field}" data-dose-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
@@ -1923,7 +2260,7 @@ function ensureSearchRow() {
 }
 
 function buildDrugCalcHtml(row) {
-  return `${escapeHtml(formatNumber(toNumber(row.quantity)))} × ${escapeHtml(formatMoney(row.price))} = <strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong>`;
+  return `<span>Đơn giá: ${escapeHtml(formatMoney(row.price))}</span><span>Thành tiền: ${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</span>`;
 }
 
 function buildDrugRowHtml(row, index) {
@@ -1932,8 +2269,10 @@ function buildDrugRowHtml(row, index) {
     <div class="drug-row drug-row--search" data-key="${row.key}">
       <div class="drug-search">
         ${iconHtml("search")}
-        <input class="mini" data-field="activeIngredient" list="activeIngredientList" autocomplete="off" aria-label="Thêm thuốc" placeholder="${phoneLayoutQuery.matches ? "+ Thêm thuốc" : "Gõ tên hoạt chất hoặc tên thương mại để thêm thuốc…"}" value="" />
+        <input class="mini" data-field="activeIngredient" ${phoneLayoutQuery.matches ? "" : 'list="activeIngredientList"'} autocomplete="off" aria-label="Thêm thuốc" placeholder="${phoneLayoutQuery.matches ? "Tìm thuốc để thêm…" : "Gõ tên hoạt chất hoặc tên thương mại để thêm thuốc…"}" value="" />
+        <div class="suggest-box drug-suggest hidden"></div>
       </div>
+      <button class="btn small primary drug-search__new" type="button" data-action="new-prescription" aria-label="Toa mới: xóa hết thuốc" title="Xóa hết thuốc để kê toa mới cho lần khám đang chọn">${iconHtml("plus")}</button>
     </div>`;
   }
   const number = index + 1;
@@ -1946,7 +2285,7 @@ function buildDrugRowHtml(row, index) {
         </div>
         ${DOSE_FIELDS.map((field) => buildDoseFieldHtml(row, field)).join("")}
         <div class="drug-field drug-field--quantity">
-          <input class="mini" data-field="quantity" inputmode="numeric" pattern="[0-9]*" aria-label="Số lượng" value="${escapeAttribute(row.quantity)}" />
+          <input class="mini" data-field="quantity" inputmode="${phoneLayoutQuery.matches ? "none" : "numeric"}" pattern="[0-9]*" aria-label="Số lượng" value="${escapeAttribute(row.quantity)}" />
           <span class="drug-lbl">Số lượng</span>
           <div class="quantity-quick hidden">
             ${QUANTITY_OPTIONS.map((option) => `<button class="quantity-quick__btn ${["30", "60", "90"].includes(option) ? "is-common" : ""}" type="button" data-action="set-quantity" data-quantity-value="${escapeAttribute(option)}">${escapeHtml(option)}</button>`).join("")}
@@ -1958,6 +2297,7 @@ function buildDrugRowHtml(row, index) {
         <div class="drug-actions">
           <button class="icon-btn danger drug-remove" data-action="remove" type="button" aria-label="Xóa dòng thuốc ${number}" title="Xóa dòng thuốc">${iconHtml("trash-2")}</button>
           <button class="icon-btn drug-toggle" data-action="toggle-row" type="button" aria-expanded="${row.expanded ? "true" : "false"}" aria-label="Chi tiết thuốc ${number}" title="Chi tiết">${iconHtml("chevron-down")}<span class="drug-toggle__text">${row.expanded ? "Thu gọn" : "Chi tiết"}</span></button>
+          <button class="icon-btn drug-more" data-action="drug-more" type="button" aria-label="Tùy chọn dòng thuốc ${number}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button>
         </div>
       </div>
       <div class="drug-detail">
@@ -2001,18 +2341,91 @@ function simplifyDrugBrandForMobile(value) {
     .trim() || String(value || "");
 }
 
-function handleDrugRowClick(event) {
-  const doseInput = event.target.closest("input[data-field='morning'], input[data-field='noon'], input[data-field='night']");
-  if (doseInput) {
-    if (phoneLayoutQuery.matches) {
-      toggleDoseQuickPicker(doseInput.closest(".drug-field--dose"));
-    } else if (typeof doseInput.showPicker === "function") {
-      try { doseInput.showPicker(); } catch {}
-    }
+// ---- Ô thêm thuốc (điện thoại): bấm vào hiện thuốc dùng gần đây, gõ thì hiện danh sách khớp ----
+
+const RECENT_DRUGS_KEY = "pk_recent_drugs";
+
+function getRecentDrugIds() {
+  try { return JSON.parse(localStorage.getItem(RECENT_DRUGS_KEY) || "[]"); } catch { return []; }
+}
+
+function rememberRecentDrug(id) {
+  if (!id) return;
+  try { localStorage.setItem(RECENT_DRUGS_KEY, JSON.stringify([id, ...getRecentDrugIds().filter((item) => item !== id)].slice(0, 12))); } catch {}
+}
+
+function showDrugSearchSuggest(event) {
+  const input = event.target;
+  if (!phoneLayoutQuery.matches || !input.matches?.(".drug-row--search input[data-field='activeIngredient']")) return;
+  const box = input.parentElement.querySelector(".drug-suggest");
+  const keyword = normalizeText(input.value.trim());
+  const available = state.drugs;
+  let rows;
+  if (keyword) {
+    rows = available.filter((drug) => normalizeText(`${drug.activeIngredient} ${drug.brandName || ""}`).includes(keyword)).slice(0, 30);
+  } else {
+    const byId = new Map(available.map((drug) => [drug._id, drug]));
+    rows = getRecentDrugIds().map((id) => byId.get(id)).filter(Boolean).slice(0, 8);
   }
-  const quantityInput = event.target.closest("input[data-field='quantity']");
-  if (quantityInput && phoneLayoutQuery.matches) {
-    toggleQuantityQuickPicker(quantityInput.closest(".drug-field--quantity"));
+  const heading = keyword ? "" : rows.length ? '<div class="suggest-head">Gần đây</div>' : "";
+  box.innerHTML = heading + (rows.map((drug) => `<div class="suggest-item" data-drug-id="${escapeAttribute(drug._id)}">${escapeHtml(drug.activeIngredient)}${drug.brandName ? `<small>${escapeHtml(drug.brandName)}</small>` : ""}</div>`).join("")
+    || (keyword ? '<div class="suggest-item">Không có thuốc phù hợp.</div>' : ""));
+  box.classList.toggle("hidden", !box.innerHTML);
+}
+
+function pickDrugFromSearch(drug, rowKey) {
+  if (!drug) return;
+  if (state.draftRows.some((row) => row.drugId === drug._id)) {
+    showToast(`${drug.activeIngredient} đã có trong toa.`, "error");
+    // xóa chữ đã gõ ở ô tìm, nếu không dòng đó thành một dòng thuốc thừa
+    const typed = state.draftRows.find((item) => item.key === rowKey);
+    if (typed && !typed.drugId) typed.activeIngredient = "";
+    renderDrugRows();
+    updateTotals();
+    return;
+  }
+  // dòng đang gõ có thể đã mang chữ vừa nhập, nên lấy đúng dòng theo key
+  const row = state.draftRows.find((item) => item.key === rowKey) || state.draftRows.find(isPristineDraftRow) || createDraftRow();
+  if (!state.draftRows.includes(row)) state.draftRows.push(row);
+  applyCatalogDrugToRow(row, drug);
+  renderDrugRows();
+  updateTotals();
+  updateWarning();
+  refs.drugRows.querySelector(`.drug-row[data-key="${row.key}"] input[data-field="morning"]`)?.focus();
+}
+
+function handleDrugRowClick(event) {
+  const suggestion = event.target.closest(".drug-suggest [data-drug-id]");
+  if (suggestion) {
+    pickDrugFromSearch(state.drugs.find((item) => item._id === suggestion.dataset.drugId), suggestion.closest(".drug-row")?.dataset.key);
+    return;
+  }
+  const moreButton = event.target.closest("[data-action='drug-more']");
+  if (moreButton) {
+    // điện thoại: nút ⋮ mở menu Chi tiết / Xóa của dòng thuốc này
+    const menu = document.getElementById("drugRowMenu");
+    const rowElement = moreButton.closest(".drug-row");
+    const opening = menu.classList.contains("hidden") || menu.dataset.key !== rowElement.dataset.key;
+    menu.classList.toggle("hidden", !opening);
+    if (!opening) return;
+    menu.dataset.key = rowElement.dataset.key;
+    const expanded = state.draftRows.find((item) => item.key === rowElement.dataset.key)?.expanded;
+    menu.querySelector('[data-action="toggle-row"] span').textContent = expanded ? "Thu gọn chi tiết" : "Xem chi tiết";
+    const rect = moreButton.getBoundingClientRect();
+    const below = rect.bottom + 6;
+    menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+    menu.style.top = `${below + menu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menu.offsetHeight - 6) : below}px`;
+    return;
+  }
+  if (event.target.closest("[data-action='new-prescription']")) {
+    createNewPrescription();
+    return;
+  }
+  // điện thoại: chạm vào Sáng / Trưa / Tối / Số lượng mở vòng quay chọn giống Năm sinh
+  const optionInput = event.target.closest("input[data-field='morning'], input[data-field='noon'], input[data-field='night'], input[data-field='quantity']");
+  if (optionInput && phoneLayoutQuery.matches && !optionInput.dataset.kb && !state.wheel) {
+    const field = optionInput.dataset.field;
+    openYearWheel(field === "quantity" ? "qty" : "dose", { key: optionInput.closest(".drug-row").dataset.key, field });
   }
   const doseButton = event.target.closest("[data-action='set-dose']");
   if (doseButton) {
@@ -2045,11 +2458,7 @@ function handleDrugRowClick(event) {
     }
     return;
   }
-  let toggleButton = event.target.closest("[data-action='toggle-row']");
-  // nhấp vào vùng trống của dòng cũng mở/đóng chi tiết
-  if (!toggleButton && !event.target.closest("input, button, textarea, .drug-field")) {
-    toggleButton = event.target.closest(".drug-row__line")?.querySelector("[data-action='toggle-row']") || null;
-  }
+  const toggleButton = event.target.closest("[data-action='toggle-row']");
   if (toggleButton) {
     const rowElement = toggleButton.closest(".drug-row");
     const row = state.draftRows.find((item) => item.key === rowElement.dataset.key);
@@ -2109,9 +2518,6 @@ function refreshRowSubtotal(rowElement, row) {
 function handleDrugRowChange(event) {
   const field = event.target?.dataset?.field;
   if (event.type === "focusout" && field !== "quantity") return;
-  if (event.type === "focusin" && DOSE_FIELDS.includes(field) && !phoneLayoutQuery.matches && typeof event.target.showPicker === "function") {
-    try { event.target.showPicker(); } catch {}
-  }
   const rowElement = event.target.closest(".drug-row");
   if (!rowElement) return;
   const row = state.draftRows.find((item) => item.key === rowElement.dataset.key);
@@ -2122,6 +2528,13 @@ function handleDrugRowChange(event) {
     row.activeIngredient = event.target.value;
     if (event.type === "change") {
       const drug = findMatchingDrugByIngredient(row.activeIngredient, row.brandName);
+      if (drug && state.draftRows.some((item) => item !== row && item.drugId === drug._id)) {
+        showToast(`${drug.activeIngredient} đã có trong toa.`, "error");
+        row.activeIngredient = "";
+        renderDrugRows();
+        updateTotals();
+        return;
+      }
       if (drug) {
         applyCatalogDrugToRow(row, drug);
       } else {
@@ -2174,7 +2587,9 @@ function updateTotals() {
   applyMoneyField(refs.drugMoney, "drug", drugTotal);
   applyMoneyField(refs.serviceMoney, "service", service);
   renderTotalMoney();
-  const count = state.draftRows.filter((row) => !isPristineDraftRow(row) && (row.drugId || row.activeIngredient)).length;
+  // dòng tìm đang gõ dở (cuối danh sách, chưa gắn thuốc) không tính vào số thuốc
+  const lastIndex = state.draftRows.length - 1;
+  const count = state.draftRows.filter((row, index) => !isPristineDraftRow(row) && (row.drugId || (row.activeIngredient && index < lastIndex))).length;
   refs.drugSummary.innerHTML = `<span class="muted">${count} thuốc · Tiền thuốc</span> <strong>${escapeHtml(formatMoney(drugTotal))}</strong>`;
 }
 
@@ -2195,23 +2610,7 @@ function computeProjectedStock() {
   return projected;
 }
 
-function findProjectedNegativeStock() {
-  return [...computeProjectedStock().values()]
-    .filter((item) => item.after < 0)
-    .map((item) => ({ name: item.drug.brandName || item.drug.activeIngredient, after: item.after }));
-}
-
 function updateWarning() {
-  const names = state.draftRows.map((item) => normalizeText(`${item.activeIngredient} ${item.brandName}`));
-  const warnings = [];
-  if (names.some((item) => item.includes("olanzapine")) && names.some((item) => item.includes("quetiapine"))) warnings.push("Olanzapine + Quetiapine co the lam tang an than va ganh nang chuyen hoa.");
-  if (names.some((item) => item.includes("diazepam")) && names.some((item) => item.includes("quetiapine"))) warnings.push("Diazepam + Quetiapine co the lam tang buon ngu, lu lan va te nga.");
-  if (names.some((item) => item.includes("clozapine")) && names.some((item) => item.includes("carbamazepine"))) warnings.push("Clozapine + Carbamazepine lam tang nguy co suy tuy, nen tranh phoi hop.");
-  const lines = warnings.map((item) => `- ${escapeHtml(item)}`);
-  findProjectedNegativeStock().forEach((item) => {
-    lines.push(`<span class="is-neg">${iconHtml("alert-triangle")} ${escapeHtml(item.name)} sẽ âm kho (còn ${formatNumber(item.after)})</span>`);
-  });
-  refs.warningBox.innerHTML = lines.join("<br>");
   refreshDrugRowStates();
 }
 
@@ -2428,11 +2827,18 @@ function applySuggestedRowsToDraft(suggestions) {
 function renderDrugPickers() {
   const uniqueIngredients = [...new Map(state.drugs.map((drug) => [normalizeText(drug.activeIngredient), drug.activeIngredient])).values()];
   refs.activeIngredientList.innerHTML = uniqueIngredients.map((value) => `<option value="${escapeAttribute(value)}"></option>`).join("");
-  refs.doseList.innerHTML = DOSE_OPTIONS.map((value) => `<option value="${escapeAttribute(value)}"></option>`).join("");
   refs.serviceFeeList.innerHTML = SERVICE_FEE_OPTIONS.map((value) => `<option value="${value}"></option>`).join("");
 }
 
+// Công khám chọn bằng vòng quay như Năm sinh
+function openServiceFeePicker() {
+  if (state.wheel || refs.serviceMoney.dataset.kb) return;
+  refs.serviceFeeSuggestBox.classList.add("hidden");
+  openYearWheel("fee");
+}
+
 function renderServiceFeeSuggest() {
+  if (phoneLayoutQuery.matches) return;
   const keyword = String(refs.serviceMoney.value || "").replace(/\D/g, "");
   const rows = SERVICE_FEE_OPTIONS
     .filter((value) => !keyword || String(value).includes(keyword))
@@ -2480,7 +2886,7 @@ function renderStockData() {
           <input class="field" id="stockSearchInput" type="search" placeholder="Tìm hoạt chất hoặc tên thương mại..." autocomplete="off" aria-label="Tìm thuốc trong kho" value="${escapeAttribute(state.stockSearch)}" />
           ${iconHtml("search")}
         </div>
-        <button class="btn small primary" type="button" data-action="add-drug">${iconHtml("plus")}<span>Thêm thuốc</span></button>
+        <button class="btn small primary" type="button" data-action="add-drug" aria-label="Thêm thuốc" title="Thêm thuốc">${iconHtml("plus")}<span>Thêm thuốc</span></button>
       </div>
       ${pending.length ? `
         <div class="stock-pending">
@@ -2499,6 +2905,12 @@ function renderStockData() {
         <div class="stock-head"><div>Hoạt chất</div><div class="stock-row__qty">Tồn kho</div><div class="stock-row__price">Đơn giá</div><div></div></div>
         <div id="stockRows"></div>
       </div>
+      <div class="stock-menu hidden" id="stockMenu" role="menu">
+        <button class="btn ghost" type="button" role="menuitem" data-action="stock-in">${iconHtml("download")}<span>Nhập kho</span></button>
+        <button class="btn ghost" type="button" role="menuitem" data-action="open-drug">${iconHtml("pencil")}<span>Chỉnh sửa</span></button>
+        <button class="btn ghost" type="button" role="menuitem" data-action="toggle-stock">${iconHtml("eye")}<span>Xem chi tiết</span></button>
+        <button class="btn ghost" type="button" role="menuitem" data-action="delete-drug">${iconHtml("trash-2")}<span>Xóa</span></button>
+      </div>
     </div>
   `;
   renderStockRows();
@@ -2516,7 +2928,7 @@ function renderStockRows() {
         <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? '<span class="badge-neg">Âm kho</span>' : ""}</div>
         <div class="stock-row__qty"><span class="stock-row__lbl">Tồn kho: </span>${formatNumber(drug.quantity)}</div>
         <div class="stock-row__price"><span class="stock-row__lbl">Đơn giá: </span>${formatMoney(drug.price)}</div>
-        <div class="stock-row__act"><button class="icon-btn" data-action="stock-in" data-id="${drug._id}" type="button" aria-label="Nhập kho ${escapeAttribute(drug.activeIngredient)}" title="Nhập kho">${iconHtml("download")}</button><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Sửa ${escapeAttribute(drug.activeIngredient)}" title="Sửa">${iconHtml("pencil")}</button><button class="icon-btn stock-toggle" data-action="toggle-stock" data-id="${drug._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
+        <div class="stock-row__act"><button class="icon-btn" data-action="stock-in" data-id="${drug._id}" type="button" aria-label="Nhập kho ${escapeAttribute(drug.activeIngredient)}" title="Nhập kho">${iconHtml("download")}</button><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Sửa ${escapeAttribute(drug.activeIngredient)}" title="Sửa">${iconHtml("pencil")}</button><button class="icon-btn danger" data-action="delete-drug" data-id="${drug._id}" type="button" aria-label="Xóa ${escapeAttribute(drug.activeIngredient)}" title="Xóa">${iconHtml("trash-2")}</button><button class="icon-btn stock-toggle" data-action="toggle-stock" data-id="${drug._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("chevron-down")}</button><button class="icon-btn stock-more" data-action="stock-more" data-id="${drug._id}" type="button" aria-label="Tùy chọn ${escapeAttribute(drug.activeIngredient)}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button></div>
       </div>
       <div class="stock-detail">
         ${detailFieldHtml("Tên thương mại", "drug-field--brand", drug.brandName)}${detailFieldHtml("Đơn vị", "drug-field--unit", drug.unit)}${detailFieldHtml("Công dụng / HDSD", "drug-field--usage", drug.usage)}${drug.notes ? detailFieldHtml("Ghi chú", "drug-field--usage", drug.notes) : ""}
@@ -2526,7 +2938,7 @@ function renderStockRows() {
   fitStockList();
 }
 
-// khung chỉ hiện 5 dòng + chiều cao các phần chi tiết đang mở, còn lại cuộn
+// khung cố định cao 8 dòng (kể cả khi mở chi tiết), còn lại cuộn
 function toggleStockItem(item) {
   const id = item.querySelector(".stock-toggle").dataset.id;
   const open = !state.stockOpen.has(id);
@@ -2541,10 +2953,9 @@ function fitStockList() {
   if (!list) return;
   list.style.maxHeight = "";
   const rows = [...list.querySelectorAll(".stock-row")];
-  if (rows.length < 5 || !list.offsetHeight) return;
-  const open = [...list.querySelectorAll(".stock-item.is-open .stock-detail")];
-  const sum = (els) => els.reduce((total, el) => total + el.offsetHeight, 0);
-  list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + sum(rows.slice(0, 5)) + sum(open) + 2}px`;
+  if (rows.length < 8 || !list.offsetHeight) return;
+  const rowsHeight = rows.slice(0, 8).reduce((total, el) => total + el.offsetHeight, 0);
+  list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + rowsHeight + 2}px`;
 }
 
 function updateStockInPreview() {
@@ -2602,14 +3013,15 @@ function applyStockPaste() {
 
 async function handleStockDataClick(event) {
   const actionElement = event.target.closest("[data-action]");
-  if (!actionElement) return;
-  const action = actionElement.dataset.action;
-  // đưa thuốc vào toa: nhấp đúp vào dòng; nhấp đơn vào dòng: mở/đóng chi tiết; các nút khác: nhấp đơn
-  if (action === "use-drug" && event.type === "click") {
-    if (event.detail < 2) toggleStockItem(actionElement.closest(".stock-item"));
+  const stockMenu = document.getElementById("stockMenu");
+  if (!actionElement) {
+    stockMenu?.classList.add("hidden");
     return;
   }
-  if (action === "use-drug" && event.type === "dblclick") toggleStockItem(actionElement.closest(".stock-item"));
+  const action = actionElement.dataset.action;
+  if (stockMenu && action !== "stock-more") stockMenu.classList.add("hidden");
+  // đưa thuốc vào toa: nhấp đúp vào dòng; các nút khác: nhấp đơn
+  if (action === "use-drug" && event.type === "click") return;
   if ((action === "use-drug") !== (event.type === "dblclick")) return;
 
   try {
@@ -2622,16 +3034,46 @@ async function handleStockDataClick(event) {
       }
       const row = state.draftRows.find(isPristineDraftRow) || createDraftRow();
       if (!state.draftRows.includes(row)) state.draftRows.push(row);
+      // điện thoại: toa dài ra đẩy Kho thuốc xuống, bù lại để dòng vừa nhấp đúp đứng yên trên màn hình
+      const topBefore = actionElement.getBoundingClientRect().top;
       applyCatalogDrugToRow(row, drug);
       renderDrugRows();
       updateTotals();
       updateWarning();
+      if (phoneLayoutQuery.matches) window.scrollBy({ top: actionElement.getBoundingClientRect().top - topBefore, behavior: "instant" });
       showToast(`Đã thêm ${drug.activeIngredient} vào toa.`);
       return;
     }
 
+    if (action === "delete-drug") {
+      const drug = state.drugs.find((item) => item._id === actionElement.dataset.id);
+      if (!drug) return;
+      state.deletingDrugId = drug._id;
+      refs.drugDeleteText.textContent = `Xóa thuốc ${[drug.activeIngredient, drug.brandName].filter(Boolean).join(" / ")} khỏi kho?`;
+      refs.drugDeleteModal.showModal();
+      return;
+    }
+
+    if (action === "stock-more") {
+      // điện thoại: một nút ⋮ mở menu 3 tùy chọn (nhập kho, chỉnh sửa, xem chi tiết) của thuốc này
+      const menu = document.getElementById("stockMenu");
+      const opening = menu.classList.contains("hidden") || menu.dataset.for !== actionElement.dataset.id;
+      menu.classList.toggle("hidden", !opening);
+      if (!opening) return;
+      menu.dataset.for = actionElement.dataset.id;
+      menu.querySelectorAll("[data-action]").forEach((item) => { item.dataset.id = actionElement.dataset.id; });
+      const open = state.stockOpen.has(actionElement.dataset.id);
+      menu.querySelector('[data-action="toggle-stock"] span').textContent = open ? "Thu gọn chi tiết" : "Xem chi tiết";
+      const rect = actionElement.getBoundingClientRect();
+      const below = rect.bottom + 6;
+      menu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+      menu.style.top = `${below + menu.offsetHeight > window.innerHeight - 8 ? Math.max(8, rect.top - menu.offsetHeight - 6) : below}px`;
+      return;
+    }
+
     if (action === "toggle-stock") {
-      toggleStockItem(actionElement.closest(".stock-item"));
+      const id = actionElement.dataset.id;
+      toggleStockItem(actionElement.closest(".stock-item") || document.querySelector(`.stock-toggle[data-id="${id}"]`)?.closest(".stock-item"));
       fitStockList();
       return;
     }
@@ -2644,7 +3086,8 @@ async function handleStockDataClick(event) {
       refs.stockInQty.value = "50";
       updateStockInPreview();
       refs.stockInModal.showModal();
-      refs.stockInQty.focus();
+      // điện thoại: không tự bật bàn phím cùng lúc với hộp thoại (Safari đẩy hộp thoại lệch khỏi màn hình)
+      if (!phoneLayoutQuery.matches) refs.stockInQty.focus();
       return;
     }
 
@@ -2825,6 +3268,7 @@ function parseStockPaste(text) {
 }
 
 function applyCatalogDrugToRow(row, drug) {
+  rememberRecentDrug(drug?._id);
   row.drugId = drug?._id || "";
   row.activeIngredient = drug?.activeIngredient || row.activeIngredient;
   row.brandName = composeBrandName(drug?.brandName || row.brandName, row.activeIngredient);
@@ -2832,6 +3276,8 @@ function applyCatalogDrugToRow(row, drug) {
   row.quantity = toNumber(row.quantity) || 30;
   row.usage = drug?.usage || row.usage || "";
   row.price = Number(drug?.price || row.price || 0);
+  // mặc định 1 viên sáng và tối, trưa để trống
+  if (!DOSE_FIELDS.some((field) => String(row[field] || "").trim())) { row.morning = "1"; row.night = "1"; }
 }
 
 function applyDoseAlertStateToRowElement(rowElement, row) {
@@ -2918,7 +3364,9 @@ function findMatchingDrugByIngredient(activeIngredient, brandName = "") {
     const sameIngredient = normalizeText(drug.activeIngredient) === normalizedIngredient;
     if (!sameIngredient) return false;
     return !normalizedBrand || normalizeText(composeBrandName(drug.brandName, drug.activeIngredient)).includes(normalizedBrand);
-  }) || state.drugs.find((drug) => normalizeText(drug.activeIngredient).includes(normalizedIngredient));
+  }) || state.drugs.find((drug) => normalizeText(drug.activeIngredient).includes(normalizedIngredient))
+    // gõ tên thương mại cũng tìm ra đúng thuốc trong kho (để kiểm tra trùng và gắn với kho)
+    || (normalizedIngredient && state.drugs.find((drug) => normalizeText(drug.brandName || "").includes(normalizedIngredient)));
 }
 
 function composeBrandName(brandName, activeIngredient) {
@@ -2984,7 +3432,7 @@ async function saveEncounter() {
       province: refs.province.value.trim(),
       notes: ""
     };
-    if (!patientPayload.fullName) throw new Error("Nhập họ tên bệnh nhân.");
+    if (!patientPayload.fullName) throw new Error("Nhập đầy đủ thông tin bệnh nhân.");
     if (!patientPayload.phone) throw new Error("Nhập số điện thoại.");
 
     let patientId = state.selectedPatientId;
@@ -3289,10 +3737,9 @@ async function handleImportFileChosen() {
       throw new Error("File hỏng hoặc không phải JSON hợp lệ. Dữ liệu hiện tại không bị thay đổi.");
     }
     validateImportFile(data);
-    // lấy bản dữ liệu hiện tại để so sánh và để tự sao lưu trước khi thay thế
+    // lấy bản dữ liệu hiện tại để so sánh
     const current = await fetchJson("/api/export");
     state.importData = data;
-    state.importBackup = current;
     const exportedAt = data.exportedAt ? new Date(data.exportedAt) : null;
     refs.importMeta.textContent = `File: ${file.name}${exportedAt && !Number.isNaN(exportedAt.getTime()) ? ` · xuất lúc ${exportedAt.toLocaleString("vi-VN")}` : ""}`;
     refs.importTable.innerHTML = `
@@ -3313,9 +3760,6 @@ async function confirmImport() {
   if (refs.importConfirm.value !== "NAP" || !state.importData) return;
   setBusy(refs.importConfirmBtn, true);
   try {
-    // luôn tải bản sao lưu dữ liệu hiện tại trước khi thay thế
-    downloadJson(`pk-dr-minh-backup-truoc-khi-nap-${timestampForFile()}.json`, state.importBackup);
-    await new Promise((resolve) => setTimeout(resolve, 500));
     const result = await fetchJson("/api/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3323,7 +3767,6 @@ async function confirmImport() {
     });
     refs.importModal.close();
     state.importData = null;
-    state.importBackup = null;
     createNewPatient();
     await initializeApp();
     const counts = Object.keys(IMPORT_LABELS).map((key) => `${formatNumber(result.counts[key])} ${IMPORT_LABELS[key].toLowerCase()}`).join(", ");
@@ -3521,7 +3964,8 @@ function openClinicModal(mode) {
   refs.clinicPhoneInput.value = info.phone;
   refs.clinicModalTitle.textContent = mode === "add" ? "Thêm thông tin phòng khám" : "Sửa thông tin phòng khám";
   refs.clinicModal.showModal();
-  refs.clinicNameInput.select();
+  // điện thoại: không tự bật bàn phím khi mở hộp thoại (giống Kho thuốc)
+  if (!phoneLayoutQuery.matches) refs.clinicNameInput.select();
 }
 
 function openClinicDelete() {

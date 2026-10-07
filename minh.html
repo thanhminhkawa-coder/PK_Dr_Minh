@@ -26,6 +26,7 @@
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></symbol>
     <symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+    <symbol id="i-more-vertical" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
     <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
     <symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
@@ -120,7 +121,7 @@
           <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Xuất dữ liệu</span></button>
           <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Nạp dữ liệu</span></button>
           <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
-          <button class="btn ghost" id="themeMenuBtn" type="button" data-app-action="toggle-theme"><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
+          <button class="btn ghost" id="themeMenuBtn" type="button" data-app-action="toggle-theme" data-theme-btn><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
           <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
           </div>
         </details>
@@ -131,16 +132,6 @@
       <div class="shell">
 
         <section class="tab-panel" id="panel-home" data-panel="home">
-          <div class="mobile-head">
-            <h1 data-clinic-name>Phòng khám tâm thần</h1>
-            <div class="mobile-head__actions">
-              <button class="icon-btn" type="button" data-app-action="export" aria-label="Xuất dữ liệu" title="Xuất dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg></button>
-              <button class="icon-btn" type="button" data-app-action="import" aria-label="Nạp dữ liệu" title="Nạp dữ liệu"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></button>
-              <button class="icon-btn" type="button" data-app-action="change-password" aria-label="Đổi mật khẩu" title="Đổi mật khẩu"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></button>
-              <button class="icon-btn" type="button" data-app-action="logout" aria-label="Đăng xuất" title="Đăng xuất"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg></button>
-            </div>
-          </div>
-
           <main class="main-layout">
             <section class="card patient-top page-section">
               <div class="card-title">
@@ -174,7 +165,7 @@
               <div class="card-title">
                 <h2>Thông tin bệnh nhân</h2>
                 <div class="row-actions form-actions">
-                  <button class="btn small" id="newBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Bệnh nhân mới</span></button>
+                  <button class="btn small" id="newBtn" type="button" aria-label="Bệnh nhân mới" title="Bệnh nhân mới"><svg class="icon icon--pc" aria-hidden="true"><use href="#i-user"/></svg><svg class="icon icon--phone" aria-hidden="true"><use href="#i-plus"/></svg><span>Bệnh nhân mới</span></button>
                 </div>
               </div>
 
@@ -193,7 +184,6 @@
                   <div class="year-field">
                     <input class="field" id="birthYear" inputmode="numeric" placeholder="1980" autocomplete="off" aria-haspopup="listbox" />
                     <output class="age-badge" id="age" for="birthYear"></output>
-                    <button class="birth-year-btn" id="birthYearBtn" type="button" aria-label="Chọn năm sinh" title="Chọn năm sinh" aria-haspopup="listbox"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>
                   </div>
                   <div class="suggest-box hidden" id="yearSuggestBox"></div>
                 </div>
@@ -305,7 +295,6 @@
                     </label>
                     <div class="money-row total"><span>Tổng tiền</span><output class="money-total" id="totalMoney" for="drugMoney serviceMoney" aria-live="polite">0</output></div>
                   </div>
-                  <div class="warning-box" id="warningBox" role="status"></div>
                 </div>
               </div>
             </section>
@@ -376,6 +365,15 @@
           </section>
         </section>
 
+        <section class="tab-panel hidden" id="panel-settings" data-panel="settings">
+          <div class="settings-page">
+            <h2>Cài đặt</h2>
+            <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
+            <button class="btn ghost" type="button" data-app-action="toggle-theme" data-theme-btn><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
+            <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
+          </div>
+        </section>
+
         <section class="tab-panel hidden" id="panel-clinic" data-panel="clinic">
           <section class="card page-section clinic-card">
             <div class="card-title clinic-card__title">
@@ -389,6 +387,7 @@
                 <button class="btn small primary" id="addClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
                 <button class="btn small danger" id="deleteClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
                 <button class="btn small" id="toggleClinicBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Sửa</span></button>
+                <button class="icon-btn clinic-more" id="clinicMoreBtn" type="button" aria-label="Tùy chọn hồ sơ phòng khám" aria-haspopup="menu" title="Tùy chọn"><svg class="icon" aria-hidden="true"><use href="#i-more-vertical"/></svg></button>
               </div>
             </div>
             <div class="clinic-meta">
@@ -414,10 +413,22 @@
     </div>
 
     <nav class="tabbar" aria-label="Điều hướng chính">
-      <a class="tab" href="#home" data-tab="home"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
-      <a class="tab" href="#stats" data-tab="stats"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-bar-chart-3"/></svg><span>Thống kê</span></a>
-      <a class="tab" href="#clinic" data-tab="clinic"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
+      <a class="tab" href="#home" data-tab="home" aria-label="Home"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
+      <a class="tab" href="#stats" data-tab="stats" aria-label="Thống kê"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-bar-chart-3"/></svg><span>Thống kê</span></a>
+      <a class="tab" href="#clinic" data-tab="clinic" aria-label="Phòng khám"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
+      <a class="tab" href="#settings" data-tab="settings" aria-label="Cài đặt"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-settings"/></svg><span>Cài đặt</span></a>
     </nav>
+
+    <div class="stock-menu hidden" id="clinicMenu" role="menu">
+      <button class="btn ghost" type="button" role="menuitem" data-clinic-action="addClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
+      <button class="btn ghost" type="button" role="menuitem" data-clinic-action="toggleClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-pencil"/></svg><span>Chỉnh sửa</span></button>
+      <button class="btn ghost" type="button" role="menuitem" data-clinic-action="deleteClinicBtn"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+    </div>
+
+    <div class="stock-menu hidden" id="drugRowMenu" role="menu">
+      <button class="btn ghost" type="button" role="menuitem" data-action="toggle-row"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg><span>Xem chi tiết</span></button>
+      <button class="btn ghost" type="button" role="menuitem" data-action="remove"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+    </div>
 
     <button class="fab hidden" id="saveFab" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span class="save-label">Hoàn tất khám</span></button>
   </div>
@@ -601,6 +612,19 @@
     </div>
   </dialog>
 
+  <dialog id="drugDeleteModal" class="modal modal--sheet" aria-labelledby="drugDeleteTitle">
+    <div class="modal__head">
+      <strong id="drugDeleteTitle">Xác nhận xóa</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body"><p id="drugDeleteText"></p></div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
+      <button class="btn danger" id="drugDeleteConfirmBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa</span></button>
+    </div>
+  </dialog>
+
   <dialog id="importModal" class="modal modal--sheet" aria-labelledby="importModalTitle">
     <div class="modal__head">
       <strong id="importModalTitle">Nạp dữ liệu từ file</strong>
@@ -609,7 +633,7 @@
     <div class="modal__body">
       <p class="muted" id="importMeta"></p>
       <table class="import-table" id="importTable"></table>
-      <div class="import-warn" role="alert"><svg class="icon" aria-hidden="true"><use href="#i-alert-triangle"/></svg><span>Toàn bộ dữ liệu hiện tại sẽ bị THAY THẾ. Một file sao lưu dữ liệu hiện tại sẽ được tải về trước khi nạp.</span></div>
+      <div class="import-warn" role="alert"><svg class="icon" aria-hidden="true"><use href="#i-alert-triangle"/></svg><span>Toàn bộ dữ liệu hiện tại sẽ bị THAY THẾ. Hãy xuất dữ liệu hiện tại trước nếu cần giữ lại.</span></div>
       <label class="label" for="importConfirm">Gõ <strong>NAP</strong> (chữ hoa) để xác nhận</label>
       <input class="field" id="importConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false" />
       <p class="auth__msg" id="importMsg" role="alert"></p>
@@ -627,6 +651,7 @@
         <div class="wheel" id="yearWheel" role="listbox" aria-label="Năm sinh" tabindex="0"></div>
         <div class="wheel__band" aria-hidden="true"></div>
       </div>
+      <button class="wheel-kb" type="button" data-wheel="keyboard">Nhập từ bàn phím</button>
       <div class="wheel-actions">
         <button class="btn" type="button" data-wheel="cancel"><span>Hủy</span></button>
         <button class="btn" type="button" data-wheel="clear"><span>Xóa</span></button>
@@ -639,7 +664,6 @@
 
   <datalist id="activeIngredientList"></datalist>
   <datalist id="doctorList"></datalist>
-  <datalist id="doseList"></datalist>
   <datalist id="serviceFeeList"></datalist>
 
   <script src="app-config.js"></script>
