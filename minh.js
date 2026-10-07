@@ -230,6 +230,8 @@ const state = {
   selectedDrugId: "",
   autoSuggestedRowKeys: [],
   pendingStockRows: [],
+  stockOpen: new Set(),
+  patientOpen: new Set(),
   editingDrugId: "",
   icdList: getDefaultIcdList(),
   selectedIcdCode: "",
@@ -237,6 +239,7 @@ const state = {
   deletingIcdCode: "",
   icdSearch: "",
   stockSearch: "",
+  stockInId: "",
   clinicInfo: { ...DEFAULT_CLINIC_INFO },
   clinicProfiles: [],
   activeClinicProfileId: "",
@@ -271,9 +274,9 @@ function cacheRefs() {
     "resetPassword", "resetPassword2", "resetMsg", "resetSubmit", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "saveBtn", "newBtn", "editBanner", "editBannerText", "cancelEditBtn",
-    "newPrescriptionBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
-    "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "addCodeBtn", "toggleCodeDataBtn",
-    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "toggleStockBtn", "drugRows", "stockDataBox", "warningBox",
+    "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearBtn", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
+    "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
+    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox", "warningBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
     "summaryPatients", "summaryDrugs",
     "summaryVisitToday", "summaryRevenueMonth", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
@@ -375,6 +378,7 @@ function bindEvents() {
   refs.searchInput.addEventListener("input", handleSearchInput);
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.patientListBody.addEventListener("click", handlePatientListClick);
+  refs.patientListBody.addEventListener("dblclick", handlePatientListClick);
   refs.patientListBody.addEventListener("keydown", handlePatientListKeydown);
   refs.patientPager.addEventListener("click", handlePagerClick);
   refs.cancelEditBtn.addEventListener("click", cancelEditMode);
@@ -395,15 +399,21 @@ function bindEvents() {
   refs.province.addEventListener("focus", () => showProvinceSuggestions(refs.province.value));
   refs.symptom.addEventListener("input", handleSymptomInput);
   refs.symptom.addEventListener("focus", () => renderSymptomSuggestions(refs.symptom.value));
-  refs.addCodeBtn.addEventListener("click", addCustomCode);
-  refs.toggleCodeDataBtn.addEventListener("click", () => refs.codeDataBox.classList.toggle("hidden"));
+  refs.codeDataMore.addEventListener("toggle", () => {
+    refs.codeDataBox.classList.toggle("hidden", !refs.codeDataMore.open);
+    if (refs.codeDataMore.open && document.getElementById("codeRows")) renderCodeRows();
+  });
   refs.icdInput.addEventListener("input", renderIcdSuggest);
   refs.icdInput.addEventListener("input", handleDiagnosisInput);
   refs.icdInput.addEventListener("input", () => autoGrowField(refs.icdInput));
   refs.icdInput.addEventListener("focus", renderIcdSuggest);
+  refs.icdInput.addEventListener("focus", () => autoGrowField(refs.icdInput));
+  refs.icdInput.addEventListener("blur", () => autoGrowField(refs.icdInput));
+  refs.icdView.addEventListener("click", () => refs.icdInput.focus());
   refs.icdInput.addEventListener("click", renderIcdSuggest);
   refs.icdInput.addEventListener("change", handleDiagnosisInput);
   refs.codeDataBox.addEventListener("click", handleCodeDataClick);
+  refs.codeDataBox.addEventListener("dblclick", handleCodeDataClick);
   refs.icdEditSaveBtn.addEventListener("click", saveIcdEdit);
   refs.icdDeleteConfirmBtn.addEventListener("click", confirmIcdDelete);
   refs.codeDataBox.addEventListener("input", (event) => {
@@ -414,9 +424,9 @@ function bindEvents() {
   refs.icdEditModal.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && event.target.tagName === "INPUT") saveIcdEdit();
   });
-  refs.toggleStockBtn.addEventListener("click", () => {
-    refs.stockDataBox.classList.toggle("hidden");
-    if (!refs.stockDataBox.classList.contains("hidden")) renderStockData();
+  refs.stockDataMore.addEventListener("toggle", () => {
+    refs.stockDataBox.classList.toggle("hidden", !refs.stockDataMore.open);
+    if (refs.stockDataMore.open) renderStockData();
   });
   refs.addDrugBtn.addEventListener("click", () => {
     state.draftRows.push(createDraftRow());
@@ -433,12 +443,16 @@ function bindEvents() {
     if (event.target.closest(".dose-quick, .quantity-quick")) event.preventDefault();
   });
   refs.stockDataBox.addEventListener("click", handleStockDataClick);
+  refs.stockDataBox.addEventListener("dblclick", handleStockDataClick);
   refs.stockDataBox.addEventListener("input", (event) => {
     if (event.target.id !== "stockSearchInput") return;
     state.stockSearch = event.target.value;
     renderStockRows();
   });
   refs.stockPasteApplyBtn.addEventListener("click", applyStockPaste);
+  refs.stockInConfirmBtn.addEventListener("click", confirmStockIn);
+  refs.stockInQty.addEventListener("input", updateStockInPreview);
+  refs.stockInQty.addEventListener("keydown", (event) => { if (event.key === "Enter") confirmStockIn(); });
   refs.stockManualBtn.addEventListener("click", () => {
     refs.stockAddModal.close();
     openDrugModal("");
@@ -1015,12 +1029,33 @@ function clearSearch() {
   applySearch("");
 }
 
+function togglePatientRow(row) {
+  const id = row.dataset.id;
+  const open = !state.patientOpen.has(id);
+  state.patientOpen[open ? "add" : "delete"](id);
+  row.classList.toggle("is-open", open);
+  row.querySelectorAll(".pt-toggle").forEach((btn) => btn.setAttribute("aria-expanded", open));
+  fitPatientListHeight();
+}
+
 function handlePatientListClick(event) {
+  const toggleBtn = event.target.closest(".pt-toggle");
+  const clickedRow = event.target.closest(".patient-row[data-id]");
+  // nhấp 1 lần vào dòng (hoặc nút mũi tên) để mở/đóng chi tiết; cú nhấp thứ 2 của nhấp đúp bỏ qua, và nhấp đúp hoàn lại trạng thái trước đó
+  if (event.type === "click" && clickedRow && !event.target.closest(".del-patient, .patient-detail")) {
+    if (event.detail < 2 || toggleBtn) togglePatientRow(clickedRow);
+    return;
+  }
+  if (event.type === "dblclick" && clickedRow && !toggleBtn && !event.target.closest(".del-patient, .patient-detail")) togglePatientRow(clickedRow);
+  if (toggleBtn) return;
   const deleteBtn = event.target.closest(".del-patient");
   if (deleteBtn) {
+    if (event.type === "dblclick") return;
     deletePatient(deleteBtn.dataset.id).catch(handleError);
     return;
   }
+  // mở bệnh nhân: nhấp đúp vào dòng (hoặc Enter khi dòng đang focus)
+  if (event.type !== "dblclick") return;
   const row = event.target.closest(".patient-row[data-id]");
   if (row) {
     openPatientFromList(row.dataset.id);
@@ -1055,7 +1090,9 @@ function fitPatientListHeight() {
   const rows = [...refs.patientListBody.querySelectorAll(".patient-row")];
   refs.patientListBody.style.maxHeight = "";
   if (rows.length <= 5 || !rows[0].offsetHeight) return;
-  refs.patientListBody.style.maxHeight = `${Math.ceil(rows.slice(0, 5).reduce((sum, row) => sum + row.getBoundingClientRect().height, 0)) + 1}px`;
+  const h = (el) => el.getBoundingClientRect().height;
+  const first = rows.slice(0, 5).reduce((sum, row) => sum + h(row) - (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0), 0);
+  refs.patientListBody.style.maxHeight = `${Math.ceil(first) + 1}px`;
 }
 
 function renderPager(total, pages, start, count) {
@@ -1106,40 +1143,37 @@ function buildPatientRow(patient) {
   const age = patient.birthYear ? new Date().getFullYear() - Number(patient.birthYear) : "";
   const follow = getFollowStatus(patient.lastFollowUpDate);
   const visitTags = buildVisitTags(patient.visitCount);
-  const metaSuffix = patient.gender || "Chưa rõ";
-  const doctorBadge = patient.lastDoctor ? ` • BS ${escapeHtml(patient.lastDoctor)}` : "";
-  const metaLine = `${escapeHtml(patient.phone)} - ${escapeHtml(patient.address || "")}, ${escapeHtml(patient.province || "")} - ${escapeHtml(metaSuffix)}${visitTags ? ` ${visitTags}` : ""}${doctorBadge}`;
   const deleteLabel = `Xóa bệnh nhân ${patient.fullName}`;
+  const open = state.patientOpen.has(patient._id);
+  const ro = (label, cls, value) => `<div class="drug-field ${cls}"><span class="clinic-meta-label">${label}</span><strong>${escapeHtml(String(value ?? "") || "—")}</strong></div>`;
   return `
-    <div class="patient-row ${patient._id === state.selectedPatientId ? "active" : ""}" data-id="${patient._id}" role="button" tabindex="0">
+    <div class="patient-row ${patient._id === state.selectedPatientId ? "active" : ""} ${open ? "is-open" : ""}" data-id="${patient._id}" role="button" tabindex="0" title="Nhấp đúp để mở hồ sơ">
       <div class="pr-table">
         <div>${formatDate(patient.lastVisitAt)}</div>
         <div class="patient-meta">
-          <strong>${escapeHtml(patient.fullName)}</strong>
-          <div class="patient-meta__sub"><small>${metaLine}</small></div>
+          <strong>${escapeHtml(patient.fullName)} <span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></strong>
         </div>
         <div>${escapeHtml(String(age || ""))}</div>
         <div>${formatMoney(patient.totalRevenue)}</div>
         <div>${escapeHtml(patient.lastDiagnosis || "")}</div>
         <div><span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span></div>
-        <div><button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button></div>
+        <div class="pr-act"><button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button><button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
       </div>
       <div class="pr-card">
         <div class="pc__l1">
-          <strong class="pc__name">${escapeHtml(patient.fullName)}</strong>
+          <strong class="pc__name">${escapeHtml(patient.fullName)} <span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></strong>
           ${age !== "" ? `<span class="pc__age">${escapeHtml(String(age))} tuổi</span>` : ""}
           <button class="icon-btn danger del-patient" data-id="${patient._id}" type="button" aria-label="${escapeAttribute(deleteLabel)}" title="Xóa">${iconHtml("trash-2")}</button>
-        </div>
-        <div class="pc__l2">
-          <span>${escapeHtml(patient.phone)}</span>
-          <span>Khám: ${escapeHtml(formatDate(patient.lastVisitAt) || "chưa có")}</span>
-          <span>${formatNumber(patient.visitCount)} lần khám</span>
+          <button class="icon-btn pt-toggle" data-id="${patient._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(patient.fullName)}" title="Chi tiết">${iconHtml("chevron-down")}</button>
         </div>
         <div class="pc__l3">
           <span class="pc__icd">${escapeHtml(patient.lastDiagnosis || "Chưa có chẩn đoán")}</span>
           <span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span>
           <span class="pc__money">${formatMoney(patient.totalRevenue)}</span>
         </div>
+      </div>
+      <div class="patient-detail">
+        ${ro("Số điện thoại", "pd-1", patient.phone)}${ro("Giới tính", "pd-1", patient.gender)}${ro("Năm sinh", "pd-1", patient.birthYear)}${ro("Số lần khám", "pd-1", formatNumber(patient.visitCount))}${ro("Địa chỉ", "pd-full", patient.address)}
       </div>
     </div>
   `;
@@ -1585,6 +1619,7 @@ function refreshAutoSuggestions() {
 function updateDiagnosisPlaceholderFromSymptom(symptomText) {
   const suggestion = inferDiagnosisSuggestion(symptomText);
   refs.icdInput.placeholder = suggestion || "Gõ mã hoặc vài chữ";
+  autoGrowField(refs.icdInput);
 }
 
 function inferDiagnosisSuggestion(symptomText) {
@@ -1690,7 +1725,7 @@ function renderCodeRows() {
     .filter((item) => !keyword || normalizeText(`${item.code} ${item.name}`).includes(keyword))
     .sort((a, b) => String(a.code).localeCompare(String(b.code), "vi"))
     .map((item) => `
-      <div class="code-row ${item.code === state.selectedIcdCode ? "active" : ""}" data-action="use-icd" data-code="${escapeAttribute(item.code)}" title="Bấm để dùng mã này">
+      <div class="code-row ${item.code === state.selectedIcdCode ? "active" : ""}" data-action="use-icd" data-code="${escapeAttribute(item.code)}" title="Nhấp đúp để dùng mã này">
         <div class="code-row__code">${escapeHtml(item.code)}</div>
         <div class="code-row__name">${escapeHtml(item.name)}</div>
         <div class="code-row__actions">
@@ -1701,21 +1736,19 @@ function renderCodeRows() {
     `)
     .join("");
   document.getElementById("codeRows").innerHTML = rows || '<div class="code-empty">Không có mã ICD phù hợp.</div>';
-}
-
-function addCustomCode() {
-  if (!refs.icdInput.value.trim()) {
-    showToast("Nhap ma hoac chan doan truoc.", "error");
-    return;
-  }
-  showToast("Đã giữ chẩn đoán hiện tại trên form.", "success");
-  handleDiagnosisInput();
+  // khung chỉ hiện 5 dòng, còn lại cuộn
+  const list = document.querySelector(".code-manager__list");
+  list.style.maxHeight = "";
+  const items = [...list.querySelectorAll(".code-row")].slice(0, 5);
+  if (items.length === 5 && list.offsetHeight) list.style.maxHeight = `${list.querySelector(".code-head").offsetHeight + items.reduce((sum, row) => sum + row.offsetHeight, 0) + 2}px`;
 }
 
 async function handleCodeDataClick(event) {
   const target = event.target.closest("[data-action]");
   const action = target?.dataset.action;
   if (!action) return;
+  // dùng mã ICD: nhấp đúp vào dòng; các nút khác: nhấp đơn
+  if ((action === "use-icd") !== (event.type === "dblclick")) return;
 
   try {
     if (action === "edit-icd" || action === "create-icd") {
@@ -1838,10 +1871,6 @@ function ensureSearchRow() {
   state.draftRows = [...filled, state.draftRows.find(isPristineDraftRow) || createDraftRow()];
 }
 
-function buildDrugSubText(row) {
-  return [composeBrandName(row.brandName, row.activeIngredient), row.unit, row.usage].map((item) => String(item || "").trim()).filter(Boolean).join(" · ");
-}
-
 function buildDrugCalcHtml(row) {
   return `${escapeHtml(formatNumber(toNumber(row.quantity)))} × ${escapeHtml(formatMoney(row.price))} = <strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong>`;
 }
@@ -1863,7 +1892,6 @@ function buildDrugRowHtml(row, index) {
         <div class="drug-cell drug-cell--index">${number}</div>
         <div class="drug-cell drug-cell--drug">
           <div class="drug-name"><span class="drug-name__idx">${number}. </span><span class="drug-name__text">${escapeHtml(row.activeIngredient)}</span><span class="drug-badges"></span></div>
-          <div class="drug-sub">${escapeHtml(buildDrugSubText(row))}</div>
         </div>
         ${DOSE_FIELDS.map((field) => buildDoseFieldHtml(row, field)).join("")}
         <div class="drug-field drug-field--quantity">
@@ -1877,15 +1905,14 @@ function buildDrugRowHtml(row, index) {
         <div class="drug-cell drug-cell--subtotal drug-subtotal"><strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong></div>
         <div class="drug-calc">${buildDrugCalcHtml(row)}</div>
         <div class="drug-actions">
-          <button class="icon-btn drug-toggle" data-action="toggle-row" type="button" aria-expanded="${row.expanded ? "true" : "false"}" aria-label="Chi tiết thuốc ${number}" title="Chi tiết">${iconHtml("chevron-down")}<span class="drug-toggle__text">${row.expanded ? "Thu gọn" : "Chi tiết"}</span></button>
           <button class="icon-btn danger drug-remove" data-action="remove" type="button" aria-label="Xóa dòng thuốc ${number}" title="Xóa dòng thuốc">${iconHtml("trash-2")}</button>
+          <button class="icon-btn drug-toggle" data-action="toggle-row" type="button" aria-expanded="${row.expanded ? "true" : "false"}" aria-label="Chi tiết thuốc ${number}" title="Chi tiết">${iconHtml("chevron-down")}<span class="drug-toggle__text">${row.expanded ? "Thu gọn" : "Chi tiết"}</span></button>
         </div>
       </div>
       <div class="drug-detail">
         <div class="drug-field drug-field--ingredient"><label class="label">Hoạt chất</label><input class="mini" data-field="activeIngredient" list="activeIngredientList" aria-label="Hoạt chất" value="${escapeAttribute(row.activeIngredient)}" /></div>
         <div class="drug-field drug-field--brand"><label class="label">Tên thương mại</label><input class="mini" data-field="brandName" aria-label="Tên thương mại" value="${escapeAttribute(getDrugBrandDisplay(row))}" /></div>
         <div class="drug-field drug-field--unit"><label class="label">Đơn vị</label><input class="mini" data-field="unit" aria-label="Đơn vị" value="${escapeAttribute(row.unit)}" /></div>
-        <div class="drug-field drug-field--price"><label class="label">Đơn giá</label><input class="mini" data-field="price" inputmode="numeric" aria-label="Đơn giá" value="${escapeAttribute(formatMoney(row.price))}" /></div>
         <div class="drug-field drug-field--usage"><label class="label">Công dụng / HDSD</label><textarea class="mini" data-field="usage" rows="1" aria-label="Công dụng / cách dùng">${escapeHtml(row.usage)}</textarea></div>
       </div>
     </div>`;
@@ -1967,7 +1994,11 @@ function handleDrugRowClick(event) {
     }
     return;
   }
-  const toggleButton = event.target.closest("[data-action='toggle-row']");
+  let toggleButton = event.target.closest("[data-action='toggle-row']");
+  // nhấp vào vùng trống của dòng cũng mở/đóng chi tiết
+  if (!toggleButton && !event.target.closest("input, button, textarea, .drug-field")) {
+    toggleButton = event.target.closest(".drug-row__line")?.querySelector("[data-action='toggle-row']") || null;
+  }
   if (toggleButton) {
     const rowElement = toggleButton.closest(".drug-row");
     const row = state.draftRows.find((item) => item.key === rowElement.dataset.key);
@@ -2019,7 +2050,6 @@ function toggleQuantityQuickPicker(fieldElement) {
 function refreshRowSubtotal(rowElement, row) {
   const set = (selector, html) => { const el = rowElement.querySelector(selector); if (el) el.innerHTML = html; };
   set(".drug-name__text", escapeHtml(row.activeIngredient));
-  set(".drug-sub", escapeHtml(buildDrugSubText(row)));
   set(".drug-cell--price", escapeHtml(formatMoney(row.price)));
   set(".drug-subtotal", `<strong>${escapeHtml(formatMoney(toNumber(row.quantity) * toNumber(row.price)))}</strong>`);
   set(".drug-calc", buildDrugCalcHtml(row));
@@ -2428,19 +2458,82 @@ function renderStockRows() {
   const drugs = getSortedStockDrugs().filter((drug) => !keyword || normalizeText(`${drug.activeIngredient} ${drug.brandName || ""}`).includes(keyword));
   document.getElementById("stockRows").innerHTML = drugs.map((drug) => {
     const negative = Number(drug.quantity) < 0;
+    const open = state.stockOpen.has(drug._id);
+    const ro = (label, cls, value) => `<div class="drug-field ${cls}"><span class="clinic-meta-label">${label}</span><strong>${escapeHtml(String(value ?? "") || "—")}</strong></div>`;
     return `
-      <div class="stock-row ${negative ? "is-negative" : ""}">
+      <div class="stock-item ${open ? "is-open" : ""}">
+      <div class="stock-row ${negative ? "is-negative" : ""}" data-action="use-drug" data-id="${drug._id}" title="Nhấp đúp để thêm vào toa">
         <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? '<span class="badge-neg">Âm kho</span>' : ""}</div>
         <div class="stock-row__qty"><span class="stock-row__lbl">Tồn kho: </span>${formatNumber(drug.quantity)}</div>
         <div class="stock-row__price"><span class="stock-row__lbl">Đơn giá: </span>${formatMoney(drug.price)}</div>
-        <div class="stock-row__act"><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("pencil")}</button></div>
+        <div class="stock-row__act"><button class="icon-btn" data-action="stock-in" data-id="${drug._id}" type="button" aria-label="Nhập kho ${escapeAttribute(drug.activeIngredient)}" title="Nhập kho">${iconHtml("download")}</button><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Sửa ${escapeAttribute(drug.activeIngredient)}" title="Sửa">${iconHtml("pencil")}</button><button class="icon-btn stock-toggle" data-action="toggle-stock" data-id="${drug._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
+      </div>
+      <div class="stock-detail">
+        ${ro("Tên thương mại", "drug-field--brand", drug.brandName)}${ro("Đơn vị", "drug-field--unit", drug.unit)}${ro("Công dụng / HDSD", "drug-field--usage", drug.usage)}${drug.notes ? ro("Ghi chú", "drug-field--usage", drug.notes) : ""}
+      </div>
       </div>`;
   }).join("") || '<div class="code-empty">Không có thuốc phù hợp.</div>';
-  // khung chỉ hiện 5 dòng, còn lại cuộn
+  fitStockList();
+}
+
+// khung chỉ hiện 5 dòng + chiều cao các phần chi tiết đang mở, còn lại cuộn
+function toggleStockItem(item) {
+  const id = item.querySelector(".stock-toggle").dataset.id;
+  const open = !state.stockOpen.has(id);
+  state.stockOpen[open ? "add" : "delete"](id);
+  item.classList.toggle("is-open", open);
+  item.querySelector(".stock-toggle").setAttribute("aria-expanded", open);
+  fitStockList();
+}
+
+function fitStockList() {
   const list = document.querySelector(".stock-list");
+  if (!list) return;
   list.style.maxHeight = "";
-  const rows = [...list.querySelectorAll(".stock-row")].slice(0, 5);
-  if (rows.length === 5 && list.offsetHeight) list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + rows.reduce((sum, row) => sum + row.offsetHeight, 0) + 2}px`;
+  const rows = [...list.querySelectorAll(".stock-row")];
+  if (rows.length < 5 || !list.offsetHeight) return;
+  const open = [...list.querySelectorAll(".stock-item.is-open .stock-detail")];
+  const sum = (els) => els.reduce((total, el) => total + el.offsetHeight, 0);
+  list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + sum(rows.slice(0, 5)) + sum(open) + 2}px`;
+}
+
+function updateStockInPreview() {
+  const drug = state.drugs.find((item) => item._id === state.stockInId);
+  const current = Number(drug?.quantity || 0);
+  const add = Number(refs.stockInQty.value) || 0;
+  refs.stockInCurrent.textContent = formatNumber(current);
+  refs.stockInAfter.textContent = formatNumber(current + add);
+}
+
+async function confirmStockIn() {
+  const add = Number(refs.stockInQty.value);
+  if (!Number.isInteger(add) || add <= 0) return showToast("Nhập số lượng nhập kho là số nguyên dương.", "error");
+  setBusy(refs.stockInConfirmBtn, true);
+  try {
+    // lấy tồn mới nhất từ server để không ghi đè thay đổi của lượt khám vừa lưu
+    const fresh = (await fetchJson("/api/drugs")).find((item) => item._id === state.stockInId);
+    if (!fresh) throw new Error("Thuốc không còn trong kho.");
+    await fetchJson(`/api/drugs/${fresh._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        activeIngredient: fresh.activeIngredient,
+        brandName: fresh.brandName,
+        unit: fresh.unit,
+        usage: fresh.usage,
+        notes: fresh.notes,
+        price: fresh.price,
+        quantity: Number(fresh.quantity || 0) + add
+      })
+    });
+    refs.stockInModal.close();
+    await loadDrugs();
+    showToast(`Đã nhập kho ${formatNumber(add)} ${fresh.unit || ""}.`.trim(), "success");
+  } catch (error) {
+    handleError(error);
+  } finally {
+    setBusy(refs.stockInConfirmBtn, false);
+  }
 }
 
 function applyStockPaste() {
@@ -2461,8 +2554,50 @@ async function handleStockDataClick(event) {
   const actionElement = event.target.closest("[data-action]");
   if (!actionElement) return;
   const action = actionElement.dataset.action;
+  // đưa thuốc vào toa: nhấp đúp vào dòng; nhấp đơn vào dòng: mở/đóng chi tiết; các nút khác: nhấp đơn
+  if (action === "use-drug" && event.type === "click") {
+    if (event.detail < 2) toggleStockItem(actionElement.closest(".stock-item"));
+    return;
+  }
+  if (action === "use-drug" && event.type === "dblclick") toggleStockItem(actionElement.closest(".stock-item"));
+  if ((action === "use-drug") !== (event.type === "dblclick")) return;
 
   try {
+    if (action === "use-drug") {
+      const drug = state.drugs.find((item) => item._id === actionElement.dataset.id);
+      if (!drug) return;
+      if (state.draftRows.some((row) => row.drugId === drug._id)) {
+        showToast(`${drug.activeIngredient} đã có trong toa.`, "error");
+        return;
+      }
+      const row = state.draftRows.find(isPristineDraftRow) || createDraftRow();
+      if (!state.draftRows.includes(row)) state.draftRows.push(row);
+      applyCatalogDrugToRow(row, drug);
+      renderDrugRows();
+      updateTotals();
+      updateWarning();
+      showToast(`Đã thêm ${drug.activeIngredient} vào toa.`);
+      return;
+    }
+
+    if (action === "toggle-stock") {
+      toggleStockItem(actionElement.closest(".stock-item"));
+      fitStockList();
+      return;
+    }
+
+    if (action === "stock-in") {
+      const drug = state.drugs.find((item) => item._id === actionElement.dataset.id);
+      if (!drug) return;
+      state.stockInId = drug._id;
+      refs.stockInName.textContent = [drug.activeIngredient, drug.brandName].filter(Boolean).join(" / ");
+      refs.stockInQty.value = "50";
+      updateStockInPreview();
+      refs.stockInModal.showModal();
+      refs.stockInQty.focus();
+      return;
+    }
+
     if (action === "add-drug") {
       refs.stockAddModal.showModal();
       return;
@@ -2879,6 +3014,15 @@ function showPrescriptionPreview() {
 
 function autoGrowField(element) {
   if (!element) return;
+  // ô Chẩn đoán khi không focus: gọn 1 dòng (CSS cắt bằng …), chỉ giãn khi đang sửa
+  if (element === refs.icdInput) {
+    refs.icdView.textContent = element.value || element.placeholder;
+    refs.icdView.classList.toggle("is-placeholder", !element.value);
+    if (document.activeElement !== element) {
+      element.style.height = "";
+      return;
+    }
+  }
   element.style.height = "auto";
   // min-height trong CSS giữ chiều cao tối thiểu bằng control; cộng viền vì scrollHeight không tính
   element.style.height = `${element.scrollHeight + element.offsetHeight - element.clientHeight}px`;

@@ -154,12 +154,12 @@
               <div class="patient-list">
                 <div class="patient-head">
                   <div>Ngày khám</div>
-                  <div>Họ tên / SĐT / Địa chỉ / Giới tính / Lần khám</div>
+                  <div>Họ và tên</div>
                   <div>Tuổi</div>
                   <div>Tổng tiền</div>
                   <div>ICD</div>
                   <div>Tái khám</div>
-                  <div>Xóa</div>
+                  <div><span class="sr-only">Xóa</span></div>
                 </div>
                 <div id="patientListBody"></div>
                 <nav class="pager" id="patientPager" aria-label="Phân trang danh sách bệnh nhân"></nav>
@@ -227,10 +227,6 @@
                 <div>
                   <h2>Chẩn đoán</h2>
                 </div>
-                <div class="row-actions">
-                  <button class="btn small primary" id="addCodeBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm</span></button>
-                  <button class="btn small" id="toggleCodeDataBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-database"/></svg><span>Dữ liệu mã</span></button>
-                </div>
               </div>
               <div class="diag-grid">
                 <div class="diag-symptom">
@@ -241,10 +237,14 @@
                 <div class="search-zone">
                   <label class="label" for="icdInput">Chẩn đoán</label>
                   <textarea class="field auto-grow" id="icdInput" rows="1" autocomplete="off"></textarea>
+                  <div class="field icd-view" id="icdView" aria-hidden="true"></div>
                   <div class="suggest-box hidden" id="icdSuggestBox"></div>
                 </div>
               </div>
-              <div class="code-data hidden" id="codeDataBox"></div>
+              <details class="stats-more" id="codeDataMore">
+                <summary><span>Dữ liệu mã</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+                <div class="code-data hidden" id="codeDataBox"></div>
+              </details>
             </section>
 
             <section class="card page-section">
@@ -253,7 +253,6 @@
                 <div class="row-actions">
                   <button class="btn small primary hidden" id="addDrugBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm thuốc</span></button>
                   <button class="btn small" id="newPrescriptionBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-pill"/></svg><span>Toa mới</span></button>
-                  <button class="btn small" id="toggleStockBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-package"/></svg><span>Kho thuốc</span></button>
                   <button class="btn small" id="previewPrintBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-printer"/></svg><span>Xem / In toa</span></button>
                 </div>
               </div>
@@ -264,7 +263,10 @@
                 <div class="drug-rows" id="drugRows"></div>
               </div>
               <div class="drug-summary" id="drugSummary"></div>
-              <div class="code-data hidden" id="stockDataBox"></div>
+              <details class="stats-more" id="stockDataMore">
+                <summary><span>Kho thuốc</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+                <div class="code-data hidden" id="stockDataBox"></div>
+              </details>
             </section>
 
             <section class="card page-section">
@@ -451,6 +453,25 @@
         <button class="btn primary" id="dmSaveBtn" type="submit"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="stockInModal" class="modal modal--sheet" aria-labelledby="stockInTitle">
+    <div class="modal__head">
+      <strong id="stockInTitle">Nhập kho</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body stack">
+      <div class="stock-in-name" id="stockInName"></div>
+      <div>
+        <label class="label" for="stockInQty">Số lượng nhập thêm</label>
+        <input class="field" id="stockInQty" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" />
+      </div>
+      <div class="stock-in-sum"><div>Tồn hiện tại: <strong id="stockInCurrent">0</strong></div><div>Sau khi nhập: <strong id="stockInAfter">0</strong></div></div>
+    </div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn primary" id="stockInConfirmBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Xác nhận nhập kho</span></button>
+    </div>
   </dialog>
 
   <dialog id="stockAddModal" class="modal modal--sheet" aria-labelledby="stockAddTitle">
