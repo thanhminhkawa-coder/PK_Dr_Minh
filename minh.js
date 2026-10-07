@@ -902,8 +902,7 @@ function showTab(tab) {
   if (tab === "home") {
     fitPatientListHeight();
     autoGrowField(refs.icdInput);
-    refs.drugRows.querySelectorAll(".drug-field--usage textarea").forEach((element) => autoGrowField(element));
-  }
+    }
 }
 
 async function initializeApp() {
@@ -1962,18 +1961,18 @@ function buildDrugRowHtml(row, index) {
         </div>
       </div>
       <div class="drug-detail">
-        <div class="drug-field drug-field--ingredient"><label class="label">Hoạt chất</label><input class="mini" data-field="activeIngredient" list="activeIngredientList" aria-label="Hoạt chất" value="${escapeAttribute(row.activeIngredient)}" /></div>
-        <div class="drug-field drug-field--brand"><label class="label">Tên thương mại</label><input class="mini" data-field="brandName" aria-label="Tên thương mại" value="${escapeAttribute(getDrugBrandDisplay(row))}" /></div>
-        <div class="drug-field drug-field--unit"><label class="label">Đơn vị</label><input class="mini" data-field="unit" aria-label="Đơn vị" value="${escapeAttribute(row.unit)}" /></div>
-        <div class="drug-field drug-field--usage"><label class="label">Công dụng / HDSD</label><textarea class="mini" data-field="usage" rows="1" aria-label="Công dụng / cách dùng">${escapeHtml(row.usage)}</textarea></div>
+        ${detailFieldHtml("Tên thương mại", "drug-field--brand", getDrugBrandDisplay(row))}${detailFieldHtml("Đơn vị", "drug-field--unit", row.unit)}${detailFieldHtml("Công dụng / HDSD", "drug-field--usage", row.usage)}
       </div>
     </div>`;
+}
+
+function detailFieldHtml(label, cls, value) {
+  return `<div class="drug-field ${cls}"><span class="clinic-meta-label">${label}</span><strong>${escapeHtml(String(value ?? "") || "—")}</strong></div>`;
 }
 
 function renderDrugRows() {
   ensureSearchRow();
   refs.drugRows.innerHTML = state.draftRows.map(buildDrugRowHtml).join("");
-  refs.drugRows.querySelectorAll(".drug-field--usage textarea").forEach((element) => autoGrowField(element));
   refreshDrugRowStates();
 }
 
@@ -2511,7 +2510,6 @@ function renderStockRows() {
   document.getElementById("stockRows").innerHTML = drugs.map((drug) => {
     const negative = Number(drug.quantity) < 0;
     const open = state.stockOpen.has(drug._id);
-    const ro = (label, cls, value) => `<div class="drug-field ${cls}"><span class="clinic-meta-label">${label}</span><strong>${escapeHtml(String(value ?? "") || "—")}</strong></div>`;
     return `
       <div class="stock-item ${open ? "is-open" : ""}">
       <div class="stock-row ${negative ? "is-negative" : ""}" data-action="use-drug" data-id="${drug._id}" title="Nhấp đúp để thêm vào toa">
@@ -2521,7 +2519,7 @@ function renderStockRows() {
         <div class="stock-row__act"><button class="icon-btn" data-action="stock-in" data-id="${drug._id}" type="button" aria-label="Nhập kho ${escapeAttribute(drug.activeIngredient)}" title="Nhập kho">${iconHtml("download")}</button><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Sửa ${escapeAttribute(drug.activeIngredient)}" title="Sửa">${iconHtml("pencil")}</button><button class="icon-btn stock-toggle" data-action="toggle-stock" data-id="${drug._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("chevron-down")}</button></div>
       </div>
       <div class="stock-detail">
-        ${ro("Tên thương mại", "drug-field--brand", drug.brandName)}${ro("Đơn vị", "drug-field--unit", drug.unit)}${ro("Công dụng / HDSD", "drug-field--usage", drug.usage)}${drug.notes ? ro("Ghi chú", "drug-field--usage", drug.notes) : ""}
+        ${detailFieldHtml("Tên thương mại", "drug-field--brand", drug.brandName)}${detailFieldHtml("Đơn vị", "drug-field--unit", drug.unit)}${detailFieldHtml("Công dụng / HDSD", "drug-field--usage", drug.usage)}${drug.notes ? detailFieldHtml("Ghi chú", "drug-field--usage", drug.notes) : ""}
       </div>
       </div>`;
   }).join("") || '<div class="code-empty">Không có thuốc phù hợp.</div>';
