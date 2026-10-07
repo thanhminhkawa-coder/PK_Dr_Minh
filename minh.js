@@ -273,7 +273,7 @@ function cacheRefs() {
   [
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "forgotIntro", "forgotStepEmail", "forgotStepCode", "forgotStepNew", "forgotOtp", "forgotResendBtn",
-    "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "importFile",
+    "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "newFab", "importFile",
     "patientCountText", "searchInput",
     "patientListBody", "patientPager", "newBtn", "visitPicker", "visitModeHint",
     "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "drugDeleteModal", "drugDeleteText", "drugDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
@@ -717,6 +717,10 @@ function bindEvents() {
   refs.newBtn.addEventListener("click", createNewPatient);
   refs.newPrescriptionBtn.addEventListener("click", createNewPrescription);
   refs.saveFab.addEventListener("click", saveEncounter);
+  refs.newFab.addEventListener("click", () => {
+    createNewPatient();
+    document.getElementById("visitFormCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   refs.importFile.addEventListener("change", handleImportFileChosen);
   refs.importConfirm.addEventListener("input", () => {
     refs.importConfirmBtn.disabled = refs.importConfirm.value !== "NAP";
@@ -1159,6 +1163,7 @@ function showTab(tab) {
     else link.removeAttribute("aria-current");
   });
   refs.saveFab.classList.toggle("hidden", tab !== "home");
+  refs.newFab.classList.toggle("hidden", tab !== "home");
   if (tab === "stats" && accessToken) loadStats().catch(handleError);
   if (tab === "home") syncFollowDateWidth();
   window.scrollTo(0, 0);

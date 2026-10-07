@@ -926,6 +926,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   font-size: var(--fs-base);
   font-weight: var(--fw-medium);
 }
+.fab-new { display: none; }
 .fab:hover { background: var(--primary-strong); }
 .fab:disabled { opacity: .7; cursor: wait; }
 
@@ -963,7 +964,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 /* ---------- <768px: điện thoại ---------- */
 @media (max-width: 767px) {.topnav { display: none; }
-  .page { padding: 0 0 calc(var(--tabbar-h) + 16px + 52px + 24px + var(--safe-b)); }
+  .page { padding: 0 0 calc(var(--tabbar-h) + 16px + 52px + 12px + 52px + 24px + var(--safe-b)); }
   :root { --section-gap: var(--space-5); --title-gap: var(--space-3); --row-gap: 14px; --col-gap: var(--space-3); --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 22px; --fs-num: 26px; --control-h-sm: 44px; }
   .shell { padding: var(--space-4); }
   .card { padding: 12px; }
@@ -971,7 +972,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .settings-page h2 { margin: 0 0 var(--space-2); font-size: var(--fs-2xl); color: var(--text-brand); }
   .settings-page .btn { justify-content: flex-start; min-height: 52px; border: 1px solid var(--line); background: var(--bg-raised); }
   .tabbar .tab span { display: none; }
-  body.kb-open .tabbar, body.kb-open .fab { display: none; }
+  body.kb-open .tabbar, body.kb-open .fab, body.kb-open .fab-new { display: none; }
 
   .tabbar {
     position: fixed;
@@ -993,6 +994,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
   .fab { right: 16px; bottom: calc(var(--tabbar-h) + 16px + var(--safe-b)); width: 52px; padding: 0; justify-content: center; }
   .fab .save-label { display: none; }
+  .fab-new { position: fixed; right: 16px; bottom: calc(var(--tabbar-h) + 16px + 52px + 12px + var(--safe-b)); z-index: 55; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; padding: 0; border: 1px solid currentColor; border-radius: 50%; background: var(--bg-control); color: var(--text); cursor: pointer; box-shadow: var(--shadow-menu); }
   .toast { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
 
   .searchbar { display: grid; grid-template-columns: 1fr 1fr; }
@@ -1011,6 +1013,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .card-title:has(#newBtn) { flex-wrap: nowrap; }
   .card-title:has(#newBtn) .row-actions { width: auto; flex: none; }
   #newBtn { width: var(--control-h-sm); height: var(--control-h-sm); min-height: 0; padding: 0; flex: none; background: var(--primary); border-color: transparent; color: var(--text-on-primary); }
+  #newBtn { display: none; } /* đã có nút nổi + */
   #newBtn span, #newBtn .icon--pc { display: none; }
   #newBtn .icon--phone { display: inline-block; }
   #adviceNote { height: var(--ctl-h); } /* Lời dặn cao bằng ô Ngày tái khám, dài hơn thì cuộn */
@@ -1245,6 +1248,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
 .patient-row { user-select: none; -webkit-user-select: none; }
 #visitFormCard { scroll-margin-top: calc(var(--nav-h) - 15px); } /* cuộn xuống sát hơn dưới thanh nav */
+@media (max-width: 767px) { #visitFormCard { scroll-margin-top: -20px; } } /* điện thoại: cuộn tới form dừng thấp hơn */
 
 .pt-more { display: none; }
 .wheel-actions { display: none; }
