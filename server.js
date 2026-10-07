@@ -811,7 +811,7 @@ app.put("/api/visits/:id", async (req, res, next) => {
       }
 
       const payload = sanitizeVisitPayload(req.body);
-      const items = await buildVisitDrugItems(payload.drugs, session);
+      const items = await buildVisitDrugItems(payload.drugs, session, visit.drugs || []);
       const drugTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
 
       // chỉ thuốc có chênh lệch số lượng mới đụng tới kho
@@ -1133,18 +1133,29 @@ async function aggregateRevenue(match, format) {
   ]);
 }
 
-async function buildVisitDrugItems(drugs, session) {
+// oldItems: toa cũ khi sửa lần khám. Thuốc đã có trong toa cũ giữ nguyên giá và thông tin (snapshot),
+// chỉ thuốc mới thêm vào mới lấy giá và thông tin từ kho hiện tại.
+async function buildVisitDrugItems(drugs, session, oldItems = []) {
   const requestedItems = Array.isArray(drugs) ? drugs : [];
   if (!requestedItems.length) {
     return [];
   }
 
-  const uniqueDrugIds = [...new Set(requestedItems.map((item) => String(item.drugId || "")).filter(Boolean))];
+  const snapshotMap = new Map();
+  oldItems.forEach((item) => {
+    if (!snapshotMap.has(String(item.drugId))) snapshotMap.set(String(item.drugId), item);
+  });
+  const uniqueDrugIds = [
+    ...new Set(requestedItems.map((item) => String(item.drugId || "")).filter((id) => id && !snapshotMap.has(id)))
+  ];
   const catalog = await Drug.find({ _id: { $in: uniqueDrugIds } }).session(session).lean();
   const catalogMap = new Map(catalog.map((item) => [String(item._id), item]));
 
   return requestedItems.map((item) => {
-    const drug = catalogMap.get(String(item.drugId));
+    const old = snapshotMap.get(String(item.drugId));
+    const drug = old
+      ? { _id: old.drugId, activeIngredient: old.activeIngredient, brandName: old.brandName, usage: old.usage, unit: old.unit, price: old.unitPrice }
+      : catalogMap.get(String(item.drugId));
     if (!drug) {
       throw createHttpError(400, "Co thuoc trong toa khong con ton tai trong danh muc.");
     }
@@ -1185,6 +1196,7 @@ function buildStockDeltas(oldItems, newItems) {
 
 async function applyStockDeltas(deltas, session) {
   for (const [drugId, delta] of deltas) {
+    // updateOne không khớp tài liệu nào thì không lỗi: thuốc đã xóa khỏi kho thì không còn kho để hoàn/trừ
     if (delta !== 0) {
       await Drug.updateOne({ _id: drugId }, { $inc: { quantity: -delta } }, { session });
     }
