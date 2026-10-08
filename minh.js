@@ -1451,15 +1451,24 @@ function renderPatientList() {
   rows.filter((p) => state.patientRxOpen.has(p._id) && !state.patientRxCache.has(p._id)).forEach((p) => loadPatientRx(p._id));
 }
 
+// xóa maxHeight rồi đặt lại làm khung hết cuộn được trong chốc lát nên scrollTop về 0 (danh sách bị giật); giữ lại vị trí cuộn
+function keepScroll(el, fn) {
+  const top = el.scrollTop;
+  fn();
+  el.scrollTop = top;
+}
+
 // khung danh sách cao đúng bằng 5 dòng đầu (dòng cao thấp khác nhau tùy nội dung/khổ màn hình)
 function fitPatientListHeight() {
-  const rows = [...refs.patientListBody.querySelectorAll(".patient-row")];
-  refs.patientListBody.style.maxHeight = "";
-  if (rows.length <= 5 || !rows[0].offsetHeight) return;
-  const h = (el) => el.getBoundingClientRect().height;
-  const extra = (row) => (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0) + (row.classList.contains("is-rx-open") ? h(row.querySelector(".patient-rx")) : 0);
-  const first = rows.slice(0, 5).reduce((sum, row) => sum + h(row) - extra(row), 0);
-  refs.patientListBody.style.maxHeight = `${Math.ceil(first) + 1}px`;
+  keepScroll(refs.patientListBody, () => {
+    const rows = [...refs.patientListBody.querySelectorAll(".patient-row")];
+    refs.patientListBody.style.maxHeight = "";
+    if (rows.length <= 5 || !rows[0].offsetHeight) return;
+    const h = (el) => el.getBoundingClientRect().height;
+    const extra = (row) => (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0) + (row.classList.contains("is-rx-open") ? h(row.querySelector(".patient-rx")) : 0);
+    const first = rows.slice(0, 5).reduce((sum, row) => sum + h(row) - extra(row), 0);
+    refs.patientListBody.style.maxHeight = `${Math.ceil(first) + 1}px`;
+  });
 }
 
 function renderPager(total, pages, start, count) {
@@ -3087,11 +3096,13 @@ function toggleStockItem(item) {
 function fitStockList() {
   const list = document.querySelector(".stock-list");
   if (!list) return;
-  list.style.maxHeight = "";
-  const rows = [...list.querySelectorAll(".stock-row")];
-  if (rows.length < 8 || !list.offsetHeight) return;
-  const rowsHeight = rows.slice(0, 8).reduce((total, el) => total + el.offsetHeight, 0);
-  list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + rowsHeight + 2}px`;
+  keepScroll(list, () => {
+    list.style.maxHeight = "";
+    const rows = [...list.querySelectorAll(".stock-row")];
+    if (rows.length < 8 || !list.offsetHeight) return;
+    const rowsHeight = rows.slice(0, 8).reduce((total, el) => total + el.offsetHeight, 0);
+    list.style.maxHeight = `${list.querySelector(".stock-head").offsetHeight + rowsHeight + 2}px`;
+  });
 }
 
 function updateStockInPreview() {
