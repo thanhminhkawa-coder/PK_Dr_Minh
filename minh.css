@@ -456,13 +456,12 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 }
 .patient-head { padding: 14px 14px; background: var(--bg-subtle); border-bottom: 1px solid var(--line); color: var(--text-muted); font-weight: var(--fw-medium); }
 .patient-row { border-bottom: 1px solid var(--line); background: var(--bg-page); cursor: pointer; }
-.patient-row:last-child { border-bottom: none; }
 .patient-row.active { background: var(--bg-brand-soft); }
 .patient-row:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
 .patient-row--empty { cursor: default; padding: 22px 14px; color: var(--text-muted); font-style: italic; }
-.pr-table { padding: 14px; min-height: 94px; }
+.pr-table { padding: 10px 14px; min-height: calc(2lh + 20px); } /* cùng padding với dòng dữ liệu mã; dòng ICD 1–2 dòng cao bằng nhau (2 dòng), từ 3 dòng thì cao hơn */
 /* chỉ hiện 5 bệnh nhân, còn lại cuộn trong khung (mỗi trang 10); chiều cao khung do JS tính theo 5 dòng đầu */
-#patientListBody { overflow-y: auto; overscroll-behavior: auto; }
+#patientListBody { overflow-y: visible; }
 .pr-table > div { min-width: 0; overflow-wrap: anywhere; }
 .patient-head > :last-child, .pr-table > :last-child { justify-self: end; text-align: right; }
 .pr-card { display: none; }
@@ -507,7 +506,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .follow-badge.neutral { background: var(--bg-subtle-3); color: var(--text-muted); font-style: italic; }
 
 /* thanh phân trang là dòng cuối của bảng */
-.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--btn-gap); padding: var(--space-3) 14px; border-top: 1px solid var(--line); background: var(--bg-page); }
+.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--btn-gap); padding: var(--space-3) 14px; background: var(--bg-page); } /* viền trên do border-bottom của hàng bệnh nhân cuối đảm nhiệm */
 .pager:empty { display: none; }
 .pager__range { color: var(--text-muted); font-size: var(--fs-sm); }
 .pager__list { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; margin-left: auto; }
@@ -606,11 +605,11 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .visit-chip--add { color: var(--text-brand); }
 .visit-meta { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-2) var(--col-gap); margin-top: var(--row-gap); }
 .visit-date { width: 240px; max-width: 100%; }
-.visit-hint { margin: 0; min-height: var(--control-h); display: flex; align-items: center; flex: 1 1 240px; color: var(--text-muted); font-size: var(--fs-sm); }
 
-/* năm sinh: badge tuổi và nút lịch nằm trong ô */
-.year-field { position: relative; }
-.year-field .field { padding-right: 90px; cursor: pointer; }
+/* năm sinh và tuổi: hai ô bằng nhau, chia đôi chiều rộng của trường */
+.year-age { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.year-age .field { cursor: pointer; }
+.year-age > div { min-width: 0; }
 .birth-year-btn, .date-pick-btn {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   display: inline-flex; align-items: center; justify-content: center;
@@ -618,17 +617,6 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   background: transparent; color: var(--text-muted); cursor: pointer;
 }
 .birth-year-btn:hover, .date-pick-btn:hover { background: var(--bg-hover); }
-.age-badge {
-  position: absolute; right: 50px; top: 50%; transform: translateY(-50%);
-  padding: 2px 10px; border-radius: 999px; white-space: nowrap; pointer-events: none;
-  background: var(--bg-badge); color: var(--text);
-  font-size: var(--fs-sm); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums;
-}
-.age-badge::after { content: " tuổi"; }
-.age-badge:empty { display: none; }
-.age-green { background: var(--success-bg); color: var(--text-success); }
-.age-yellow { background: var(--warn-bg-3); color: var(--text-warn); }
-.age-red { background: var(--danger-bg-3); color: var(--text-danger); }
 
 /* giới tính: 3 radio trên một hàng cao bằng ô nhập */
 .radio-group { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--space-5); min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -883,6 +871,8 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .wheel:focus-visible { box-shadow: inset 0 0 0 3px var(--wheel-edge); border-radius: 12px; }
 .wheel__item { height: 44px; display: flex; align-items: center; justify-content: center; scroll-snap-align: center; scroll-snap-stop: always; opacity: .22; cursor: pointer; user-select: none; font-size: var(--fs-xl); font-weight: var(--fw-medium); }
 .wheel__item[aria-selected="true"] { font-weight: var(--fw-bold); color: var(--text-brand); }
+/* điện thoại: bỏ "dừng bắt buộc" ở từng mục để vuốt nhanh trôi xa theo quán tính, vẫn tự căn về giữa mục khi dừng */
+.wheel-layer.is-sheet .wheel__item { scroll-snap-stop: normal; }
 .wheel__band { position: absolute; left: 4px; right: 4px; top: 88px; height: 44px; border-radius: 12px; background: var(--wheel-band); border-top: 1px solid var(--wheel-edge); border-bottom: 1px solid var(--wheel-edge); pointer-events: none; }
 .wheel-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 .wheel-layer.is-sheet .wheel-actions .btn { flex: 1; }
@@ -904,6 +894,15 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   font-size: var(--fs-base);
   line-height: var(--lh-base);
 }
+.toast { display: flex; align-items: center; gap: var(--space-2); padding: 8px 8px 8px 16px; min-height: 52px; touch-action: pan-x; animation: toast-in .22s ease-out; transition: transform .22s ease, opacity .22s ease; }
+.toast.is-dragging { transition: none; animation: none; }
+.toast.is-leaving { transform: translateX(-50%) translateY(16px); opacity: 0; pointer-events: none; }
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(16px); } }
+.toast__icon { display: inline-flex; flex: none; }
+.toast__icon .icon { width: 24px; height: 24px; }
+.toast__msg { flex: 1; min-width: 0; padding: 4px 0; }
+.toast__close { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .22); color: inherit; cursor: pointer; }
+.toast__close .icon { width: 22px; height: 22px; }
 .toast.error { background: var(--toast-error); }
 .toast.success { background: var(--toast-success); }
 .toast.warn { background: var(--toast-warn); }
@@ -938,19 +937,21 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .pr-card { display: block; padding: var(--space-3); }
   .pc__l1 { display: flex; align-items: center; gap: var(--space-2); }
   .pc__main { flex: 1; min-width: 0; }
-  .pc__name { display: block; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-lg); font-weight: var(--fw-medium); line-height: var(--lh-heading); }
-  .pc__age { white-space: nowrap; margin-left: 4px; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+  .pc__name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-base); font-weight: var(--fw-medium); line-height: var(--lh-heading); white-space: nowrap; }
+  .pc__nm-a { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+  .pc__nm-b { flex: none; margin-left: -2px; }
+  .pc__age { flex: none; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
+  .pc__name .follow-badge, .pc__name .visit-tag { flex: none; }
   .pc__act { display: flex; gap: var(--space-2); }
   .pc__act .icon-btn { width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
   .pc__act > :not(.pt-more) { display: none; }
   .pc__act > .pt-more { display: inline-flex; }
   .patient-row.is-open .pc__act > .pt-toggle { display: inline-flex; }
   .patient-row.is-rx-open .pc__act > .pt-rx-close { display: inline-flex; }
-  .pc__total { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
-  .pr-card .follow-badge, .pr-card .visit-tag { min-height: 0; padding: 3px 8px; margin-left: 0; }
-  .pc__l2, .pc__l3 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin-top: var(--space-1); min-width: 0; font-size: var(--fs-sm); color: var(--text-muted); }
-  .pc__l3 { margin-top: 8px; }
-  .pc__icd { flex: 1 1 100%; overflow-wrap: anywhere; color: var(--text); font-size: var(--fs-base); }
+  .pr-card .follow-badge, .pr-card .visit-tag { min-height: 0; padding: 2px 7px; margin-left: 0; font-size: var(--fs-xs); }
+  .pc__l3 { display: flex; align-items: baseline; gap: var(--space-2); margin-top: 8px; min-width: 0; }
+  .pc__icd { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: var(--fs-sm); }
+  .pc__total { flex: none; color: var(--text-muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
     .pc__addr { flex: 1 1 100%; overflow-wrap: anywhere; }
 
   .fee-grid, .code-manager__form, .clinic-meta { grid-template-columns: 1fr; }
@@ -996,13 +997,16 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .fab .save-label { display: none; }
   .fab-new { position: fixed; right: 16px; bottom: calc(var(--tabbar-h) + 16px + 52px + 12px + var(--safe-b)); z-index: 55; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; padding: 0; border: 1px solid currentColor; border-radius: 50%; background: var(--bg-control); color: var(--text); cursor: pointer; box-shadow: var(--shadow-menu); }
   .toast { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; left: 12px; right: 12px; transform: none; max-width: none; text-align: center; }
+  .toast { text-align: center; }
+  .toast.is-leaving { transform: translateY(-24px); } /* không trượt sát mép trên: Safari sẽ nhuộm vùng tai thỏ theo màu thông báo */
+  /* Safari: thanh trạng thái/tai thỏ lấy màu từ phần tử fixed sát mép trên; đặt một dải cùng màu nền trang để luôn giữ màu nền, không bị nhuộm theo thông báo */
+  body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: max(env(safe-area-inset-top, 0px), 4px); background: var(--bg-page); z-index: 40; pointer-events: none; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-16px); } }
 
   .searchbar { display: grid; grid-template-columns: 1fr 1fr; }
   .form-actions .btn { white-space: nowrap; }
-  .year-field .field { padding-right: 90px; }
-  .age-badge { right: 12px; }
   .visit-date, .fee-col .date-field { width: 50%; }
-  #previewPrintBtn { display: none; }
+  #previewPrintBtn, #rxPrintBtn { display: none; }
   .code-toolbar [data-action="add-drug"] span, .code-toolbar [data-action="create-icd"] span { display: none; }
   /* nút Thêm cùng kích thước với nút icon trong các dòng (nhập kho, sửa) */
   .code-toolbar [data-action="add-drug"], .code-toolbar [data-action="create-icd"] {
@@ -1019,8 +1023,6 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   #adviceNote { height: var(--ctl-h); } /* Lời dặn cao bằng ô Ngày tái khám, dài hơn thì cuộn */
   #adviceNote:focus { height: auto; } /* đang soạn thì giãn ra 4 dòng như cũ */
   #visitPickerCard { padding-bottom: 9px; } /* khoảng dưới ô Ngày khám = khoảng từ đường kẻ trên đến chữ "Lần khám" */
-  .visit-hint { min-height: 0; flex-basis: 100%; }
-  .visit-hint:empty { display: none; }
   .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .info-grid > * { grid-column: 1 / -1; }
   .info-grid > .f-phone, .info-grid > .f-year { grid-column: span 1; }
@@ -1047,7 +1049,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 
   /* kho thuốc */
   .stock-head { display: none; }
-  .stock-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name btn" "qty btn" "price btn"; gap: 2px 10px; padding: 12px; }
+  .stock-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "name name btn" "qty price btn"; gap: 2px 16px; padding: 12px; }
   .stock-row__name { grid-area: name; }
   .stock-row__qty { grid-area: qty; text-align: left; }
   .stock-row__price { grid-area: price; text-align: left; }
@@ -1056,8 +1058,10 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .stock-row__act > :not(.stock-more) { display: none; }
   .stock-row__act > .stock-more { display: inline-flex; }
   /* Dữ liệu mã: cột mã hẹp, hai nút gộp thành ⋮ */
-  .code-head, .code-row { grid-template-columns: var(--code-w, 72px) minmax(0, 1fr) var(--control-h-sm); }
+  .code-head, .code-row { grid-template-columns: var(--code-w, 72px) minmax(0, 1fr) 26px; }
   .code-row__code { white-space: nowrap; }
+  .code-row__actions .icon-btn, .stock-row__act .icon-btn { width: 26px; height: 26px; } /* cùng cỡ nút với danh sách bệnh nhân */
+  .code-row__actions .icon-btn .icon, .stock-row__act .icon-btn .icon { width: 18px; height: 18px; }
   .code-row__actions > :not(.code-more) { display: none; }
   .code-row__actions > .code-more { display: inline-flex; }
   .stock-item.is-open .stock-row__act > .stock-toggle { display: inline-flex; } /* chi tiết đang mở: hiện nút thu gọn bên trái nút ⋮ */
@@ -1155,7 +1159,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-field--usage textarea { resize: none; }
 .drug-row--search { border-bottom: 0; padding: var(--space-3) 14px; }
 .drug-search { position: relative; }
-.drug-search__new { display: none; }
+.drug-search__new, .drug-search__print { display: none; }
 .drug-search > .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
 .drug-search .mini { height: var(--control-h); padding-left: 44px; border-style: dashed; }
 .drug-summary { display: flex; justify-content: flex-end; align-items: baseline; gap: var(--space-2); margin-top: var(--space-3); }
@@ -1169,7 +1173,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
-  .drug-field--ingredient, .drug-field--brand { grid-column: span 2; }
+  .drug-field--ingredient, .drug-field--brand, .drug-field--active { grid-column: span 2; }
   .drug-field--unit, .pd-1 { grid-column: span 1; }
   .pd-2 { grid-column: span 2; }
   .pd-full { grid-column: 1 / -1; }
@@ -1184,10 +1188,11 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-row__line { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: var(--space-3); gap: var(--space-2); min-height: 0; }
   .drug-cell--index, .drug-cell--price, .drug-cell--subtotal { display: none; }
   .drug-name__idx { display: inline; }
-  .drug-cell--drug { grid-column: 1 / 4; grid-row: 1; }
+  .drug-cell--drug { grid-column: 1 / -1; grid-row: 1; } /* tên rộng hết dòng, nút nằm đè lên phần padding bên phải */
   /* nút Xóa và Chi tiết (chỉ icon) ở góc phải trên, Chi tiết nằm bên phải Xóa */
   .drug-actions { display: flex; gap: var(--space-2); grid-column: 4; grid-row: 1; justify-self: end; align-self: center; }
-  .drug-actions .icon-btn { width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
+  .drug-actions .icon-btn { width: 26px; height: 26px; padding: 0; }
+  .drug-actions .icon-btn .icon { width: 18px; height: 18px; }
   .drug-actions > :not(.drug-more) { display: none; }
   .drug-actions > .drug-more { display: inline-flex; }
   .drug-row.is-open .drug-actions > .drug-toggle { display: inline-flex; } /* chi tiết đang mở: nút thu gọn nằm bên trái nút ⋮ */
@@ -1195,10 +1200,13 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   /* quá tồn kho: tô đỏ ô Số lượng như ô liều quá liều, không tô viền cả thẻ */
   .drug-row.is-negative .drug-field--quantity { border-color: var(--danger-border-strong); background: var(--danger-bg-2); }
   .drug-row.is-negative .drug-field--quantity .mini { color: var(--text-danger); }
-  .drug-cell--drug { padding-right: calc(var(--ctl-h) + var(--space-2)); } /* chừa chỗ cho nút Chi tiết kéo sang trái */
-  /* tên thuốc: số thứ tự một cột, tên và badge cùng thẳng hàng ở cột còn lại */
-  .drug-name { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-1); align-items: baseline; }
-  .drug-badges { grid-column: 1 / -1; margin-top: var(--space-1); }
+  .drug-cell--drug { padding-right: calc(26px + var(--space-2)); }
+  .drug-row.is-open .drug-cell--drug { padding-right: calc(52px + 2 * var(--space-2)); } /* mở chi tiết: thêm nút thu gọn */ /* chừa chỗ cho nút Chi tiết kéo sang trái */
+  /* tên thuốc, badge (Quá liều, Âm kho…) cùng một dòng; không đủ chỗ thì tên bị rút gọn bằng … ở cuối */
+  .drug-name { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-1) var(--space-2); }
+  .drug-name__idx { flex: none; margin-right: -4px; }
+  .drug-name__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drug-badges { flex: none; flex-wrap: nowrap; white-space: nowrap; }
   .drug-badges:empty { display: none; }
   .drug-field--morning { grid-column: 1; grid-row: 2; }
   .drug-field--noon { grid-column: 2; grid-row: 2; }
@@ -1227,6 +1235,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-search { flex: 1; min-width: 0; }
   .drug-search > .icon { left: auto; right: 14px; }
   .drug-search .mini { height: var(--control-h); padding: 0 44px 0 14px; border: 1px solid var(--line); background: var(--bg-input); text-align: left; }
+  .drug-search__print { display: inline-flex; width: var(--control-h-sm); height: var(--control-h-sm); }
   .drug-search__new { display: inline-flex; width: var(--control-h-sm); height: var(--control-h-sm); min-height: 0; padding: 0; flex: none; }
   #newPrescriptionBtn { display: none; }
 }
@@ -1246,6 +1255,21 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .stock-in-sum { display: grid; gap: var(--space-1); color: var(--text-muted); }
 .stock-in-sum strong { color: var(--text); font-variant-numeric: tabular-nums; }
 
+.patient-detail .clinic-meta-label, .stock-detail .clinic-meta-label, .drug-detail .clinic-meta-label, .patient-rx .clinic-meta-label { display: flex; align-items: center; gap: 6px; }
+.patient-detail .clinic-meta-label .icon, .stock-detail .clinic-meta-label .icon, .drug-detail .clinic-meta-label .icon, .patient-rx .clinic-meta-label .icon { width: 16px; height: 16px; color: var(--text-brand); }
+@media (min-width: 768px) { .pd-name, .pd-icd, .pd-date { display: none; } }
+@media (max-width: 767px) {
+  .patient-row.is-open .patient-detail { grid-template-columns: auto auto auto; justify-content: space-between; column-gap: 8px; }
+  .patient-detail .clinic-meta-label, .patient-detail .pd-date strong, .patient-detail .pd-1 strong { white-space: nowrap; }
+  .patient-detail .clinic-meta-label { gap: 4px; font-size: var(--fs-xs); }
+  .patient-detail .clinic-meta-label .icon { width: 14px; height: 14px; }
+  .patient-detail .pd-full { grid-column: 1 / -1; }
+  .patient-detail .pd-name { grid-column: span 2; }
+  .patient-detail .pd-visits { display: none; }
+  .pc__act .icon-btn { width: 26px; height: 26px; }
+  .pc__act .icon-btn, .drug-actions .icon-btn, .code-row__actions .icon-btn, .stock-row__act .icon-btn { border-radius: 50%; } /* nút nhỏ tròn hoàn toàn */
+  .pc__act .icon-btn .icon { width: 18px; height: 18px; }
+}
 .patient-row { user-select: none; -webkit-user-select: none; }
 #visitFormCard { scroll-margin-top: calc(var(--nav-h) - 15px); } /* cuộn xuống sát hơn dưới thanh nav */
 @media (max-width: 767px) { #visitFormCard { scroll-margin-top: -20px; } } /* điện thoại: cuộn tới form dừng thấp hơn */
