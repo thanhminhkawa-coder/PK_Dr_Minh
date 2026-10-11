@@ -73,7 +73,7 @@ app.use((req, res, next) => {
 const jsonParser = express.json({ limit: "2mb" });
 app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
 // chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
-const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js"];
+const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png"];
 PUBLIC_FILES.forEach((name) => {
   app.get(`/${name}`, (_req, res) => res.sendFile(path.join(__dirname, name)));
 });
@@ -736,11 +736,13 @@ app.put("/api/visits/:id", async (req, res, next) => {
       }
 
       const payload = sanitizeVisitPayload(req.body);
-      const items = await buildVisitDrugItems(payload.drugs, session, visit.drugs || []);
-      const drugTotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+      // keepDrugs: không sửa gì ở chỉ định thuốc thì giữ nguyên toa cũ (số lượng, giá, kho), chỉ cập nhật thông tin còn lại
+      const keepDrugs = req.body?.keepDrugs === true;
+      const items = keepDrugs ? visit.drugs || [] : await buildVisitDrugItems(payload.drugs, session, visit.drugs || []);
+      const drugTotal = keepDrugs ? visit.drugTotal || 0 : items.reduce((sum, item) => sum + item.subtotal, 0);
 
       // chỉ thuốc có chênh lệch số lượng mới đụng tới kho
-      await applyStockDeltas(buildStockDeltas(visit.drugs || [], items), session);
+      if (!keepDrugs) await applyStockDeltas(buildStockDeltas(visit.drugs || [], items), session);
 
       // visitNo, patientId, printHistory giữ nguyên
       updatedVisit = await Visit.findByIdAndUpdate(
@@ -756,12 +758,12 @@ app.put("/api/visits/:id", async (req, res, next) => {
             serviceFee: payload.serviceFee,
             drugTotal,
             totalMoney: drugTotal + payload.serviceFee,
-            drugs: items
+            ...(keepDrugs ? {} : { drugs: items })
           }
         },
         { new: true, runValidators: true, session }
       ).lean();
-      touchedDrugIds = [...(visit.drugs || []), ...items].map((item) => item.drugId);
+      touchedDrugIds = keepDrugs ? [] : [...(visit.drugs || []), ...items].map((item) => item.drugId);
     });
 
     res.json({ ...updatedVisit, warnings: await findNegativeStockWarnings(touchedDrugIds) });

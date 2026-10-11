@@ -4,7 +4,7 @@ const CLINIC_NAME_CACHE_KEY = "pk_clinic_name";
 const NOTICE_KEY = "pk_notice";
 // ponytail: phân trang client, chuyển sang server-side khi > ~5000 hồ sơ
 const pageSize = () => (phoneLayoutQuery.matches ? 8 : 10); // số hàng mỗi trang: điện thoại 8, còn lại 10
-const TABS = ["home", "stats", "clinic", "settings"];
+const TABS = ["home", "patients", "stock", "stats", "clinic"];
 const WHEEL_ITEM_HEIGHT = 44;
 const WHEEL_MIN_YEAR = 1920;
 const WHEEL_DEFAULT_YEAR = 1980;
@@ -274,11 +274,11 @@ function cacheRefs() {
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "forgotIntro", "forgotStepEmail", "forgotStepCode", "forgotStepNew", "forgotOtp", "forgotResendBtn",
     "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "newFab", "importFile",
-    "patientCountText", "searchInput",
+    "patientCountText", "searchInput", "patientListToggle", "patientList",
     "patientListBody", "patientPager", "newBtn", "visitPicker",
-    "newPrescriptionBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "drugDeleteModal", "drugDeleteText", "drugDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
+    "newPrescriptionBtn", "icdEditSingle", "icdEditMulti", "icdMultiList", "icdAddRowBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "drugDeleteModal", "drugDeleteText", "drugDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
-    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "stockDataBox",
+    "codeDataBox", "previewPrintBtn", "addDrugBtn", "drugSummary", "drugRows", "drugAddBar", "stockDataBox", "stockTabBox",
     "followDate", "serviceFee", "adviceNote", "drugMoney", "serviceMoney", "totalMoney",
     "statVisitsToday", "statAppointmentsToday", "statAppointmentsArrived", "statRevenueToday", "statVisitsMonth", "statVisitsMonthLabel",
     "statPatientsTotal", "statPatientsNew", "statRevisitRate", "statRevisitSub", "statRevenueMonth", "statRevenueMonthLabel", "toast", "rxModal", "rxFrame", "rxPrintBtn", "rxShareBtn",
@@ -408,6 +408,7 @@ function bindEvents() {
     renderDrugRows();
   });
   wheelOnlyQuery.addEventListener("change", () => {
+    updateShareButton();
     syncBirthYearMode();
     closeYearWheel();
   });
@@ -415,7 +416,9 @@ function bindEvents() {
   refs.loginForm.addEventListener("submit", handleLoginSubmit);
   refs.forgotForm.addEventListener("submit", handleForgotSubmit);
   // điện thoại: đang gõ (bàn phím mở) thì ẩn thanh nav dưới và nút lưu để chúng không bị đẩy lên theo bàn phím
-  const isTypingField = (el) => el?.matches?.("input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=file],[type=hidden]), textarea, select");
+  // chỉ các ô thật sự bật bàn phím; ô dùng vòng quay (inputmode none / readonly) và ô chọn ngày gốc (date) thì không,
+  // nếu không nút lưu bị ẩn oan trong lúc chọn ngày / vòng quay
+  const isTypingField = (el) => el?.matches?.("input:not([type=checkbox],[type=radio],[type=button],[type=submit],[type=file],[type=hidden],[type=date],[type=time],[readonly],[inputmode=none]), textarea:not([readonly]), select");
   let kbTimer;
   document.addEventListener("focusin", (event) => {
     if (!phoneLayoutQuery.matches || !isTypingField(event.target)) return;
@@ -428,6 +431,19 @@ function bindEvents() {
       if (!isTypingField(document.activeElement)) document.body.classList.remove("kb-open");
     }, 100);
   });
+  // Safari: chạm ra ngoài hay bấm "Xong" có khi đóng bàn phím mà ô vẫn giữ focus (không có focusout).
+  // Theo dõi chiều cao vùng nhìn thấy: bàn phím đóng (cao trở lại gần như ban đầu) thì hiện lại nút lưu + thanh nav.
+  if (window.visualViewport) {
+    let fullHeight = window.visualViewport.height;
+    window.addEventListener("orientationchange", () => { fullHeight = 0; });
+    window.visualViewport.addEventListener("resize", () => {
+      const height = window.visualViewport.height;
+      fullHeight = Math.max(fullHeight, height);
+      const keyboardOpen = height < fullHeight - 150;
+      if (!keyboardOpen) document.body.classList.remove("kb-open");
+      else if (phoneLayoutQuery.matches && isTypingField(document.activeElement)) document.body.classList.add("kb-open");
+    });
+  }
   window.addEventListener("scroll", () => document.querySelectorAll(".stock-menu").forEach((menu) => menu.classList.add("hidden")), { passive: true });
   // điện thoại: chạm ra ngoài (vùng tối) thì đóng hộp thoại
   document.addEventListener("click", (event) => {
@@ -470,6 +486,22 @@ function bindEvents() {
   }))
     .observe(document.body, { subtree: true, attributes: true, attributeFilter: ["open"] });
 
+  // hộp thoại không vuốt kéo được: chỉ vùng bên trong thật sự cuộn được mới nhận cử chỉ vuốt, và hết đầu/cuối thì
+  // chặn luôn (không chuyền sang trang phía sau, vì Safari sẽ kéo cả hộp thoại giật)
+  let dragY = 0;
+  document.addEventListener("touchstart", (event) => { dragY = event.touches[0].clientY; }, { passive: true, capture: true });
+  document.addEventListener("touchmove", (event) => {
+    if (lockedScrollY === null || !event.cancelable || !event.target.closest?.("dialog.modal[open]")) return;
+    const dy = event.touches[0].clientY - dragY;
+    for (let el = event.target; el && el.tagName !== "DIALOG"; el = el.parentElement) {
+      if (el.scrollHeight <= el.clientHeight + 1 || !/auto|scroll/.test(getComputedStyle(el).overflowY)) continue;
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      if ((dy > 0 && atTop) || (dy < 0 && atBottom)) break; // đã hết đầu/cuối: chặn
+      return; // cuộn bình thường
+    }
+    event.preventDefault();
+  }, { passive: false });
   // (2) Không để Safari tự cuộn khi focus ô nhập trong hộp thoại: dời ô ra khỏi màn hình đúng 1 khung hình lúc focus
   // (Safari thấy ô ở phía trên nên không cuộn gì), giữ nguyên vị trí cuộn bên trong hộp thoại, rồi trả ô về chỗ cũ.
   const focusWithoutScroll = (input) => {
@@ -510,9 +542,12 @@ function bindEvents() {
   // (3) Nâng hộp thoại lên trên bàn phím MỘT lần rồi giữ nguyên vị trí (chuyển ô nhập, cuộn đều không đổi);
   // chỉ hạ xuống khi không còn ô nhập nào giữ con trỏ. Nhớ chiều cao bàn phím lần trước để lần sau nâng ngay cùng lúc bàn phím trượt lên.
   let settleTimer;
+  // nhớ chiều cao bàn phím qua các lần mở trang; lần đầu chưa đo được thì đoán theo màn hình (~40%), đo xong chỉnh lại
   let lastKeyboard = 0;
+  try { lastKeyboard = Number(localStorage.getItem("kbHeight")) || 0; } catch {}
   const setSheetLift = (dialog, value, locked) => {
     dialog.style.setProperty("--kb", `${value}px`);
+    dialog.classList.toggle("kb-up", value > 0);
     if (locked) dialog.dataset.kbLocked = "1";
     else delete dialog.dataset.kbLocked;
   };
@@ -530,8 +565,9 @@ function bindEvents() {
       const keyboard = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
       if (keyboard < 80) return; // bàn phím chưa lên hẳn: chờ lần đo sau
       lastKeyboard = keyboard;
+      try { localStorage.setItem("kbHeight", keyboard); } catch {}
       setSheetLift(dialog, keyboard, true);
-    }, 250);
+    }, 80);
   };
   window.visualViewport?.addEventListener("resize", settleSheet);
   // đóng hộp thoại thì xóa độ nâng cũ, nếu không lần mở sau bị lệch
@@ -543,8 +579,9 @@ function bindEvents() {
     if (!phoneLayoutQuery.matches || !dialog?.contains(event.target) || !opensKeyboard(event.target)) return;
     // chuyển ô bằng mũi tên trên bàn phím: cũng chặn Safari tự cuộn
     if (lockedScrollY !== null) focusWithoutScroll(event.target);
-    if (!dialog.dataset.kbLocked && lastKeyboard && (parseFloat(dialog.style.getPropertyValue("--kb")) || 0) === 0) {
-      dialog.style.setProperty("--kb", `${lastKeyboard}px`);
+    if (!dialog.dataset.kbLocked && (parseFloat(dialog.style.getPropertyValue("--kb")) || 0) === 0) {
+      dialog.style.setProperty("--kb", `${lastKeyboard || Math.round(window.innerHeight * 0.4)}px`);
+      dialog.classList.add("kb-up");
     }
     settleSheet();
   });
@@ -595,6 +632,16 @@ function bindEvents() {
     if (event.key === "Enter" && (event.target === refs.pwNew || event.target === refs.pwNew2)) confirmPasswordChange();
   });
 
+  refs.patientListToggle.addEventListener("click", () => {
+    state.patientListOpen = !state.patientListOpen;
+    if (!state.patientListOpen) {
+      // đóng nút sổ thì xóa luôn thanh tìm kiếm
+      state.wasSearching = false;
+      refs.searchInput.value = "";
+      applySearch("");
+    }
+    syncPatientListVisibility();
+  });
   refs.searchInput.addEventListener("input", handleSearchInput);
   refs.searchInput.addEventListener("keydown", handleSearchKeydown);
   refs.patientListBody.addEventListener("click", handlePatientListClick);
@@ -619,6 +666,13 @@ function bindEvents() {
     syncBirthYearMode();
   }));
   initToastDismiss();
+  updateShareButton();
+  // mọi thao tác sửa form (gõ, chọn, vòng quay, nút) đều kiểm tra lại chấm chưa lưu
+  let dirtyFrame = 0;
+  ["input", "change", "click", "keyup"].forEach((type) => document.addEventListener(type, () => {
+    clearTimeout(dirtyFrame);
+    dirtyFrame = setTimeout(updateVisitDirtyDot, 30);
+  }, true));
   document.fonts?.ready.then(() => fitPatientListHeight());
   document.addEventListener("input", syncWheelToTypedValue);
   document.addEventListener("keydown", handleWheelInputKeydown);
@@ -647,13 +701,46 @@ function bindEvents() {
   refs.icdEditSaveBtn.addEventListener("click", saveIcdEdit);
   refs.icdDeleteConfirmBtn.addEventListener("click", confirmIcdDelete);
   refs.drugDeleteConfirmBtn.addEventListener("click", confirmDrugDelete);
+  refs.icdMultiList.addEventListener("input", (event) => {
+    if (event.target.classList.contains("icd-row__name")) autoGrowField(event.target);
+  });
   refs.codeDataBox.addEventListener("input", (event) => {
     if (event.target.id !== "icdSearchInput") return;
     state.icdSearch = event.target.value;
     renderCodeRows();
   });
   refs.icdEditModal.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && event.target.tagName === "INPUT") saveIcdEdit();
+    if (event.key !== "Enter" || !["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
+    if (!refs.icdEditMulti.classList.contains("hidden")) {
+      // nhập nhiều mã: Enter ở ô mã thì sang ô tên; Enter ở ô tên của dòng cuối thì thêm dòng mới
+      event.preventDefault();
+      const row = event.target.closest(".icd-row");
+      if (event.target.classList.contains("icd-row__code")) row.querySelector(".icd-row__name").focus();
+      else if (row === refs.icdMultiList.lastElementChild) addIcdRow(true);
+      else row.nextElementSibling.querySelector(".icd-row__code").focus();
+      return;
+    }
+    saveIcdEdit();
+  });
+  // bấm Thêm mã / xóa dòng không lấy focus khỏi ô đang gõ, và giữ nguyên trạng thái bàn phím:
+  // đang bật (đang có ô nhập được chọn) thì vẫn bật, đang tắt thì vẫn tắt
+  const icdKeyboardOn = () => refs.icdEditModal.contains(document.activeElement) && document.activeElement.matches("input, textarea");
+  ["pointerdown", "mousedown"].forEach((type) => {
+    refs.icdAddRowBtn.addEventListener(type, (event) => event.preventDefault());
+    refs.icdMultiList.addEventListener(type, (event) => { if (event.target.closest(".icd-row__del")) event.preventDefault(); });
+  });
+  refs.icdAddRowBtn.addEventListener("click", () => addIcdRow(!phoneLayoutQuery.matches || icdKeyboardOn()));
+  refs.icdMultiList.addEventListener("click", (event) => {
+    const del = event.target.closest(".icd-row__del");
+    if (!del) return;
+    const keyboardOn = icdKeyboardOn();
+    const row = del.closest(".icd-row");
+    const hadFocus = row.contains(document.activeElement);
+    const neighbour = row.nextElementSibling || row.previousElementSibling;
+    row.remove();
+    if (!refs.icdMultiList.children.length) addIcdRow(keyboardOn);
+    else if (hadFocus && keyboardOn) neighbour?.querySelector(".icd-row__code").focus({ preventScroll: true }); // ô đang gõ bị xóa: chuyển sang dòng bên cạnh để bàn phím không tắt
+    renumberIcdRows();
   });
   refs.stockDataMore.addEventListener("toggle", () => {
     refs.stockDataBox.classList.toggle("hidden", !refs.stockDataMore.open);
@@ -664,11 +751,20 @@ function bindEvents() {
     renderDrugRows();
     updateTotals();
   });
-  refs.drugRows.addEventListener("input", handleDrugRowChange);
-  refs.drugRows.addEventListener("change", handleDrugRowChange);
-  refs.drugRows.addEventListener("focusin", handleDrugRowChange);
-  refs.drugRows.addEventListener("focusout", handleDrugRowChange);
-  refs.drugRows.addEventListener("click", handleDrugRowClick);
+  // dòng thuốc và thanh thêm thuốc (nằm riêng bên dưới) dùng chung các xử lý
+  [refs.drugRows, refs.drugAddBar].forEach((box) => {
+    box.addEventListener("input", handleDrugRowChange);
+    box.addEventListener("change", handleDrugRowChange);
+    box.addEventListener("focusin", handleDrugRowChange);
+    box.addEventListener("focusout", handleDrugRowChange);
+    box.addEventListener("click", handleDrugRowClick);
+    box.addEventListener("focusin", showDrugSearchSuggest);
+    box.addEventListener("input", showDrugSearchSuggest);
+    box.addEventListener("pointerdown", (event) => {
+      // bấm nút chọn nhanh không làm ô nhập mất focus (và đóng bảng chọn trước khi click kịp xảy ra)
+      if (event.target.closest(".dose-quick, .quantity-quick, .drug-suggest")) event.preventDefault();
+    });
+  });
   document.getElementById("patientRowMenu").addEventListener("click", (event) => {
     const item = event.target.closest("[data-action]");
     const menu = event.currentTarget;
@@ -689,19 +785,15 @@ function bindEvents() {
     delete input.dataset.kb;
     if (phoneLayoutQuery.matches) input.setAttribute("inputmode", "none");
   });
-  refs.drugRows.addEventListener("focusin", showDrugSearchSuggest);
-  refs.drugRows.addEventListener("input", showDrugSearchSuggest);
-  refs.drugRows.addEventListener("pointerdown", (event) => {
-    // bấm nút chọn nhanh không làm ô nhập mất focus (và đóng bảng chọn trước khi click kịp xảy ra)
-    if (event.target.closest(".dose-quick, .quantity-quick, .drug-suggest")) event.preventDefault();
+  [refs.stockDataBox, refs.stockTabBox].forEach((box) => {
+    box.addEventListener("click", handleStockDataClick);
+    box.addEventListener("dblclick", handleStockDataClick);
   });
-  refs.stockDataBox.addEventListener("click", handleStockDataClick);
-  refs.stockDataBox.addEventListener("dblclick", handleStockDataClick);
-  refs.stockDataBox.addEventListener("input", (event) => {
+  [refs.stockDataBox, refs.stockTabBox].forEach((box) => box.addEventListener("input", (event) => {
     if (event.target.id !== "stockSearchInput") return;
     state.stockSearch = event.target.value;
     renderStockRows();
-  });
+  }));
   refs.stockPasteApplyBtn.addEventListener("click", applyStockPaste);
   refs.stockInConfirmBtn.addEventListener("click", confirmStockIn);
   refs.stockInQty.addEventListener("input", updateStockInPreview);
@@ -1157,13 +1249,25 @@ function endSession() {
 // ---- Tab: #home / #stats / #clinic ----
 
 function applyTabFromHash() {
-  const hash = location.hash.replace("#", "");
-  const tab = TABS.includes(hash) && (hash !== "settings" || phoneLayoutQuery.matches) ? hash : "home";
-  if (hash !== tab) history.replaceState(null, "", `#${tab}`);
+  let hash = location.hash.replace("#", "");
+  if (hash === "settings") hash = "clinic"; // tab Cài đặt cũ đã gộp vào Phòng khám
+  const tab = TABS.includes(hash) ? hash : "home";
+  if (location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`);
   showTab(tab);
 }
 
 function showTab(tab) {
+  state.activeTab = tab;
+  // bảng danh sách bệnh nhân là cùng một khối: ở tab Bệnh nhân thì chuyển sang đó, quay lại Home thì chuyển về chỗ cũ
+  const patientCard = refs.patientList.closest(".patient-top");
+  const tabHost = document.getElementById("patientsTabHost");
+  if (tab === "patients" && patientCard.parentElement !== tabHost) {
+    tabHost.append(patientCard);
+  } else if (tab !== "patients" && patientCard.parentElement === tabHost) {
+    document.querySelector("#panel-home .main-layout").prepend(patientCard);
+  }
+  patientCard.classList.toggle("in-tab", tab === "patients");
+  syncPatientListVisibility();
   document.querySelectorAll("[data-panel]").forEach((panel) => panel.classList.toggle("hidden", panel.dataset.panel !== tab));
   document.querySelectorAll("a.tab").forEach((link) => {
     const active = link.dataset.tab === tab;
@@ -1174,8 +1278,11 @@ function showTab(tab) {
   refs.saveFab.classList.toggle("hidden", tab !== "home");
   refs.newFab.classList.toggle("hidden", tab !== "home");
   if (tab === "stats" && accessToken) loadStats().catch(handleError);
+  if (tab === "stock") renderStockData();
+  else if (tab === "home" && !refs.stockDataBox.classList.contains("hidden")) renderStockData();
   if (tab === "home") syncFollowDateWidth();
   window.scrollTo(0, 0);
+  if (tab === "patients") fitPatientListHeight();
   if (tab === "home") {
     fitPatientListHeight();
     autoGrowField(refs.icdInput);
@@ -1273,7 +1380,7 @@ async function loadDrugs() {
   }
   renderDrugRows();
   updateWarning();
-  if (!refs.stockDataBox.classList.contains("hidden")) renderStockData();
+  if (state.activeTab === "stock" || !refs.stockDataBox.classList.contains("hidden")) renderStockData();
 }
 
 function refreshKnownDoctors() {
@@ -1309,7 +1416,23 @@ function renderDoctorControls() {
   }
 }
 
+// danh sách bệnh nhân ẩn sẵn; hiện khi bấm nút sổ hoặc khi bắt đầu gõ tìm kiếm (rồi vẫn đóng lại được bằng nút sổ)
+function syncPatientListVisibility() {
+  const visible = Boolean(state.patientListOpen) || state.activeTab === "patients";
+  refs.patientList.classList.toggle("hidden", !visible);
+  refs.patientListToggle.setAttribute("aria-expanded", String(visible));
+  if (visible) fitPatientListHeight();
+}
+
 function handleSearchInput(event) {
+  const searching = event.target.value.trim() !== "";
+  if (searching) {
+    if (!state.wasSearching) state.openBeforeSearch = Boolean(state.patientListOpen);
+    state.patientListOpen = true; // mỗi lần gõ đều mở lại danh sách
+  } else if (state.wasSearching) {
+    state.patientListOpen = Boolean(state.openBeforeSearch); // xóa hết chữ tìm: về trạng thái trước khi tìm
+  }
+  state.wasSearching = searching;
   applySearch(event.target.value);
 }
 
@@ -1322,6 +1445,7 @@ function handleSearchKeydown(event) {
 
 function applySearch(rawValue, { keepPage = false } = {}) {
   state.search = String(rawValue || "").trim();
+  syncPatientListVisibility();
   const keyword = normalizeText(state.search);
   state.filteredPatients = keyword
     ? state.patients.filter((patient) => normalizeText(buildPatientHaystack(patient)).includes(keyword))
@@ -1333,10 +1457,17 @@ function applySearch(rawValue, { keepPage = false } = {}) {
     if (Number.isNaN(t)) return [2, 0];
     return [t >= today ? 0 : 1, t];
   };
+  // đang tìm kiếm: trùng họ tên lên trước, rồi tới địa chỉ, các trường còn lại sau; trong mỗi nhóm giữ thứ tự tái khám như trên
+  const relevance = (p) => {
+    if (!keyword) return 0;
+    if (normalizeText(p.fullName || "").includes(keyword)) return 0;
+    if (normalizeText(`${p.address || ""} ${p.province || ""}`).includes(keyword)) return 1;
+    return 2;
+  };
   state.filteredPatients.sort((a, b) => {
     const [ga, ta] = rank(a);
     const [gb, tb] = rank(b);
-    return ga - gb || ta - tb;
+    return relevance(a) - relevance(b) || ga - gb || ta - tb;
   });
   refs.patientCountText.textContent = `${formatNumber(state.filteredPatients.length)} hồ sơ`;
   if (!keepPage) state.page = 1;
@@ -1345,7 +1476,7 @@ function applySearch(rawValue, { keepPage = false } = {}) {
 
 function clearSearch() {
   refs.searchInput.value = "";
-  applySearch("");
+  handleSearchInput({ target: refs.searchInput });
 }
 
 function togglePatientRow(row) {
@@ -1443,6 +1574,8 @@ function handlePatientListKeydown(event) {
 }
 
 function openPatientFromList(id) {
+  // đang ở tab Bệnh nhân: mở hồ sơ thì chuyển sang Home để thấy form
+  if (state.activeTab === "patients") location.hash = "#home";
   selectPatient(id).then(() => document.getElementById("visitFormCard").scrollIntoView({ behavior: "smooth", block: "start" })).catch(handleError);
 }
 
@@ -1641,6 +1774,13 @@ function renderVisitPicker() {
   const hadFocus = refs.visitPicker.contains(document.activeElement);
   refs.visitPicker.innerHTML = chips.join("");
   if (hadFocus) refs.visitPicker.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+  updateVisitDirtyDot();
+}
+
+// chấm tròn nhỏ ở ô Lần khám cũ đang sửa khi có thông tin chưa lưu; lưu xong thì mất
+function updateVisitDirtyDot() {
+  const dirty = Boolean(state.editingVisitId) && state.savedSignature !== undefined && formSignature() !== state.savedSignature;
+  refs.visitPicker.querySelector('.visit-chip[aria-checked="true"]:not(.is-draft)')?.classList.toggle("is-dirty", dirty);
 }
 
 function handleVisitPickerClick(event) {
@@ -1693,9 +1833,19 @@ function startNewVisitDraft() {
   refreshVisitView();
 }
 
+// lưu xong: nút nổi đổi thành dấu tick trong 4 giây
+function showSaveDone() {
+  clearTimeout(state.saveDoneTimer);
+  state.saveDone = true;
+  state.saveDoneTimer = setTimeout(() => { state.saveDone = false; updateSaveButtons(); }, 4000);
+  updateSaveButtons();
+}
+
 function updateSaveButtons() {
-  const label = state.editingVisitId ? "Lưu thay đổi" : "Hoàn tất khám";
+  const label = state.saveDone ? "Đã lưu" : state.editingVisitId ? "Lưu thay đổi" : "Hoàn tất khám";
   const button = refs.saveFab;
+  button.querySelector("use").setAttribute("href", state.saveDone ? "#i-check" : "#i-save");
+  button.classList.toggle("is-done", Boolean(state.saveDone));
   button.querySelector(".save-label").textContent = label;
   button.setAttribute("aria-label", label);
   button.title = label;
@@ -1806,9 +1956,24 @@ function fillFormFromRecord(patient, visit) {
     noon: String(drug.noon || ""),
     night: String(drug.night || ""),
     usage: String(drug.instruction || drug.usage || ""),
-    price: Number(drug.unitPrice || 0)
+    price: Number(drug.unitPrice || 0),
+    quantityManual: true // số lượng đã lưu: không tự tính lại theo liều
   })) : [createDraftRow()];
   renderDrugRows();
+  if (visit?._id) { state.savedSignature = formSignature(); state.savedDrugSignature = drugSignature(); }
+}
+
+function drugSignature() {
+  return JSON.stringify(state.draftRows.filter((row) => row.drugId && toNumber(row.quantity) > 0).map((row) => [row.drugId, toNumber(row.quantity), String(row.morning || "").trim(), String(row.noon || "").trim(), String(row.night || "").trim(), String(row.usage || "").trim()]));
+}
+
+// chữ ký nội dung form: so với lúc nạp lần khám để biết có thay đổi gì chưa
+function formSignature() {
+  return JSON.stringify([
+    refs.patientName.value.trim(), refs.phone.value.trim(), refs.birthYear.value.trim(), getGender(), refs.addressWard.value.trim(), refs.province.value.trim(),
+    refs.visitDoctor.value.trim(), refs.visitDate.value, refs.followDate.value, refs.symptom.value.trim(), refs.icdInput.value.trim(), refs.adviceNote.value.trim(), toNumber(refs.serviceFee.value),
+    state.draftRows.filter((row) => row.drugId && toNumber(row.quantity) > 0).map((row) => [row.drugId, toNumber(row.quantity), String(row.morning || "").trim(), String(row.noon || "").trim(), String(row.night || "").trim(), String(row.usage || "").trim()])
+  ]);
 }
 
 function seedForm() {
@@ -2134,7 +2299,10 @@ function handleYearWheelClick(event) {
   }
   const item = event.target.closest(".wheel__item");
   if (item && state.wheel) {
-    scrollYearWheelTo(Number(item.dataset.index));
+    // nhấn vào một số: chọn luôn số đó (trừ vòng quay chọn trang vẫn chỉ cuộn tới)
+    if (state.wheel.kind === "page") { scrollYearWheelTo(Number(item.dataset.index)); return; }
+    state.wheel.index = Number(item.dataset.index);
+    applyYearWheel("done");
     return;
   }
   // bấm ra ngoài là chọn năm đang ở giữa
@@ -2364,6 +2532,14 @@ async function handleCodeDataClick(event) {
       refs.icdEditTitle.textContent = item ? "Sửa mã chẩn đoán" : "Thêm mã chẩn đoán";
       refs.icdEditCode.value = item?.code || "";
       refs.icdEditName.value = item?.name || "";
+      // thêm mới: nhập được nhiều mã một lần (có đánh số); sửa: chỉ một mã
+      refs.icdEditSingle.classList.toggle("hidden", !item);
+      refs.icdEditMulti.classList.toggle("hidden", Boolean(item));
+      refs.icdAddRowBtn.classList.toggle("hidden", Boolean(item));
+      if (!item) {
+        refs.icdMultiList.innerHTML = "";
+        addIcdRow(false);
+      }
       refs.icdEditModal.showModal();
       return;
     }
@@ -2393,24 +2569,64 @@ async function handleCodeDataClick(event) {
   }
 }
 
+function addIcdRow(focus) {
+  const row = document.createElement("div");
+  row.className = "icd-row";
+  row.innerHTML = `<span class="icd-row__no" aria-hidden="true"></span><input class="field icd-row__code" placeholder="Mã ICD" aria-label="Mã ICD" autocomplete="off" /><textarea class="field icd-row__name" rows="1" placeholder="Tên chẩn đoán" aria-label="Tên chẩn đoán" autocomplete="off"></textarea><button class="icon-btn danger icd-row__del" type="button" aria-label="Xóa dòng" title="Xóa dòng">${iconHtml("trash-2")}</button>`;
+  refs.icdMultiList.append(row);
+  renumberIcdRows();
+  // cuộn trong chính danh sách (không dùng scrollIntoView làm cả hộp nhảy) và focus ô mã mới để bàn phím giữ nguyên
+  refs.icdMultiList.scrollTop = refs.icdMultiList.scrollHeight;
+  if (focus) row.querySelector(".icd-row__code").focus({ preventScroll: true });
+}
+
+function renumberIcdRows() {
+  refs.icdMultiList.querySelectorAll(".icd-row").forEach((row, index) => {
+    row.querySelector(".icd-row__no").textContent = String(index + 1);
+  });
+}
+
 async function saveIcdEdit() {
+  if (!refs.icdEditMulti.classList.contains("hidden")) return saveIcdBatch();
   const code = refs.icdEditCode.value.trim();
   const name = refs.icdEditName.value.trim();
   const editing = state.editingIcdCode;
   if (!code || !name) return showToast("Nhập đầy đủ mã ICD và tên chẩn đoán.", "error");
   if (state.icdList.some((item) => item.code === code && item.code !== editing)) return showToast("Mã ICD bị trùng.", "error");
   try {
-    if (editing) {
-      state.icdList = state.icdList.map((item) => item.code === editing ? { code, name } : item);
-      if (state.selectedIcdCode === editing) state.selectedIcdCode = code;
-    } else {
-      state.icdList.push({ code, name });
-    }
+    state.icdList = state.icdList.map((item) => item.code === editing ? { code, name } : item);
+    if (state.selectedIcdCode === editing) state.selectedIcdCode = code;
     await persistSettings();
     refs.icdEditModal.close();
     renderCodeRows();
     renderIcdSuggest();
-    showToast(editing ? "Đã sửa mã ICD." : "Đã thêm mã ICD.");
+    showToast("Đã sửa mã ICD.");
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+// thêm nhiều mã một lần: bỏ qua dòng để trống hoàn toàn, báo lỗi theo số thứ tự dòng
+async function saveIcdBatch() {
+  const rows = [...refs.icdMultiList.querySelectorAll(".icd-row")].map((row, index) => ({
+    no: index + 1,
+    code: row.querySelector(".icd-row__code").value.trim(),
+    name: row.querySelector(".icd-row__name").value.trim()
+  })).filter((row) => row.code || row.name);
+  if (!rows.length) return showToast("Nhập ít nhất một mã ICD.", "error");
+  const seen = new Set(state.icdList.map((item) => item.code));
+  for (const row of rows) {
+    if (!row.code || !row.name) return showToast(`Dòng ${row.no}: nhập đầy đủ mã ICD và tên chẩn đoán.`, "error");
+    if (seen.has(row.code)) return showToast(`Dòng ${row.no}: mã ${row.code} bị trùng.`, "error");
+    seen.add(row.code);
+  }
+  try {
+    rows.forEach(({ code, name }) => state.icdList.push({ code, name }));
+    await persistSettings();
+    refs.icdEditModal.close();
+    renderCodeRows();
+    renderIcdSuggest();
+    showToast(rows.length > 1 ? `Đã thêm ${rows.length} mã ICD.` : "Đã thêm mã ICD.");
   } catch (error) {
     handleError(error);
   }
@@ -2507,8 +2723,8 @@ function buildDrugRowHtml(row, index) {
         <input class="mini" data-field="activeIngredient" ${phoneLayoutQuery.matches ? "" : 'list="activeIngredientList"'} autocomplete="off" aria-label="Thêm thuốc" placeholder="${phoneLayoutQuery.matches ? "Tìm thuốc để thêm…" : "Gõ tên hoạt chất hoặc tên thương mại để thêm thuốc…"}" value="" />
         <div class="suggest-box drug-suggest hidden"></div>
       </div>
-      <button class="icon-btn drug-search__print" type="button" data-action="preview-print" aria-label="Xem / In toa" title="Xem / In toa">${iconHtml("printer")}</button>
-      <button class="btn small primary drug-search__new" type="button" data-action="new-prescription" aria-label="Toa mới: xóa hết thuốc" title="Xóa hết thuốc để kê toa mới cho lần khám đang chọn">${iconHtml("plus")}</button>
+      <button class="icon-btn drug-search__print" type="button" data-action="preview-print" aria-label="Xem / In toa" title="Xem / In toa">${iconHtml("printer")}<span class="drug-search__lbl">Xem / In toa</span></button>
+      <button class="btn small primary drug-search__new" type="button" data-action="new-prescription" aria-label="Toa mới: xóa hết thuốc" title="Xóa hết thuốc để kê toa mới cho lần khám đang chọn"><svg class="icon ic-phone" aria-hidden="true"><use href="#i-plus"/></svg><svg class="icon ic-pc" aria-hidden="true"><use href="#i-pill"/></svg><span class="drug-search__lbl">Toa mới</span></button>
     </div>`;
   }
   const number = index + 1;
@@ -2548,7 +2764,16 @@ function detailFieldHtml(icon, label, cls, value) {
 
 function renderDrugRows() {
   ensureSearchRow();
-  refs.drugRows.innerHTML = state.draftRows.map(buildDrugRowHtml).join("");
+  // dòng nháp trống (ô tìm thuốc) nằm riêng ở thanh thêm thuốc bên dưới; các dòng thuốc thật nằm trong bảng
+  const rowsHtml = [];
+  let barHtml = "";
+  state.draftRows.forEach((row, index) => {
+    if (isPristineDraftRow(row)) barHtml += buildDrugRowHtml(row, index);
+    else rowsHtml.push(buildDrugRowHtml(row, index));
+  });
+  refs.drugRows.innerHTML = rowsHtml.join("");
+  refs.drugRows.closest(".drug-table").classList.toggle("is-empty", !rowsHtml.length);
+  refs.drugAddBar.innerHTML = barHtml;
   refreshDrugRowStates();
 }
 
@@ -3122,9 +3347,16 @@ function getSortedStockDrugs() {
   });
 }
 
+// bảng kho thuốc hiện ở tab Kho thuốc hoặc trong mục sổ của Home; chỉ dựng ở nơi đang xem để không trùng id
+function stockHost() {
+  return state.activeTab === "stock" ? refs.stockTabBox : refs.stockDataBox;
+}
+
 function renderStockData() {
   const pending = state.pendingStockRows;
-  refs.stockDataBox.innerHTML = `
+  const host = stockHost();
+  (host === refs.stockTabBox ? refs.stockDataBox : refs.stockTabBox).innerHTML = "";
+  host.innerHTML = `
     <div class="stock-manager">
       <div class="code-toolbar">
         <div class="code-search">
@@ -3339,7 +3571,9 @@ async function handleStockDataClick(event) {
     }
 
     if (action === "add-drug") {
-      refs.stockAddModal.showModal();
+      // điện thoại: mở thẳng hộp nhập từng thuốc, bỏ bước dán từ Excel
+      if (phoneLayoutQuery.matches) openDrugModal("");
+      else refs.stockAddModal.showModal();
       return;
     }
 
@@ -3683,6 +3917,10 @@ function formatMoneyField(input, useFormatted) {
 
 async function saveEncounter() {
   if (state.saving) return;
+  if (state.editingVisitId && formSignature() === state.savedSignature) {
+    showToast("Chưa có thay đổi nào để lưu.", "warn");
+    return;
+  }
   state.saving = true;
   updateSaveButtons();
   try {
@@ -3733,7 +3971,9 @@ async function saveEncounter() {
       diagnosis: refs.icdInput.value.trim(),
       note: refs.adviceNote.value.trim(),
       serviceFee: toNumber(refs.serviceFee.value),
-      drugs
+      drugs,
+      // sửa lần khám cũ mà không đụng tới chỉ định thuốc: báo máy chủ giữ nguyên toa và kho
+      keepDrugs: Boolean(editingId) && drugSignature() === state.savedDrugSignature
     };
 
     const saved = await fetchJson(editingId ? `/api/visits/${editingId}` : `/api/patients/${patientId}/visits`, {
@@ -3751,6 +3991,10 @@ async function saveEncounter() {
     } else {
       showToast(editingId ? `Đã lưu thay đổi lần khám L${saved.visitNo}.` : "Đã lưu lượt khám và toa thuốc.", "success");
     }
+    state.savedSignature = formSignature();
+    state.savedDrugSignature = drugSignature();
+    updateVisitDirtyDot();
+    showSaveDone();
     await Promise.all([loadStats(), loadDrugs(), loadPatients()]);
   } catch (error) {
     handleError(error);
@@ -3796,6 +4040,10 @@ function buildDoseText(row) {
   return DOSE_FIELDS.map((field) => `${DOSE_LABELS[field]} ${escapeHtml(row[field] || "-")}`).join(", ");
 }
 
+// ảnh đại diện đầu toa: nạp sẵn để vẽ canvas đồng bộ được
+const rxLogo = new Image();
+rxLogo.src = "/doctor-logo.png";
+
 // Vẽ ảnh toa bằng canvas thuần (không dùng SVG foreignObject: Safari làm canvas bị "tainted" hoặc ra ảnh trống)
 function drawPrescriptionCanvas() {
   const W = 1240, H = 1754, X = 106, CW = W - 2 * X;
@@ -3817,38 +4065,54 @@ function drawPrescriptionCanvas() {
   });
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "#0f172a";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(64, 64, W - 128, H - 128);
   ctx.textBaseline = "top";
   ctx.fillStyle = "#111";
   let y = 106;
-  font(42, true);
-  ctx.textAlign = "center";
-  ctx.fillText(state.clinicInfo.name || "", W / 2, y);
-  ctx.textAlign = "left";
-  y += 74;
   const doctor = refs.visitDoctor.value.trim() || state.clinicInfo.doctor || "";
-  const info = [
-    ["Bác sĩ", doctor],
-    ["Địa chỉ phòng khám", state.clinicInfo.address || "Chưa cập nhật địa chỉ"],
-    ["Điện thoại", state.clinicInfo.phone || "Chưa cập nhật số điện thoại"],
-    ["Bệnh nhân", `${refs.patientName.value} - ${getGender()} - ${refs.age.value} tuổi`],
-    ["Địa chỉ", `${refs.addressWard.value}, ${refs.province.value}`],
-    ["Số điện thoại", refs.phone.value],
-    ["Ngày khám", formatDate(refs.visitDate.value)],
-    ["Chẩn đoán", refs.icdInput.value]
-  ];
-  for (const [label, value] of info) {
+  // đầu toa theo mẫu: tên phòng khám đậm, địa chỉ, điện thoại; tiêu đề ĐƠN THUỐC ở giữa
+  const hasLogo = rxLogo.complete && rxLogo.naturalWidth > 0;
+  // ảnh cao đúng bằng khối chữ đầu toa (tên + địa chỉ + SĐT), cùng mép trên nên căn giữa theo chiều dọc
+  const headLines = [];
+  font(38, true);
+  wrap(String(state.clinicInfo.name || "").toUpperCase(), CW - 170).forEach((line) => headLines.push([line, true]));
+  font(24);
+  [`Địa chỉ: ${state.clinicInfo.address || "Chưa cập nhật địa chỉ"}`, `SĐT: ${state.clinicInfo.phone || "Chưa cập nhật số điện thoại"}`].forEach((text) => {
+    wrap(text, CW - 170).forEach((line) => headLines.push([line, false]));
+  });
+  const textH = headLines.reduce((sum, [, bold]) => sum + (bold ? 52 : 36), 6);
+  const LOGO = textH;
+  if (hasLogo) ctx.drawImage(rxLogo, X, y - 3, LOGO, LOGO);
+  const HX = hasLogo ? X + LOGO + 24 : X;
+  const headTop = y;
+  headLines.forEach(([line, bold]) => {
+    font(bold ? 38 : 24, bold);
+    ctx.fillText(line, HX, y);
+    y += bold ? 52 : 36;
+  });
+  y = Math.max(y, headTop + (hasLogo ? LOGO : 0)) + 36;
+  font(52, true);
+  ctx.textAlign = "center";
+  ctx.fillText("ĐƠN THUỐC", W / 2, y);
+  ctx.textAlign = "left";
+  y += 90;
+  const LW = 150;
+  // một ô "Nhãn: giá trị" trong cột rộng w; trả về chiều cao đã dùng
+  const field = (label, value, x, w, boldValue) => {
     font(24, true);
-    const prefix = `${label}: `;
-    const pw = ctx.measureText(prefix).width;
-    ctx.fillText(prefix, X, y);
-    font(24);
-    const lines = wrap(value, CW - pw);
-    lines.forEach((line, i) => { ctx.fillText(line, X + pw, y + i * 38); });
-    y += 38 * lines.length;
-  }
+    ctx.fillText(label, x, y);
+    font(24, boldValue);
+    const lines = wrap(value || "", w - LW);
+    lines.forEach((line, i) => ctx.fillText(line, x + LW, y + i * 38));
+    return 38 * Math.max(1, lines.length);
+  };
+  const pair = (a, b) => {
+    const colW = CW / 2;
+    y += Math.max(field(a[0], a[1], X, colW, a[2]), field(b[0], b[1], X + colW, colW));
+  };
+  pair(["Họ tên:", refs.patientName.value], ["Tuổi:", `${refs.age.value} tuổi (${getGender()})`]);
+  pair(["Ngày khám:", formatDate(refs.visitDate.value)], ["Điện thoại:", refs.phone.value]);
+  y += field("Địa chỉ:", [refs.addressWard.value, refs.province.value].filter(Boolean).join(", "), X, CW);
+  y += field("Chẩn đoán:", refs.icdInput.value, X, CW);
   y += 24;
   const cols = [0.08, 0.42, 0.12, 0.10, 0.28].map((r) => r * CW);
   const rows = state.draftRows.filter((row) => row.brandName || row.activeIngredient).map((row, index) => [
@@ -3909,7 +4173,7 @@ function drawPrescriptionCanvas() {
   font(24);
   ctx.fillText(`Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}`, cx, y);
   font(24, true);
-  ctx.fillText("Bác sĩ điều trị", cx, y + 50);
+  ctx.fillText("Bác sĩ khám bệnh", cx, y + 50);
   ctx.fillText(doctor, cx, y + 50 + 38 + 80);
   return canvas;
 }
@@ -3935,6 +4199,17 @@ function prepareShareFile() {
 async function sharePrescriptionToZalo() {
   try {
     if (!state.rxShareFile) prepareShareFile();
+    // máy tính: nút là "Copy ảnh": chép ảnh toa vào bộ nhớ tạm để dán (Ctrl+V / ⌘V) vào Zalo hay chỗ khác.
+    // Gọi clipboard.write ngay trong lúc nhấn (trước mọi await), nếu không Safari sẽ từ chối.
+    if (!wheelOnlyQuery.matches) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": prescriptionBlob("image/png") })]);
+        flashShareCopied();
+      } catch {
+        downloadShareFile(await state.rxShareFile);
+      }
+      return;
+    }
     const file = await state.rxShareFile;
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
@@ -3944,19 +4219,36 @@ async function sharePrescriptionToZalo() {
       }
       return;
     }
-    try {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": prescriptionBlob("image/png") })]);
-      window.open("https://chat.zalo.me/", "_blank", "noopener");
-      showToast("Đã sao chép ảnh toa. Mở cuộc trò chuyện Zalo rồi nhấn Ctrl+V để gửi.", "success");
-    } catch {
-      const url = URL.createObjectURL(file);
-      Object.assign(document.createElement("a"), { href: url, download: file.name }).click();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-      showToast(window.isSecureContext ? "Đã tải ảnh toa về máy. Hãy gửi ảnh này qua Zalo." : "Chia sẻ sang Zalo cần mở trang bằng HTTPS. Đã tải ảnh toa về máy.", "success");
-    }
+    downloadShareFile(file);
   } catch (error) {
     handleError(error);
   }
+}
+
+// nút Gửi (điện thoại) / Copy ảnh (máy tính)
+function updateShareButton() {
+  const pc = !wheelOnlyQuery.matches;
+  const copied = pc && state.shareCopied;
+  const label = pc ? (copied ? "Đã copy" : "Copy ảnh") : "Gửi";
+  refs.rxShareBtn.querySelector("use").setAttribute("href", copied ? "#i-check" : pc ? "#i-copy" : "#i-send");
+  refs.rxShareBtn.querySelector("span").textContent = label;
+  refs.rxShareBtn.setAttribute("aria-label", pc ? "Copy ảnh toa thuốc" : "Gửi");
+  refs.rxShareBtn.title = pc ? "Copy ảnh toa thuốc để dán (Ctrl+V) vào Zalo hoặc nơi khác" : "Gửi";
+}
+
+// copy xong: nút đổi thành dấu tick trong 4 giây
+function flashShareCopied() {
+  clearTimeout(state.shareCopiedTimer);
+  state.shareCopied = true;
+  updateShareButton();
+  state.shareCopiedTimer = setTimeout(() => { state.shareCopied = false; updateShareButton(); }, 4000);
+}
+
+function downloadShareFile(file) {
+  const url = URL.createObjectURL(file);
+  Object.assign(document.createElement("a"), { href: url, download: file.name }).click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  showToast(window.isSecureContext ? "Đã tải ảnh toa về máy. Hãy gửi ảnh này qua Zalo." : "Chia sẻ sang Zalo cần mở trang bằng HTTPS. Đã tải ảnh toa về máy.", "warn");
 }
 
 function buildPrescriptionHtml() {
@@ -3973,7 +4265,9 @@ function buildPrescriptionHtml() {
       <td>${buildDoseText(row)}</td>
     </tr>
   `).join("");
-  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}h1{font-size:22px;margin:0 0 8px;text-align:center}.meta{margin-bottom:12px;line-height:1.55}.meta div{margin-bottom:3px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.meta{line-height:1.45}table{font-size:11px}th,td{padding:4px}.footer{flex-direction:column;gap:12px}.footer-note{max-width:none}.sign{min-width:0;width:100%}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="sheet"><h1>${escapeHtml(state.clinicInfo.name)}</h1><div class="meta"><div><strong>Bác sĩ:</strong> ${escapeHtml(currentDoctor)}</div><div><strong>Địa chỉ phòng khám:</strong> ${clinicAddress}</div><div><strong>Điện thoại:</strong> ${clinicPhone}</div><div><strong>Bệnh nhân:</strong> ${escapeHtml(refs.patientName.value)} - ${escapeHtml(getGender())} - ${escapeHtml(refs.age.value)} tuổi</div><div><strong>Địa chỉ:</strong> ${escapeHtml(refs.addressWard.value)}, ${escapeHtml(refs.province.value)}</div><div><strong>Số điện thoại:</strong> ${escapeHtml(refs.phone.value)}</div><div><strong>Ngày khám:</strong> ${escapeHtml(formatDate(refs.visitDate.value))}</div><div><strong>Chẩn đoán:</strong> ${escapeHtml(refs.icdInput.value)}</div></div><table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ điều trị</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div></body></html>`;
+  const info = `<div class="pi"><b>Họ tên:</b><span>${escapeHtml(refs.patientName.value)}</span><b>Tuổi:</b><span>${escapeHtml(refs.age.value)} tuổi (${escapeHtml(getGender())})</span><b>Ngày khám:</b><span>${escapeHtml(formatDate(refs.visitDate.value))}</span><b>Điện thoại:</b><span>${escapeHtml(refs.phone.value)}</span><b>Địa chỉ:</b><span class="wide">${escapeHtml([refs.addressWard.value, refs.province.value].filter(Boolean).join(", "))}</span><b>Chẩn đoán:</b><span class="wide">${escapeHtml(refs.icdInput.value)}</span></div>`;
+  const css = '@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}.head{display:flex;gap:10px;align-items:center}.logo-box{position:relative;flex:none;width:64px;height:64px;transform:translateY(-2px)}.logo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.head-text{min-width:0}.clinic{font-size:17px;font-weight:700;text-transform:uppercase;margin:0 0 2px}.clinic-line{margin:0}h1{font-size:24px;margin:14px 0 12px;text-align:center}.pi{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content minmax(0,1fr);gap:3px 10px;margin-bottom:12px}.pi b{font-weight:700}.pi span{overflow-wrap:anywhere}.pi .wide{grid-column:2/-1}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.clinic{font-size:15px}h1{font-size:20px}table{font-size:11px}th,td{padding:4px}.footer{gap:8px}.footer-note{max-width:none;flex:1 1 0;min-width:0}.sign{min-width:0;flex:1 1 0}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>${css}</style></head><body><div class="sheet"><div class="head"><div class="logo-box"><img class="logo" src="${location.origin}/doctor-logo.png" alt=""></div><div class="head-text"><p class="clinic">${escapeHtml(state.clinicInfo.name)}</p><p class="clinic-line">Địa chỉ: ${clinicAddress}</p><p class="clinic-line">SĐT: ${clinicPhone}</p></div></div><h1>ĐƠN THUỐC</h1>${info}<table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ khám bệnh</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div><script>(function(){var t=document.querySelector(".head-text"),b=document.querySelector(".logo-box");function f(){b.style.width=b.style.height=t.offsetHeight+"px"}f();addEventListener("load",f);addEventListener("resize",f)})()</script></body></html>`;
 }
 
 async function printPrescription() {
@@ -4407,7 +4701,10 @@ function hideToast() {
   refs.toast.style.transform = "";
   refs.toast.style.opacity = "";
   refs.toast.classList.add("is-leaving");
-  state.toastLeave = setTimeout(() => { refs.toast.className = "toast hidden"; }, 220);
+  state.toastLeave = setTimeout(() => {
+    refs.toast.className = "toast hidden";
+    if (refs.toast.matches(":popover-open")) refs.toast.hidePopover();
+  }, 220);
 }
 function showToast(message, type = "success", duration = 2600) {
   clearTimeout(state.toastTimer);
@@ -4418,6 +4715,14 @@ function showToast(message, type = "success", duration = 2600) {
   refs.toast.style.transform = "";
   refs.toast.style.opacity = "";
   refs.toast.className = `toast ${type}`;
+  // máy tính: đưa thông báo lên lớp trên cùng để không bị hộp thoại đang mở (vd. Xem toa thuốc) che mất
+  if (!wheelOnlyQuery.matches && refs.toast.showPopover) {
+    refs.toast.setAttribute("popover", "manual");
+    try {
+      if (refs.toast.matches(":popover-open")) refs.toast.hidePopover();
+      refs.toast.showPopover();
+    } catch {}
+  }
   state.toastTimer = setTimeout(hideToast, duration);
 }
 // nhấn dấu x để tắt (cả PC); điện thoại còn vuốt lên để tắt

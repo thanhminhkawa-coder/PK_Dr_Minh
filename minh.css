@@ -592,7 +592,8 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .visit-chip[aria-checked="true"] { background: var(--primary); border-color: transparent; color: var(--text-on-primary); }
 .visit-chip.is-draft, .visit-chip--add { border-style: dashed; }
 .visit-chip.is-draft[aria-checked="true"] { cursor: default; }
-.visit-chip.is-draft[aria-checked="true"]::after {
+.visit-chip.is-draft[aria-checked="true"]::after,
+.visit-chip.is-dirty::after {
   content: "";
   position: absolute;
   top: 5px;
@@ -781,6 +782,15 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stats-group > summary h2 { margin: 0; font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: var(--lh-heading); color: var(--text-brand); }
 .stats-group > summary .icon { flex: none; color: var(--text-brand); transition: transform .2s; }
 .stats-group[open] > summary .icon { transform: rotate(180deg); }
+.list-toggle { display: inline-flex; align-items: center; gap: var(--btn-gap); padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.list-toggle .icon { flex: none; transition: transform .2s; }
+.list-toggle[aria-expanded="true"] .icon { transform: rotate(180deg); }
+.settings-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.settings-row { display: contents; } /* PC: cả 4 nút cùng một hàng */
+.account-actions { margin-top: var(--space-4); }
+.settings-actions .btn.ghost, .account-actions .btn.ghost { border-color: var(--line); background: var(--bg-control); }
+/* PC: thanh nav không dùng icon (riêng tab Cài đặt ở góc phải giữ icon bánh răng) */
+.topnav__tabs .tab .icon { display: none; }
 .stats-more { margin-top: var(--title-gap); }
 .stats-more summary {
   display: inline-flex;
@@ -837,7 +847,7 @@ dialog.modal--full { width: min(980px, calc(100% - 24px)); }
 .modal__form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 .modal__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg-raised); }
 .modal__head strong { min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-lg); font-weight: var(--fw-bold); line-height: var(--lh-heading); }
-.modal__body { padding: 16px; overflow: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.modal__body { padding: 16px; overflow: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .modal__foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px calc(12px + var(--safe-b)); background: var(--bg-raised); }
 .modal__spacer { flex: 1; }
 dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh - 32px, 1100px); }
@@ -896,6 +906,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 }
 .toast { display: flex; align-items: center; gap: var(--space-2); padding: 8px 8px 8px 16px; min-height: 52px; touch-action: pan-x; animation: toast-in .22s ease-out; transition: transform .22s ease, opacity .22s ease; }
 .toast.is-dragging { transition: none; animation: none; }
+.toast[popover] { top: auto; right: auto; margin: 0; border: 0; overflow: visible; } /* bỏ kiểu mặc định của popover */
 .toast.is-leaving { transform: translateX(-50%) translateY(16px); opacity: 0; pointer-events: none; }
 @keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(16px); } }
 .toast__icon { display: inline-flex; flex: none; }
@@ -969,9 +980,12 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   :root { --section-gap: var(--space-5); --title-gap: var(--space-3); --row-gap: 14px; --col-gap: var(--space-3); --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 22px; --fs-num: 26px; --control-h-sm: 44px; }
   .shell { padding: var(--space-4); }
   .card { padding: 12px; }
-  .settings-page { display: grid; gap: var(--space-3); padding-top: var(--space-4); }
-  .settings-page h2 { margin: 0 0 var(--space-2); font-size: var(--fs-2xl); color: var(--text-brand); }
-  .settings-page .btn { justify-content: flex-start; min-height: 52px; border: 1px solid var(--line); background: var(--bg-raised); }
+  /* Giao diện + Đăng xuất cùng một hàng, mỗi nút một nửa; Đổi mật khẩu nằm dưới email, rộng hết hàng */
+  .settings-actions { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  .settings-actions { display: grid; }
+  .settings-actions .btn.ghost, .account-actions .btn.ghost { width: 100%; justify-content: center; min-height: 52px; padding-inline: 10px; white-space: nowrap; border: 1px solid var(--line); background: var(--bg-raised); }
+  .account-actions .btn.ghost { width: calc(50% - var(--space-3) / 2); } /* Đổi mật khẩu: nửa hàng, nằm bên trái */
+  .pc-only { display: none; }
   .tabbar .tab span { display: none; }
   body.kb-open .tabbar, body.kb-open .fab, body.kb-open .fab-new { display: none; }
 
@@ -982,7 +996,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
     bottom: 0;
     z-index: 60;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     min-height: calc(var(--tabbar-h) + var(--safe-b));
     padding-bottom: var(--safe-b);
     background: var(--bg-tabbar);
@@ -1072,14 +1086,14 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .stock-row.is-negative .stock-row__lbl { color: var(--text-danger); }
 
   /* dialog: toàn màn hình hoặc bottom sheet */
-  /* hộp thoại: bottom sheet: nền kéo dài 400px xuống dưới đáy màn hình, nên dù Safari dịch khung nhìn khi bàn phím mở cũng không lộ khoảng trống; --kb (JS đặt) nâng nội dung lên trên bàn phím */
-  dialog.modal { width: 100%; max-width: 100%; margin: auto 0 -400px; border-radius: 20px 20px 0 0; max-height: calc(min(94dvh, 100dvh - 380px) + 400px + var(--kb, 0px)); padding-bottom: calc(400px + var(--kb, 0px)); transition: padding-bottom .3s ease, max-height .3s ease; }
+  /* hộp thoại: bottom sheet: nền kéo dài 400px xuống dưới đáy màn hình, nên dù Safari dịch khung nhìn khi bàn phím mở cũng không lộ khoảng trống; --kb (JS đặt) nâng hộp thoại lên trên bàn phím bằng transform (chạy trên GPU, không tính lại bố cục mỗi khung hình) */
+  dialog.modal { width: 100%; max-width: 100%; margin: auto 0 -400px; border-radius: 20px 20px 0 0; max-height: calc(min(94dvh, 100dvh - 380px) + 400px); padding-bottom: 400px; transform: translateY(calc(-1 * var(--kb, 0px))); transition: transform .25s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
   html:has(dialog.modal[open]) { overflow: hidden; }
   /* đang gõ trong hộp thoại: Safari để vùng dưới hộp thoại (sau bàn phím trong suốt) lộ trang nền; che trang nền bằng màu của hộp thoại */
   body.kb-open:has(dialog.modal[open]) { background: var(--bg-raised); }
   html:has(body.kb-open dialog.modal[open]) { background: var(--bg-raised); }
   body.kb-open:has(dialog.modal[open]) #appRoot { visibility: hidden; }
-  dialog.modal--full, dialog.modal--full[open] { width: 100%; height: 100%; max-height: 100%; border-radius: 0; margin: 0; padding-bottom: 0; }
+  dialog.modal--full, dialog.modal--full[open] { width: 100%; height: 100%; max-height: 100%; border-radius: 0; margin: 0; padding-bottom: 0; transform: none; }
   .modal__head { padding: 10px 12px; }
   .modal__head .row-actions { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
   .modal--full .modal__head .btn > span { display: none; }
@@ -1160,6 +1174,9 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-row--search { border-bottom: 0; padding: var(--space-3) 14px; }
 .drug-search { position: relative; }
 .drug-search__new, .drug-search__print { display: none; }
+.drug-search__lbl, .ic-pc { display: none; }
+.drug-table.is-empty { display: none; }
+.drug-add-bar { margin-top: var(--space-3); }
 .drug-search > .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
 .drug-search .mini { height: var(--control-h); padding-left: 44px; border-style: dashed; }
 .drug-summary { display: flex; justify-content: flex-end; align-items: baseline; gap: var(--space-2); margin-top: var(--space-3); }
@@ -1231,7 +1248,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .drug-row.is-open .drug-detail, .stock-item.is-open .stock-detail, .patient-row.is-open .patient-detail, .patient-row.is-rx-open .patient-rx { margin: 0; padding: var(--space-3) 14px; border-radius: 0; }
   .drug-row.is-open .drug-detail { border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px); }
   /* ô thêm thuốc: giống thanh tìm kiếm của Kho thuốc (ô tìm + nút vuông), nằm trên cùng danh sách thuốc */
-  .drug-row--search, .drug-row--search:last-child { order: -1; display: flex; align-items: center; gap: var(--space-2); border: 0; padding: 0; background: transparent; }
+  .drug-row--search, .drug-row--search:last-child { display: flex; align-items: center; gap: var(--space-2); border: 0; padding: 0; background: transparent; }
   .drug-search { flex: 1; min-width: 0; }
   .drug-search > .icon { left: auto; right: 14px; }
   .drug-search .mini { height: var(--control-h); padding: 0 44px 0 14px; border: 1px solid var(--line); background: var(--bg-input); text-align: left; }
@@ -1279,3 +1296,44 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .wheel-kb { display: none; }
 .wheel-layer.is-sheet .wheel-kb { display: block; margin: 10px auto 0; padding: 4px 8px; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-sm); text-decoration: underline; cursor: pointer; }
 .wheel-layer.no-kb .wheel-kb { display: none !important; }
+
+/* tab Kho thuốc: PC bỏ tiêu đề (tên tab đã nằm trên thanh), điện thoại giữ */
+@media (min-width: 768px) { #panel-stock .card-title { display: none; } #stockTabBox .stock-manager { margin-top: 0; } } /* bỏ khoảng trống phía trên thanh tìm kiếm */
+
+/* PC: ô tìm thuốc + Xem / In toa + Toa mới nằm cùng một hàng dưới dòng tổng, ô tìm giống thanh tìm của Kho thuốc */
+@media (min-width: 768px) {
+  .drug-add-bar .drug-row--search { display: flex; align-items: center; gap: var(--space-2); padding: 0; border: 0; background: transparent; }
+  .drug-add-bar .drug-search { flex: 1; min-width: 0; }
+  .drug-add-bar .drug-search > .icon { left: auto; right: 14px; }
+  .drug-add-bar .drug-search .mini { height: var(--control-h); padding: 0 44px 0 14px; border: 1px solid var(--line); background: var(--bg-input); text-align: left; }
+  /* hai nút cùng định dạng nút "Bệnh nhân mới" (.btn.small), căn sát phải */
+  .drug-add-bar .drug-search__print, .drug-add-bar .drug-search__new { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: auto; height: auto; min-height: var(--ctl-h); padding: 0 14px; flex: none; border-radius: var(--control-radius); font-size: var(--fs-sm); font-weight: var(--fw-medium); line-height: var(--lh-tight); }
+  .drug-add-bar .drug-search__print { margin-left: auto; }
+  .drug-add-bar .btn.drug-search__new { background: var(--bg-control); border: 1px solid var(--line); color: var(--text); }
+  .drug-add-bar .drug-search__lbl { display: inline; }
+  .drug-add-bar .ic-phone { display: none; }
+  .drug-add-bar .ic-pc { display: inline-block; }
+  #drugSection .card-title .row-actions { display: none; }
+}
+@media (min-width: 1024px) { .drug-add-bar .drug-search { flex: none; width: calc(100% / 3); } }
+
+/* thêm nhiều mã ICD một lần: mỗi dòng có số thứ tự */
+.icd-multi__list { display: grid; gap: var(--space-4); max-height: 50vh; max-height: 50dvh; overflow-y: auto; padding: 3px; margin: -3px; overscroll-behavior: contain; }
+.icd-row { display: grid; grid-template-columns: 28px 110px minmax(0, 1fr) var(--ctl-h); gap: var(--space-2); align-items: center; }
+.icd-row__no { text-align: center; color: var(--text-muted); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
+@media (max-width: 767px) {
+  /* điện thoại: dòng 1: số + mã + nút xóa, dòng 2: tên full width; chỉ icon, căn phải, cùng một hàng */
+  .icd-row { grid-template-columns: 24px 112px minmax(0, 1fr) var(--ctl-h); }
+  .icd-row__name { grid-column: 2 / -1; grid-row: 2; }
+  .icd-row__del { grid-column: 4; grid-row: 1; }
+  .icd-multi__list { gap: var(--space-3); }
+  .icd-foot .modal__spacer { display: none; }
+  .icd-foot { justify-content: flex-end; }
+  .icd-foot .btn { flex: 0 0 auto; justify-content: center; width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
+  /* bàn phím mở: hộp thoại thêm mã cao đúng phần màn hình phía trên bàn phím (cộng 400px nền kéo xuống dưới) */
+  #icdEditModal.kb-up { height: calc(100dvh - var(--kb, 0px) + 400px); max-height: none; }
+  #icdEditModal.kb-up .modal__body { flex: 1 1 auto; }
+  #icdEditModal.kb-up .icd-multi__list { max-height: none; }
+  .icd-row__name { resize: none; overflow: hidden; }
+  .icd-foot .btn > span { display: none; }
+}

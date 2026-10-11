@@ -25,6 +25,7 @@
     <symbol id="i-sticky-note" viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></symbol>
     <symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
     <symbol id="i-circle-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
@@ -126,20 +127,12 @@
       <h1 class="topnav__brand"><svg class="icon" aria-hidden="true"><use href="#i-building-2"/></svg><span data-clinic-name>Phòng khám tâm thần</span></h1>
       <nav class="topnav__tabs" aria-label="Điều hướng chính">
         <a class="tab" href="#home" data-tab="home"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="tab" href="#patients" data-tab="patients"><svg class="icon" aria-hidden="true"><use href="#i-users"/></svg><span>Bệnh nhân</span></a>
+        <a class="tab" href="#stock" data-tab="stock"><svg class="icon" aria-hidden="true"><use href="#i-package"/></svg><span>Kho thuốc</span></a>
         <a class="tab" href="#stats" data-tab="stats"><svg class="icon" aria-hidden="true"><use href="#i-bar-chart-3"/></svg><span>Thống kê</span></a>
-        <a class="tab" href="#clinic" data-tab="clinic"><svg class="icon" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
       </nav>
       <div class="topnav__actions">
-        <details class="settings-menu">
-          <summary class="btn ghost" aria-label="Cài đặt" title="Cài đặt"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="btn__label">Cài đặt</span></summary>
-          <div class="settings-menu__list">
-          <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Xuất dữ liệu</span></button>
-          <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Nạp dữ liệu</span></button>
-          <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
-          <button class="btn ghost" id="themeMenuBtn" type="button" data-app-action="toggle-theme" data-theme-btn><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
-          <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
-          </div>
-        </details>
+          <a class="tab" href="#clinic" data-tab="clinic" aria-label="Cài đặt" title="Cài đặt"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="tab__label">Cài đặt</span></a>
       </div>
     </header>
 
@@ -150,7 +143,7 @@
           <main class="main-layout">
             <section class="card patient-top page-section">
               <div class="card-title">
-                <h2>Danh sách bệnh nhân</h2>
+                <h2><button class="list-toggle" id="patientListToggle" type="button" aria-expanded="false" aria-controls="patientList"><span>Danh sách bệnh nhân</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></button></h2>
                 <div class="row-actions">
                   <span class="muted" id="patientCountText">0 hồ sơ</span>
                 </div>
@@ -161,7 +154,7 @@
                 <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
               </div>
 
-              <div class="patient-list">
+              <div class="patient-list hidden" id="patientList">
                 <div class="patient-head">
                   <div>Ngày khám</div>
                   <div>Họ và tên</div>
@@ -225,19 +218,6 @@
               </div>
             </section>
 
-            <section class="card page-section" id="visitPickerCard">
-              <div class="card-title">
-                <h2>Lần khám</h2>
-              </div>
-              <div class="visit-picker" id="visitPicker" role="radiogroup" aria-label="Chọn lần khám"></div>
-              <div class="visit-meta">
-                <div class="visit-date">
-                  <label class="label" for="visitDate">Ngày khám</label>
-                  <input class="field" id="visitDate" type="date" />
-                </div>
-              </div>
-            </section>
-
             <section class="card page-section">
               <div class="card-title">
                 <div>
@@ -263,7 +243,20 @@
               </details>
             </section>
 
-            <section class="card page-section">
+            <section class="card page-section" id="visitPickerCard">
+              <div class="card-title">
+                <h2>Lần khám</h2>
+              </div>
+              <div class="visit-picker" id="visitPicker" role="radiogroup" aria-label="Chọn lần khám"></div>
+              <div class="visit-meta">
+                <div class="visit-date">
+                  <label class="label" for="visitDate">Ngày khám</label>
+                  <input class="field" id="visitDate" type="date" />
+                </div>
+              </div>
+            </section>
+
+            <section class="card page-section" id="drugSection">
               <div class="card-title">
                 <h2>Chỉ định thuốc</h2>
                 <div class="row-actions">
@@ -279,6 +272,7 @@
                 <div class="drug-rows" id="drugRows"></div>
               </div>
               <div class="drug-summary" id="drugSummary"></div>
+              <div class="drug-add-bar" id="drugAddBar"></div>
               <details class="stats-more" id="stockDataMore">
                 <summary><span>Kho thuốc</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
                 <div class="code-data hidden" id="stockDataBox"></div>
@@ -319,6 +313,17 @@
             </section>
 
           </main>
+        </section>
+
+        <section class="tab-panel hidden" id="panel-patients" data-panel="patients">
+          <div id="patientsTabHost"></div>
+        </section>
+
+        <section class="tab-panel hidden" id="panel-stock" data-panel="stock">
+          <section class="card page-section">
+            <div class="card-title"><h2>Kho thuốc</h2></div>
+            <div class="code-data" id="stockTabBox"></div>
+          </section>
         </section>
 
         <section class="tab-panel hidden" id="panel-stats" data-panel="stats">
@@ -379,15 +384,6 @@
           </details>
         </section>
 
-        <section class="tab-panel hidden" id="panel-settings" data-panel="settings">
-          <div class="settings-page">
-            <h2>Cài đặt</h2>
-            <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
-            <button class="btn ghost" type="button" data-app-action="toggle-theme" data-theme-btn><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
-            <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
-          </div>
-        </section>
-
         <section class="tab-panel hidden" id="panel-clinic" data-panel="clinic">
           <section class="card page-section clinic-card">
             <div class="card-title clinic-card__title">
@@ -420,6 +416,24 @@
             <div class="clinic-meta">
               <div><span class="clinic-meta-label">Email</span><strong id="accountEmail"></strong></div>
             </div>
+            <div class="account-actions">
+              <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
+            </div>
+          </section>
+
+          <section class="card page-section settings-page">
+            <div class="card-title"><h2>Cài đặt</h2></div>
+            <div class="settings-actions">
+              <div class="settings-row pc-only">
+                <button class="btn ghost" type="button" data-app-action="export"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Xuất dữ liệu</span></button>
+                <button class="btn ghost" type="button" data-app-action="import"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg><span>Nạp dữ liệu</span></button>
+              </div>
+              <div class="settings-row">
+                <button class="btn ghost" id="themeMenuBtn" type="button" data-app-action="toggle-theme" data-theme-btn><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span>Giao diện tối</span></button>
+              </div>
+              <div class="settings-row">
+                <button class="btn ghost" type="button" data-app-action="logout"><svg class="icon" aria-hidden="true"><use href="#i-log-out"/></svg><span>Đăng xuất</span></button>
+              </div>
           </section>
         </section>
 
@@ -428,9 +442,10 @@
 
     <nav class="tabbar" aria-label="Điều hướng chính">
       <a class="tab" href="#home" data-tab="home" aria-label="Home"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></a>
+      <a class="tab" href="#patients" data-tab="patients" aria-label="Bệnh nhân"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-users"/></svg><span>Bệnh nhân</span></a>
+      <a class="tab" href="#stock" data-tab="stock" aria-label="Kho thuốc"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-package"/></svg><span>Kho thuốc</span></a>
       <a class="tab" href="#stats" data-tab="stats" aria-label="Thống kê"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-bar-chart-3"/></svg><span>Thống kê</span></a>
-      <a class="tab" href="#clinic" data-tab="clinic" aria-label="Phòng khám"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-building-2"/></svg><span>Phòng khám</span></a>
-      <a class="tab" href="#settings" data-tab="settings" aria-label="Cài đặt"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-settings"/></svg><span>Cài đặt</span></a>
+      <a class="tab" href="#clinic" data-tab="clinic" aria-label="Cài đặt"><svg class="icon icon--tab" aria-hidden="true"><use href="#i-settings"/></svg><span>Cài đặt</span></a>
     </nav>
 
     <div class="stock-menu hidden" id="clinicMenu" role="menu">
@@ -460,7 +475,7 @@
     <div class="modal__head">
       <strong id="rxTitle">Xem toa thuốc</strong>
       <div class="row-actions">
-        <button class="btn small soft" id="rxShareBtn" type="button" aria-label="Gửi Zalo" title="Gửi Zalo"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg><span>Gửi Zalo</span></button>
+        <button class="btn small soft" id="rxShareBtn" type="button" aria-label="Gửi" title="Gửi"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg><span>Gửi</span></button>
         <button class="btn small primary" id="rxPrintBtn" type="button" aria-label="In toa" title="In toa"><svg class="icon" aria-hidden="true"><use href="#i-printer"/></svg><span>In</span></button>
         <button class="icon-btn" id="rxCloseBtn" type="button" aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
@@ -604,19 +619,24 @@
       <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
     <div class="modal__body stack">
-      <div>
-        <label class="label" for="icdEditCode">Mã ICD</label>
-        <input class="field" id="icdEditCode" autocomplete="off" />
+      <div id="icdEditSingle" class="stack">
+        <div>
+          <label class="label" for="icdEditCode">Mã ICD</label>
+          <input class="field" id="icdEditCode" autocomplete="off" />
+        </div>
+        <div>
+          <label class="label" for="icdEditName">Tên chẩn đoán</label>
+          <input class="field" id="icdEditName" autocomplete="off" />
+        </div>
       </div>
-      <div>
-        <label class="label" for="icdEditName">Tên chẩn đoán</label>
-        <input class="field" id="icdEditName" autocomplete="off" />
+      <div id="icdEditMulti" class="icd-multi hidden">
+        <div class="icd-multi__list" id="icdMultiList"></div>
       </div>
     </div>
-    <div class="modal__foot">
+    <div class="modal__foot icd-foot">
       <span class="modal__spacer"></span>
-      <button class="btn" type="button" data-close-dialog><span>Hủy</span></button>
-      <button class="btn primary" id="icdEditSaveBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
+      <button class="btn" id="icdAddRowBtn" type="button" aria-label="Thêm mã" title="Thêm mã"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg><span>Thêm mã</span></button>
+      <button class="btn primary" id="icdEditSaveBtn" type="button" aria-label="Lưu" title="Lưu"><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg><span>Lưu</span></button>
     </div>
   </dialog>
 
