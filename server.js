@@ -511,10 +511,15 @@ async function sendMail({ to, subject, text, html, devNote }) {
   }
 
   const port = Number(process.env.SMTP_PORT || 587);
+  // Render không có đường ra IPv6 nhưng container vẫn có địa chỉ IPv6, nodemailer chọn nhầm IPv6 (ENETUNREACH):
+  // tự tra địa chỉ IPv4 rồi kết nối thẳng, giữ tên máy chủ cho bước kiểm tra chứng chỉ TLS
+  let host = process.env.SMTP_HOST;
+  try { host = (await require("dns").promises.lookup(host, { family: 4 })).address; } catch {}
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
+    host,
     port,
     secure: port === 465,
+    tls: { servername: process.env.SMTP_HOST },
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
   });
   await transporter.sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, text, html });
