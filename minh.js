@@ -217,6 +217,9 @@ const state = {
   patients: [],
   filteredPatients: [],
   page: 1,
+  dateFilter: "", // yyyy-mm-dd: chỉ giữ bệnh nhân có ít nhất một lần khám vào ngày này
+  scrollMode: (() => { try { return localStorage.getItem("patientListMode") !== "pages"; } catch { return true; } })(), // true: cuộn vô hạn, false: phân trang
+  shown: 0, // số hàng đã hiện ở chế độ cuộn
   drugs: [],
   doctors: [],
   search: "",
@@ -274,7 +277,7 @@ function cacheRefs() {
     "splash", "authScreen", "appRoot", "authClinicName", "loginForm", "loginEmail", "loginPassword", "loginPasswordToggle",
     "loginMsg", "loginSubmit", "showForgotBtn", "forgotForm", "forgotEmail", "forgotMsg", "forgotSubmit", "forgotIntro", "forgotStepEmail", "forgotStepCode", "forgotStepNew", "forgotOtp", "forgotResendBtn",
     "resetPassword", "resetPassword2", "accountEmail", "passwordModal", "pwIntro", "pwStepCode", "pwStepNew", "pwOtp", "pwNew", "pwNew2", "pwResendBtn", "pwMsg", "pwSendBtn", "pwConfirmBtn", "saveFab", "newFab", "importFile",
-    "patientCountText", "searchInput", "patientListToggle", "patientList",
+    "statsModal", "statsTitle", "statsRange", "statsFrom", "statsTo", "statsMetric", "statsBody", "patientCountText", "searchInput", "dateFilter", "dateFilterInput", "patientListToggle", "patientList",
     "patientListBody", "patientPager", "newBtn", "visitPicker",
     "newPrescriptionBtn", "icdEditSingle", "icdEditMulti", "icdMultiList", "icdAddRowBtn", "icdView", "stockInModal", "stockInName", "stockInCurrent", "stockInAfter", "stockInQty", "stockInConfirmBtn", "stockAddModal", "stockPasteInput", "stockPasteApplyBtn", "stockManualBtn", "icdEditModal", "icdEditTitle", "icdDeleteModal", "icdDeleteText", "icdDeleteConfirmBtn", "drugDeleteModal", "drugDeleteText", "drugDeleteConfirmBtn", "icdEditCode", "icdEditName", "icdEditSaveBtn", "visitDate", "patientName", "birthYear", "birthYearWrap", "yearSuggestBox", "age", "gender", "addressWard",
     "province", "provinceSuggestBox", "phone", "visitDoctor", "symptom", "symptomSuggestBox", "icdInput", "icdSuggestBox", "codeDataMore", "stockDataMore",
@@ -489,10 +492,17 @@ function bindEvents() {
   // hộp thoại không vuốt kéo được: chỉ vùng bên trong thật sự cuộn được mới nhận cử chỉ vuốt, và hết đầu/cuối thì
   // chặn luôn (không chuyền sang trang phía sau, vì Safari sẽ kéo cả hộp thoại giật)
   let dragY = 0;
-  document.addEventListener("touchstart", (event) => { dragY = event.touches[0].clientY; }, { passive: true, capture: true });
+  let dragX = 0;
+  document.addEventListener("touchstart", (event) => { dragY = event.touches[0].clientY; dragX = event.touches[0].clientX; }, { passive: true, capture: true });
   document.addEventListener("touchmove", (event) => {
     if (lockedScrollY === null || !event.cancelable || !event.target.closest?.("dialog.modal[open]")) return;
     const dy = event.touches[0].clientY - dragY;
+    // vuốt ngang trong vùng cuộn ngang (biểu đồ thống kê): cho cuộn bình thường
+    if (Math.abs(event.touches[0].clientX - dragX) > Math.abs(dy)) {
+      for (let el = event.target; el && el.tagName !== "DIALOG"; el = el.parentElement) {
+        if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return;
+      }
+    }
     for (let el = event.target; el && el.tagName !== "DIALOG"; el = el.parentElement) {
       if (el.scrollHeight <= el.clientHeight + 1 || !/auto|scroll/.test(getComputedStyle(el).overflowY)) continue;
       const atTop = el.scrollTop <= 0;
@@ -590,18 +600,45 @@ function bindEvents() {
   const authCard = refs.authScreen.querySelector(".auth__card");
   let authKbTimer;
   let authShift = 0;
+  // Chạm ô nhập: đặt thẻ lên NGAY (đoán chiều cao bàn phím từ lần trước) cùng lúc bàn phím trượt lên, rồi chỉnh lại đúng một lần khi bàn phím ổn định.
+  // Trước đây thẻ đứng yên rồi mới nhích sau 350ms, và Safari tự cuộn trang nên bị giật hai lần.
+  let authSettle;
+  const authKeyboard = () => {
+    let saved = 0;
+    try { saved = Number(localStorage.getItem("kbHeight")) || 0; } catch {}
+    return saved || Math.round(window.innerHeight * 0.4);
+  };
+  const shiftAuthCard = (keyboardHeight) => {
+    const rect = authCard.getBoundingClientRect();
+    const visibleBottom = window.innerHeight - keyboardHeight - 16;
+    const next = Math.min(Math.max(rect.bottom + authShift - visibleBottom, 0), Math.max(rect.top + authShift - 8, 0));
+    if (Math.abs(next - authShift) < 6) return;
+    authShift = next;
+    authCard.style.setProperty("--kb-shift", `${-authShift}px`);
+  };
   const fitAuthCard = () => {
     const vv = window.visualViewport;
     if (!vv || !phoneLayoutQuery.matches || !refs.authScreen.contains(document.activeElement)) return;
-    const rect = authCard.getBoundingClientRect();
-    const overflow = rect.bottom + authShift - (vv.offsetTop + vv.height - 16);
-    authShift = Math.min(Math.max(overflow, 0), Math.max(rect.top + authShift - vv.offsetTop - 8, 0));
-    authCard.style.setProperty("--kb-shift", `${-authShift}px`);
+    clearTimeout(authSettle);
+    authSettle = setTimeout(() => {
+      const keyboard = Math.round(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+      if (keyboard < 80) return;
+      try { localStorage.setItem("kbHeight", keyboard); } catch {}
+      shiftAuthCard(keyboard);
+    }, 120);
   };
+  // chặn Safari tự cuộn trang khi chạm ô nhập (nguyên nhân giật), chỉ focus
+  refs.authScreen.addEventListener("touchend", (event) => {
+    const input = event.target.closest("input");
+    if (!input || input === document.activeElement || !phoneLayoutQuery.matches) return;
+    event.preventDefault();
+    input.focus({ preventScroll: true });
+  }, { passive: false });
   refs.authScreen.addEventListener("focusin", (event) => {
-    if (!event.target.matches("input")) return;
+    if (!event.target.matches("input") || !phoneLayoutQuery.matches) return;
     clearTimeout(authKbTimer);
-    setTimeout(fitAuthCard, 350);
+    shiftAuthCard(authKeyboard());
+    fitAuthCard();
   });
   refs.authScreen.addEventListener("focusout", () => {
     clearTimeout(authKbTimer);
@@ -648,6 +685,30 @@ function bindEvents() {
   refs.patientListBody.addEventListener("dblclick", handlePatientListClick);
   refs.patientListBody.addEventListener("keydown", handlePatientListKeydown);
   refs.patientPager.addEventListener("click", handlePagerClick);
+  refs.patientListBody.addEventListener("scroll", loadMorePatients, { passive: true });
+  enhanceDateInput(refs.dateFilterInput);
+  [refs.statsFrom, refs.statsTo].forEach(enhanceDateInput);
+  refs.statsFrom.addEventListener("change", loadStatsChart);
+  refs.statsTo.addEventListener("change", loadStatsChart);
+  refs.statsFrom.addEventListener("input", loadStatsChart);
+  refs.statsTo.addEventListener("input", loadStatsChart);
+  refs.statsMetric.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-metric]");
+    if (!btn) return;
+    statsMetric = btn.dataset.metric;
+    renderStatsChart();
+  });
+  document.getElementById("panel-stats").addEventListener("click", (event) => {
+    const card = event.target.closest("[data-stat]");
+    if (card) openStatsModal(card.dataset.stat).catch(handleError);
+  });
+  document.getElementById("panel-stats").addEventListener("keydown", (event) => {
+    const card = event.target.closest("[data-stat]");
+    if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openStatsModal(card.dataset.stat).catch(handleError); }
+  });
+  // gõ tay: lọc khi đủ ngày hợp lệ, thiếu/xóa thì bỏ lọc; chọn từ lịch thì đi qua sự kiện change
+  refs.dateFilterInput.addEventListener("input", () => applyDateFilter(refs.dateFilterInput.value));
+  refs.dateFilterInput.addEventListener("change", () => applyDateFilter(refs.dateFilterInput.value));
   refs.visitPicker.addEventListener("click", handleVisitPickerClick);
   refs.visitPicker.addEventListener("keydown", handleVisitPickerKeydown);
   [refs.visitDate, refs.followDate].forEach(enhanceDateInput);
@@ -779,6 +840,11 @@ function bindEvents() {
     refs.drugRows.querySelector(`.drug-row[data-key="${menu.dataset.key}"] [data-action="${item?.dataset.action}"]`)?.click();
   });
   // gõ tay xong (rời ô) thì ô quay lại dùng vòng quay
+  // bấm vào nhãn "Âm kho" trong toa: mở thẳng hộp Nhập kho của thuốc đó
+  refs.drugRows.addEventListener("click", (event) => {
+    const badge = event.target.closest("[data-stock-in]");
+    if (badge) openStockIn(badge.dataset.stockIn);
+  });
   refs.drugRows.addEventListener("focusout", (event) => {
     const input = event.target;
     if (!input.dataset?.kb) return;
@@ -1337,6 +1403,158 @@ async function loadHealth() {
   const health = await fetchJson("/api/health");
 }
 
+// ---- Chi tiết các ô thống kê (bấm vào ô để mở) ----
+let statsKind = "";
+let statsMetric = "count";
+let statsVisits = [];
+let statsToken = 0;
+const STAT_TITLES = {
+  visitsToday: "Bệnh nhân khám hôm nay",
+  appointmentsToday: "Lịch hẹn hôm nay",
+  revenueToday: "Doanh thu hôm nay",
+  visitsMonth: "Lượt khám tháng",
+  revenueMonth: "Doanh thu tháng"
+};
+
+const statsEmpty = (text) => `<p class="muted stats-empty">${escapeHtml(text)}</p>`;
+
+async function openStatsModal(kind) {
+  statsKind = kind;
+  const today = toDateInput(new Date());
+  refs.statsTitle.textContent = STAT_TITLES[kind] || "Chi tiết";
+  refs.statsBody.innerHTML = statsEmpty("Đang tải...");
+  const chart = kind === "visitsMonth" || kind === "revenueMonth";
+  refs.statsRange.classList.toggle("hidden", !chart);
+  refs.statsMetric.classList.toggle("hidden", !chart);
+  refs.statsModal.classList.toggle("is-chart", chart);
+  refs.statsModal.showModal();
+  if (chart) {
+    statsMetric = kind === "revenueMonth" ? "money" : "count";
+    refs.statsFrom.value = `${today.slice(0, 8)}01`;
+    refs.statsTo.value = today;
+    statsChartKey = "";
+    await loadStatsChart();
+    return;
+  }
+  const token = ++statsToken;
+  if (kind === "appointmentsToday") {
+    const { appointments } = await fetchJson("/api/stats/appointments");
+    if (token !== statsToken) return;
+    const arrived = appointments.filter((item) => item.arrived).length;
+    refs.statsBody.innerHTML = appointments.length
+      ? `<p class="muted stats-sum">Đã đến: ${formatNumber(arrived)} / ${formatNumber(appointments.length)}</p><ol class="stats-list">${appointments.map((item) => `<li><span class="stats-list__name">${escapeHtml(item.patientName)}</span><span class="follow-badge ${item.arrived ? "up" : "neutral"}">${item.arrived ? "Đã đến" : "Chưa đến"}</span></li>`).join("")}</ol>`
+      : statsEmpty("Hôm nay không có lịch hẹn.");
+    return;
+  }
+  const { visits } = await fetchJson(`/api/stats/visits?from=${today}&to=${today}`);
+  if (token !== statsToken) return;
+  if (!visits.length) {
+    refs.statsBody.innerHTML = statsEmpty("Hôm nay chưa có lượt khám.");
+    return;
+  }
+  if (kind === "visitsToday") {
+    refs.statsBody.innerHTML = `<p class="muted stats-sum">${formatNumber(visits.length)} lượt khám</p><ol class="stats-list">${visits.map((v) => `<li><span class="stats-list__name">${escapeHtml(v.patientName)}</span><span class="muted">Lần ${formatNumber(v.visitNo)}</span></li>`).join("")}</ol>`;
+    return;
+  }
+  const fee = visits.reduce((sum, v) => sum + v.serviceFee, 0);
+  const total = visits.reduce((sum, v) => sum + v.totalMoney, 0);
+  refs.statsBody.innerHTML = `<ol class="stats-list">${visits.map((v) => `<li class="stats-list--two"><span class="stats-list__name">${escapeHtml(v.patientName)}<small class="muted">Thuốc ${formatMoney(v.drugTotal)} · Tổng ${formatMoney(v.totalMoney)}</small></span><strong>${formatMoney(v.serviceFee)}</strong></li>`).join("")}</ol>
+    <div class="stats-total"><div><span class="muted">Tổng công khám</span><strong>${formatMoney(fee)}</strong></div><div><span class="muted">Tổng doanh thu</span><strong>${formatMoney(total)}</strong></div></div>`;
+}
+
+// biểu đồ luôn hiện tối thiểu 7 ngày một lần xem: khoảng ngắn hơn thì kéo dài thêm các ngày kế tiếp cho đủ 7
+const statsChartEnd = (from, to) => {
+  const min = new Date(Date.parse(from) + 6 * 86400000).toISOString().slice(0, 10);
+  return to > min ? to : min;
+};
+let statsChartKey = "";
+async function loadStatsChart() {
+  if (!refs.statsModal.open || (statsKind !== "visitsMonth" && statsKind !== "revenueMonth")) return;
+  const from = refs.statsFrom.value;
+  const to = refs.statsTo.value;
+  // đang gõ dở (chưa đủ ngày hợp lệ): giữ nguyên biểu đồ cũ, không nháy thông báo
+  if (!from || !to) return;
+  if (from > to) {
+    refs.statsBody.innerHTML = statsEmpty("Từ ngày phải trước hoặc bằng Đến ngày.");
+    statsChartKey = "";
+    return;
+  }
+  if ((Date.parse(to) - Date.parse(from)) / 86400000 > 366) {
+    refs.statsBody.innerHTML = statsEmpty("Chọn khoảng tối đa 1 năm.");
+    statsChartKey = "";
+    return;
+  }
+  const key = `${from}|${to}`;
+  if (key === statsChartKey) return; // change + input cùng bắn: chỉ tải một lần
+  statsChartKey = key;
+  const token = ++statsToken;
+  try {
+    const { visits } = await fetchJson(`/api/stats/visits?from=${from}&to=${statsChartEnd(from, to)}`);
+    if (token !== statsToken) return;
+    statsVisits = visits;
+    renderStatsChart();
+  } catch (error) {
+    statsChartKey = "";
+    throw error;
+  }
+}
+
+function renderStatsChart() {
+  const from = refs.statsFrom.value;
+  const to = refs.statsTo.value;
+  if (!from || !to || from > to) return;
+  refs.statsMetric.querySelectorAll("[data-metric]").forEach((btn) => {
+    const on = btn.dataset.metric === statsMetric;
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+  const money = statsMetric === "money";
+  refs.statsTitle.textContent = money ? STAT_TITLES.revenueMonth : STAT_TITLES.visitsMonth;
+  const days = [];
+  for (let t = Date.parse(from); t <= Date.parse(statsChartEnd(from, to)); t += 86400000) days.push(new Date(t).toISOString().slice(0, 10));
+  const sums = new Map(days.map((day) => [day, 0]));
+  statsVisits.forEach((v) => sums.set(v.day, (sums.get(v.day) || 0) + (money ? v.totalMoney : 1)));
+  const values = days.map((day) => sums.get(day) || 0);
+  const inRange = days.filter((day) => day <= to).length; // các ngày kéo dài thêm cho đủ 7 không tính vào tổng
+  const total = values.slice(0, inRange).reduce((a, b) => a + b, 0);
+  const max = Math.max(...values, 0);
+  const fmt = (n) => (money ? formatMoney(n) : formatNumber(n));
+  const AXW = money ? 40 : 24;
+  // khung nhìn luôn đủ 7 cột (mỗi cột rộng 1/7 khung); nhiều hơn 7 ngày thì cuộn ngang
+  const avail = Math.max(210, (refs.statsBody.clientWidth || 343) - AXW - 2);
+  const STEP = avail / 7;
+  const W = Math.max(avail, days.length * STEP), H = 240, L = 0, R = 0, T = 14, B = 26;
+  const pw = W - L - R, ph = H - T - B;
+  // trục dọc: 4 khoảng đều nhau, chọn bước "tròn" (1, 2, 2.5, 5 × 10^n); lượt khám thì bước là số nguyên
+  const rawStep = Math.max(max, 1) / 4;
+  const mag = 10 ** Math.floor(Math.log10(rawStep));
+  let tickStep = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((s) => s >= rawStep);
+  if (!money) tickStep = Math.max(1, Math.ceil(tickStep));
+  const top = tickStep * 4;
+  const short = (n) => (!money || n < 1000 ? formatNumber(n) : n >= 1e6 ? `${+(n / 1e6).toFixed(2)}tr` : `${+(n / 1e3).toFixed(1)}k`);
+  const yOf = (value) => T + ph - (value / top) * ph;
+  const ticks = [0, 1, 2, 3, 4].map((i) => i * tickStep);
+  const step = pw / days.length;
+  const bw = Math.max(2, Math.min(30, step * 0.55));
+  const bars = values.map((value, i) => {
+    const y = yOf(value);
+    const x = L + i * step + (step - bw) / 2;
+    const [, mm, dd] = days[i].split("-");
+    return `<g><title>${dd}/${mm}: ${fmt(value)}</title><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(T + ph - y, value ? 2 : 0).toFixed(1)}" rx="2" class="stats-bar"/></g><text x="${(x + bw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" class="stats-axis">${dd}</text>`;
+  }).join("");
+  const grid = ticks.map((v) => `<line x1="${L}" x2="${W - R}" y1="${yOf(v).toFixed(1)}" y2="${yOf(v).toFixed(1)}" class="${v === 0 ? "stats-base" : "stats-grid"}"/>`).join("");
+  const axis = `<svg class="stats-yaxis" width="${AXW}" height="${H}" viewBox="0 0 ${AXW} ${H}" aria-hidden="true">${ticks.map((v) => `<text x="0" y="${(yOf(v) + 3).toFixed(1)}" text-anchor="start" class="stats-axis">${short(v)}</text>`).join("")}</svg>`;
+  refs.statsBody.innerHTML = `
+    <div class="stats-total">
+      <div><span class="muted">${money ? "Tổng doanh thu" : "Tổng lượt khám"}</span><strong>${fmt(total)}</strong></div>
+      <div><span class="muted">TB mỗi ngày</span><strong>${fmt(Math.round(total / Math.max(1, inRange)))}</strong></div>
+    </div>
+    <div class="stats-chart-row">${axis}<div class="stats-chart-wrap"><svg class="stats-chart" viewBox="0 0 ${W} ${H}" style="width:${W}px;height:${H}px" role="img" aria-label="Biểu đồ ${money ? "doanh thu" : "lượt khám"} theo ngày">${grid}${bars}</svg></div></div>`;
+  // nhiều ngày: mở ra là đang ở các ngày gần nhất (bên phải), lướt sang trái để xem ngày cũ
+  const wrap = refs.statsBody.querySelector(".stats-chart-wrap");
+  if (wrap) wrap.scrollLeft = wrap.scrollWidth;
+}
+
 async function loadStats() {
   const { today, quick, patients, finance } = await fetchJson("/api/stats");
   const monthLabel = `Tháng ${Number(today.slice(5, 7))}/${today.slice(0, 4)}`;
@@ -1443,13 +1661,26 @@ function handleSearchKeydown(event) {
   }
 }
 
+function applyDateFilter(value) {
+  if (value === state.dateFilter) return;
+  state.dateFilter = value;
+  refs.dateFilter.classList.toggle("is-active", Boolean(value));
+  if (value) state.patientListOpen = true;
+  applySearch(refs.searchInput.value);
+}
+
 function applySearch(rawValue, { keepPage = false } = {}) {
   state.search = String(rawValue || "").trim();
   syncPatientListVisibility();
   const keyword = normalizeText(state.search);
+  // mỗi bệnh nhân có nhiều lần khám: khớp nếu bất kỳ ngày khám HOẶC ngày tái khám nào rơi vào ngày đã chọn
+  const base = state.dateFilter
+    ? state.patients.filter((patient) => [...(patient.visitDates || [patient.lastVisitAt]), ...(patient.followUpDates || [patient.lastFollowUpDate])]
+      .some((d) => d && toDateInput(d) === state.dateFilter))
+    : state.patients;
   state.filteredPatients = keyword
-    ? state.patients.filter((patient) => normalizeText(buildPatientHaystack(patient)).includes(keyword))
-    : state.patients.slice();
+    ? base.filter((patient) => normalizeText(buildPatientHaystack(patient)).includes(keyword))
+    : base.slice();
   // còn hẹn (từ hôm nay trở đi): ngày tái khám tăng dần; sau đó quá hẹn (tăng dần); cuối cùng chưa hẹn. Sort ổn định.
   const today = startOfDay(new Date()).getTime();
   const rank = (p) => {
@@ -1470,7 +1701,7 @@ function applySearch(rawValue, { keepPage = false } = {}) {
     return relevance(a) - relevance(b) || ga - gb || ta - tb;
   });
   refs.patientCountText.textContent = `${formatNumber(state.filteredPatients.length)} hồ sơ`;
-  if (!keepPage) state.page = 1;
+  if (!keepPage) { state.page = 1; state.shown = 0; }
   renderPatientList();
 }
 
@@ -1583,13 +1814,30 @@ function renderPatientList() {
   const total = state.filteredPatients.length;
   const pages = Math.max(1, Math.ceil(total / pageSize()));
   state.page = Math.min(Math.max(1, state.page), pages);
-  const start = (state.page - 1) * pageSize();
-  const rows = state.filteredPatients.slice(start, start + pageSize());
+  const start = state.scrollMode ? 0 : (state.page - 1) * pageSize();
+  if (state.scrollMode) state.shown = Math.min(total, Math.max(state.shown, pageSize() * 2));
+  const rows = state.filteredPatients.slice(start, state.scrollMode ? state.shown : start + pageSize());
+  refs.patientList.classList.toggle("is-scroll", state.scrollMode);
+  refs.patientList.classList.toggle("is-searching", Boolean(state.search));
   refs.patientListBody.innerHTML = rows.map(buildPatientRow).join("")
     || '<div class="patient-row patient-row--empty">Không có bệnh nhân phù hợp.</div>';
   refs.patientListBody.scrollTop = 0;
   fitPatientListHeight();
   renderPager(total, pages, start, rows.length);
+  rows.filter((p) => state.patientRxOpen.has(p._id) && !state.patientRxCache.has(p._id)).forEach((p) => loadPatientRx(p._id));
+}
+
+// chế độ cuộn: gần chạm đáy thì nối thêm một lô hàng (không vẽ lại các hàng đã có)
+function loadMorePatients() {
+  if (!state.scrollMode) return;
+  const el = refs.patientListBody;
+  if (state.shown >= state.filteredPatients.length || el.scrollTop + el.clientHeight < el.scrollHeight - 120) return;
+  const from = state.shown;
+  state.shown = Math.min(state.filteredPatients.length, from + pageSize());
+  const rows = state.filteredPatients.slice(from, state.shown);
+  el.insertAdjacentHTML("beforeend", rows.map(buildPatientRow).join(""));
+  fitPatientNames();
+  renderPager(state.filteredPatients.length, 1, 0, state.shown);
   rows.filter((p) => state.patientRxOpen.has(p._id) && !state.patientRxCache.has(p._id)).forEach((p) => loadPatientRx(p._id));
 }
 
@@ -1603,6 +1851,11 @@ function keepScroll(el, fn) {
 // khung danh sách cao đúng bằng 5 dòng đầu (dòng cao thấp khác nhau tùy nội dung/khổ màn hình)
 // rút gọn phần đầu của tên cho vừa chỗ trống, tên gọi cuối luôn hiện đủ
 function fitPatientNames() {
+  // đang tìm kiếm: hiện đủ họ tên (xuống dòng khi dài); bình thường thì rút gọn để tên, tuổi, hẹn, số lần khám nằm chung một dòng
+  if (refs.patientList.classList.contains("is-searching")) {
+    refs.patientListBody.querySelectorAll(".pc__nm-a").forEach((el) => { el.textContent = el.dataset.full; });
+    return;
+  }
   refs.patientListBody.querySelectorAll(".pc__nm-a").forEach((el) => {
     const box = el.parentElement;
     if (!box.clientWidth) return; // thẻ đang ẩn (bảng PC)
@@ -1635,13 +1888,23 @@ function fitPatientListHeight() {
     const rows = [...refs.patientListBody.querySelectorAll(".patient-row:not(.patient-row--empty)")];
     refs.patientListBody.style.height = "";
     refs.patientListBody.style.minHeight = "";
+    refs.patientListBody.style.maxHeight = "";
     if (!rows[0] || !rows[0].offsetHeight) return;
     const h = (el) => el.getBoundingClientRect().height;
     const extra = (row) => (row.classList.contains("is-open") ? h(row.querySelector(".patient-detail")) : 0) + (row.classList.contains("is-rx-open") ? h(row.querySelector(".patient-rx")) : 0);
     // cố định cao đúng một trang (hàng cao đều nhau), trang cuối thiếu hàng vẫn giữ chiều cao
     const base = Math.min(...rows.map((row) => h(row) - extra(row))); // hàng thấp nhất = cỡ chuẩn (ICD ≤ 2 dòng)
     // cao tối thiểu một trang; hàng nào dài hoặc mở chi tiết thì khung dài ra, nên không cuộn trong khung
-    refs.patientListBody.style.minHeight = `${Math.ceil(base * pageSize())}px`;
+    if (state.scrollMode) {
+      // cuộn vô hạn: khung cao đúng một trang (giống Kho thuốc), phần còn lại cuộn trong khung
+      refs.patientListBody.style.minHeight = "";
+      // cao bằng đúng 10 (hoặc 8) hàng đầu như khi phân trang: hàng nào cao hơn chuẩn (ICD dài) cũng được tính
+      const firstPage = rows.slice(0, pageSize()).reduce((sum, row) => sum + h(row) - extra(row), 0);
+      refs.patientListBody.style.maxHeight = rows.length > pageSize() || state.shown < state.filteredPatients.length ? `${Math.ceil(Math.max(firstPage, base * pageSize())) - 1}px` : "";
+    } else {
+      refs.patientListBody.style.maxHeight = "";
+      refs.patientListBody.style.minHeight = `${Math.ceil(base * pageSize())}px`;
+    }
   });
 }
 
@@ -1650,12 +1913,18 @@ function renderPager(total, pages, start, count) {
     refs.patientPager.innerHTML = "";
     return;
   }
+  const modeBtn = (mode, icon, label, on) => `<button class="pager__mode-btn ${on ? "is-on" : ""}" type="button" data-mode="${mode}" aria-pressed="${on}" aria-label="${label}" title="${label}">${iconHtml(icon)}<span>${mode === "scroll" ? "Cuộn" : "Trang"}</span></button>`;
+  const modeSwitch = `<div class="pager__mode" role="group" aria-label="Cách xem danh sách">${modeBtn("scroll", "list", "Cuộn liên tục", state.scrollMode)}${modeBtn("pages", "layers", "Chia trang", !state.scrollMode)}</div>`;
+  if (state.scrollMode) {
+    refs.patientPager.innerHTML = `<div class="pager__left"><div class="pager__range">1–${formatNumber(count)} / ${formatNumber(total)}</div>${modeSwitch}</div>`;
+    return;
+  }
   const current = state.page;
   // điện thoại: trước, trang hiện tại, ⋯, sau; PC: trước, trang liền trước, hiện tại, trang liền sau, ⋯, sau
   const pageNumbers = phoneLayoutQuery.matches ? [current] : [current - 1, current, current + 1].filter((page) => page >= 1 && page <= pages);
   const pageButton = (page) => `<button class="pager__btn ${page === current ? "is-current" : ""}" type="button" data-page="${page}" aria-label="Trang ${page}" ${page === current ? 'aria-current="page"' : ""}>${page}</button>`;
   refs.patientPager.innerHTML = `
-    <div class="pager__range">${formatNumber(start + 1)}–${formatNumber(start + count)} / ${formatNumber(total)}</div>
+    <div class="pager__left"><div class="pager__range">${formatNumber(start + 1)}–${formatNumber(start + count)} / ${formatNumber(total)}</div>${modeSwitch}</div>
     ${pages > 1 ? `
       <div class="pager__list">
         <button class="pager__btn" type="button" data-page="prev" aria-label="Trang trước" ${current === 1 ? "disabled" : ""}>${iconHtml("chevron-left")}</button>
@@ -1667,6 +1936,17 @@ function renderPager(total, pages, start, count) {
 }
 
 function handlePagerClick(event) {
+  const modeBtn = event.target.closest("[data-mode]");
+  if (modeBtn) {
+    const scroll = modeBtn.dataset.mode === "scroll";
+    if (scroll === state.scrollMode) return;
+    state.scrollMode = scroll;
+    try { localStorage.setItem("patientListMode", scroll ? "scroll" : "pages"); } catch {}
+    state.page = 1;
+    state.shown = 0;
+    renderPatientList();
+    return;
+  }
   const button = event.target.closest("[data-page]");
   if (!button || button.disabled) return;
   const target = button.dataset.page;
@@ -1710,7 +1990,7 @@ function buildPatientRow(patient) {
       <div class="pr-card">
         <div class="pc__l1">
           <div class="pc__main">
-            <strong class="pc__name">${cardNameHtml(patient.fullName)}${age !== "" ? `<span class="pc__age">${escapeHtml(String(age))} tuổi</span>` : ""}<span class="follow-badge ${follow.cls}">${escapeHtml(follow.label)}</span><span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></strong>
+            <strong class="pc__name">${cardNameHtml(patient.fullName)}${age !== "" ? `<span class="pc__age">${escapeHtml(String(age))} tuổi</span>` : ""}<span class="pc__tags"><span class="follow-badge ${follow.cls}" title="${escapeAttribute(follow.label)}"><span class="fb-full">${escapeHtml(follow.label)}</span><span class="fb-short">${escapeHtml(follow.short || follow.label)}</span></span><span class="visit-tag">${Math.max(1, Number(patient.visitCount) || 0)}L</span></span></strong>
           </div>
           <div class="pc__act">
             ${rxBtn}
@@ -1889,8 +2169,11 @@ function enhanceDateInput(input) {
       picker.value = iso || "";
     }
   });
-  input.addEventListener("input", () => {
-    nativeValue.set.call(input, format(nativeValue.get.call(input).replace(/\D/g, "")));
+  input.addEventListener("input", (event) => {
+    const digits = nativeValue.get.call(input).replace(/\D/g, "").slice(0, 8);
+    // gõ xong ngày (2 số) hoặc tháng (4 số) thì tự thêm "/"; khi xóa lùi thì không thêm lại để còn xóa được
+    const typing = String(event?.inputType || "").startsWith("insert");
+    nativeValue.set.call(input, format(digits) + (typing && (digits.length === 2 || digits.length === 4) ? "/" : ""));
   });
   // ô date gốc (trong suốt) nằm đè lên icon: chạm trực tiếp vào nó nên iOS/Android/Safari đều mở được lịch
   picker.addEventListener("click", () => {
@@ -3402,7 +3685,7 @@ function renderStockRows() {
     return `
       <div class="stock-item ${open ? "is-open" : ""}">
       <div class="stock-row ${negative ? "is-negative" : ""}" data-action="use-drug" data-id="${drug._id}" title="Nhấp đúp để thêm vào toa">
-        <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? '<span class="badge-neg">Âm kho</span>' : ""}</div>
+        <div class="stock-row__name">${escapeHtml(drug.activeIngredient)}${negative ? `<button class="badge-neg" type="button" data-action="stock-in" data-id="${drug._id}" title="Nhập kho thuốc này">Âm kho</button>` : ""}</div>
         <div class="stock-row__qty"><span class="stock-row__lbl">Tồn kho: </span>${formatNumber(drug.quantity)}</div>
         <div class="stock-row__price"><span class="stock-row__lbl">Đơn giá: </span>${formatMoney(drug.price)}</div>
         <div class="stock-row__act"><button class="icon-btn" data-action="stock-in" data-id="${drug._id}" type="button" aria-label="Nhập kho ${escapeAttribute(drug.activeIngredient)}" title="Nhập kho">${iconHtml("download")}</button><button class="icon-btn" data-action="open-drug" data-id="${drug._id}" type="button" aria-label="Sửa ${escapeAttribute(drug.activeIngredient)}" title="Sửa">${iconHtml("pencil")}</button><button class="icon-btn danger" data-action="delete-drug" data-id="${drug._id}" type="button" aria-label="Xóa ${escapeAttribute(drug.activeIngredient)}" title="Xóa">${iconHtml("trash-2")}</button><button class="icon-btn stock-toggle" data-action="toggle-stock" data-id="${drug._id}" type="button" aria-expanded="${open}" aria-label="Chi tiết ${escapeAttribute(drug.activeIngredient)}" title="Chi tiết">${iconHtml("chevron-down")}</button><button class="icon-btn stock-more" data-action="stock-more" data-id="${drug._id}" type="button" aria-label="Tùy chọn ${escapeAttribute(drug.activeIngredient)}" aria-haspopup="menu" title="Tùy chọn">${iconHtml("more-vertical")}</button></div>
@@ -3428,6 +3711,8 @@ function toggleStockItem(item) {
 function fitStockList() {
   const list = document.querySelector(".stock-list");
   if (!list) return;
+  // tab Kho thuốc: danh sách cuộn tràn theo trang, không giới hạn chiều cao
+  if (list.closest("#stockTabBox")) { list.style.maxHeight = "none"; return; }
   keepScroll(list, () => {
     list.style.maxHeight = "";
     const rows = [...list.querySelectorAll(".stock-row")];
@@ -3488,6 +3773,18 @@ function applyStockPaste() {
   } catch (error) {
     handleError(error);
   }
+}
+
+function openStockIn(id) {
+  const drug = state.drugs.find((item) => item._id === id);
+  if (!drug) return;
+  state.stockInId = drug._id;
+  refs.stockInName.textContent = [drug.activeIngredient, drug.brandName].filter(Boolean).join(" / ");
+  refs.stockInQty.value = "50";
+  updateStockInPreview();
+  refs.stockInModal.showModal();
+  // điện thoại: không tự bật bàn phím cùng lúc với hộp thoại (Safari đẩy hộp thoại lệch khỏi màn hình)
+  if (!phoneLayoutQuery.matches) refs.stockInQty.focus();
 }
 
 async function handleStockDataClick(event) {
@@ -3558,15 +3855,7 @@ async function handleStockDataClick(event) {
     }
 
     if (action === "stock-in") {
-      const drug = state.drugs.find((item) => item._id === actionElement.dataset.id);
-      if (!drug) return;
-      state.stockInId = drug._id;
-      refs.stockInName.textContent = [drug.activeIngredient, drug.brandName].filter(Boolean).join(" / ");
-      refs.stockInQty.value = "50";
-      updateStockInPreview();
-      refs.stockInModal.showModal();
-      // điện thoại: không tự bật bàn phím cùng lúc với hộp thoại (Safari đẩy hộp thoại lệch khỏi màn hình)
-      if (!phoneLayoutQuery.matches) refs.stockInQty.focus();
+      openStockIn(actionElement.dataset.id);
       return;
     }
 
@@ -3794,7 +4083,7 @@ function applyDoseAlertStateToRowElement(rowElement, row) {
   rowElement.classList.toggle("is-negative", negative);
   badges.innerHTML = `${exceeded ? '<span class="drug-badge drug-badge--danger" title="' + escapeAttribute(title) + '">Quá liều</span>' : ""}${
     stock ? (negative
-      ? `<span class="drug-badge drug-badge--danger">Âm kho −${escapeHtml(formatNumber(Math.abs(stock.after)))}</span>`
+      ? `<button class="drug-badge drug-badge--danger drug-badge--btn" type="button" data-stock-in="${escapeAttribute(row.drugId)}" title="Nhập kho thuốc này">Âm kho −${escapeHtml(formatNumber(Math.abs(stock.after)))}</button>`
       : `<span class="drug-badge drug-badge--ok">Kho ${escapeHtml(formatNumber(stock.drug.quantity))}</span>`) : ""}`;
 }
 
@@ -4262,12 +4551,12 @@ function buildPrescriptionHtml() {
       <td>${escapeHtml([row.activeIngredient, composeBrandName(row.brandName, row.activeIngredient)].filter(Boolean).join(" / "))}</td>
       <td>${escapeHtml(row.unit || "Viên")}</td>
       <td>${escapeHtml(String(row.quantity || ""))}</td>
-      <td>${buildDoseText(row)}</td>
+      <td class="dose">${DOSE_FIELDS.map((field) => `<span>${DOSE_LABELS[field]} ${escapeHtml(row[field] || "-")}</span>`).join(", ")}</td>
     </tr>
   `).join("");
-  const info = `<div class="pi"><b>Họ tên:</b><span>${escapeHtml(refs.patientName.value)}</span><b>Tuổi:</b><span>${escapeHtml(refs.age.value)} tuổi (${escapeHtml(getGender())})</span><b>Ngày khám:</b><span>${escapeHtml(formatDate(refs.visitDate.value))}</span><b>Điện thoại:</b><span>${escapeHtml(refs.phone.value)}</span><b>Địa chỉ:</b><span class="wide">${escapeHtml([refs.addressWard.value, refs.province.value].filter(Boolean).join(", "))}</span><b>Chẩn đoán:</b><span class="wide">${escapeHtml(refs.icdInput.value)}</span></div>`;
-  const css = '@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:13px;line-height:1.45}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}.head{display:flex;gap:10px;align-items:center}.logo-box{position:relative;flex:none;width:64px;height:64px;transform:translateY(-2px)}.logo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.head-text{min-width:0}.clinic{font-size:17px;font-weight:700;text-transform:uppercase;margin:0 0 2px}.clinic-line{margin:0}h1{font-size:24px;margin:14px 0 12px;text-align:center}.pi{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content minmax(0,1fr);gap:3px 10px;margin-bottom:12px}.pi b{font-weight:700}.pi span{overflow-wrap:anywhere}.pi .wide{grid-column:2/-1}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #111;padding:6px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.clinic{font-size:15px}h1{font-size:20px}table{font-size:11px}th,td{padding:4px}.footer{gap:8px}.footer-note{max-width:none;flex:1 1 0;min-width:0}.sign{min-width:0;flex:1 1 0}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
-  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>${css}</style></head><body><div class="sheet"><div class="head"><div class="logo-box"><img class="logo" src="${location.origin}/doctor-logo.png" alt=""></div><div class="head-text"><p class="clinic">${escapeHtml(state.clinicInfo.name)}</p><p class="clinic-line">Địa chỉ: ${clinicAddress}</p><p class="clinic-line">SĐT: ${clinicPhone}</p></div></div><h1>ĐƠN THUỐC</h1>${info}<table><thead><tr><th style="width:8%">#</th><th style="width:42%">Tên thuốc</th><th style="width:12%">Đơn vị</th><th style="width:10%">SL</th><th style="width:28%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ khám bệnh</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div><script>(function(){var t=document.querySelector(".head-text"),b=document.querySelector(".logo-box");function f(){b.style.width=b.style.height=t.offsetHeight+"px"}f();addEventListener("load",f);addEventListener("resize",f)})()</script></body></html>`;
+  const info = `<div class="pi"><b>Họ tên:</b><span class="wide">${escapeHtml(refs.patientName.value)}</span><b>Tuổi:</b><span class="wide">${escapeHtml(refs.age.value)} tuổi (${escapeHtml(getGender())})</span><b>Điện thoại:</b><span class="wide">${escapeHtml(refs.phone.value)}</span><b>Ngày khám:</b><span class="wide">${escapeHtml(formatDate(refs.visitDate.value))}</span><b>Địa chỉ:</b><span class="wide">${escapeHtml([refs.addressWard.value, refs.province.value].filter(Boolean).join(", "))}</span><b>Chẩn đoán:</b><span class="wide">${escapeHtml(refs.icdInput.value)}</span></div>`;
+  const css = '@page{size:A5 portrait;margin:8mm}html,body{width:148mm;min-height:210mm;margin:0;padding:0;background:#fff}body{font-family:"Segoe UI","Noto Sans",Arial,Helvetica,sans-serif;color:#111;font-size:12px;line-height:1.4}.sheet{width:132mm;min-height:194mm;margin:0 auto;padding:0}.head{display:flex;gap:10px;align-items:center}.logo-box{position:relative;flex:none;width:64px;height:64px;transform:translateY(-2px)}.logo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.head-text{min-width:0}.clinic{font-size:17px;font-weight:700;text-transform:uppercase;margin:0 0 2px}.clinic-line{margin:0}h1{font-size:24px;margin:14px 0 12px;text-align:center}.pi{display:grid;grid-template-columns:max-content minmax(0,1fr) max-content minmax(0,1fr);gap:3px 10px;margin-bottom:12px}.pi b{font-weight:700}.pi span{overflow-wrap:anywhere}.pi .wide{grid-column:2/-1}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}.dose span{white-space:nowrap}th,td{border:1px solid #111;padding:4px 5px;vertical-align:top;text-align:left;word-wrap:break-word}th{background:#f5f5f5}.footer{margin-top:14px;display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.footer-note{white-space:pre-line;max-width:62%}.sign{min-width:200px;text-align:center}.sign-name{margin-top:42px;font-weight:700}@media screen{html{width:auto;background:#e9eef3}body{margin:12px auto;padding:8mm;box-sizing:border-box}}@media screen and (max-width:720px){html,body{width:auto;min-height:auto}body{font-size:12px;margin:0;padding:8px}.sheet{width:100%;min-height:auto}.clinic{font-size:15px}h1{font-size:20px}table{font-size:10px}th,td{padding:3px 4px}.footer{gap:8px}.footer-note{max-width:none;flex:1 1 0;min-width:0;font-size:10.5px}.sign{min-width:0;flex:1 1 0}.sign-name{margin-top:20px}}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}';
+  return `<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Toa thuốc</title><style>${css}</style></head><body><div class="sheet"><div class="head"><div class="logo-box"><img class="logo" src="${location.origin}/doctor-logo.png" alt=""></div><div class="head-text"><p class="clinic">${escapeHtml(state.clinicInfo.name)}</p><p class="clinic-line">Địa chỉ: ${clinicAddress}</p><p class="clinic-line">SĐT: ${clinicPhone}</p></div></div><h1>ĐƠN THUỐC</h1>${info}<table><thead><tr><th style="width:6%">#</th><th style="width:38%">Tên thuốc</th><th style="width:11%">Đơn vị</th><th style="width:8%">SL</th><th style="width:37%">Cách dùng</th></tr></thead><tbody>${rows || "<tr><td colspan='5'>Chưa có thuốc.</td></tr>"}</tbody></table><div class="footer"><div class="footer-note"><strong>Tái khám:</strong> ${escapeHtml(refs.followDate.value ? formatDate(refs.followDate.value) : "Chưa hẹn")}<br><strong>Lời dặn:</strong><br>${escapeHtml(refs.adviceNote.value || "Không có")}</div><div class="sign"><div>Ngày ${today.getDate()} tháng ${today.getMonth() + 1} năm ${today.getFullYear()}</div><div style="margin-top:8px;font-weight:700">Bác sĩ khám bệnh</div><div class="sign-name">${escapeHtml(currentDoctor)}</div></div></div></div><script>(function(){var t=document.querySelector(".head-text"),b=document.querySelector(".logo-box");function f(){b.style.width=b.style.height=t.offsetHeight+"px"}f();addEventListener("load",f);addEventListener("resize",f)})()</script></body></html>`;
 }
 
 async function printPrescription() {
@@ -4606,9 +4895,9 @@ function getFollowStatus(dateValue) {
   const target = startOfDay(new Date(dateValue));
   if (Number.isNaN(target.getTime())) return { label: "Không hợp lệ", cls: "neutral" };
   const diff = Math.round((target - today) / 86400000);
-  if (diff > 0) return { label: `Còn ${diff} ngày`, cls: "up" };
-  if (diff === 0) return { label: "Hôm nay", cls: "down" };
-  return { label: `Quá ${Math.abs(diff)} ngày`, cls: "down" };
+  if (diff > 0) return { label: `Còn ${diff} ngày`, short: `${diff}N`, cls: "up" };
+  if (diff === 0) return { label: "Hôm nay", short: "HN", cls: "down" };
+  return { label: `Quá ${Math.abs(diff)} ngày`, short: `Q${Math.abs(diff)}N`, cls: "down" };
 }
 
 async function fetchJson(url, options = {}) {

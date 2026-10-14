@@ -284,6 +284,8 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .auth__brand { text-align: center; margin-bottom: 20px; }
 .auth__brand h1 { margin: 10px 0 0; font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: var(--lh-heading); color: var(--text-brand); }
 .auth__logo { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: var(--soft); color: var(--text-brand); }
+.auth__logo:has(.brand-logo) { background: transparent; width: 72px; height: 72px; }
+.auth__logo .brand-logo--lg { width: 72px; height: 72px; }
 .auth__form { display: grid; gap: 14px; }
 .auth__msg { margin: 0; min-height: 0; overflow-wrap: anywhere; font-size: var(--fs-base); font-weight: var(--fw-medium); color: var(--text-danger); }
 .auth__msg:empty { display: none; }
@@ -319,6 +321,8 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
   line-height: var(--lh-tight);
   color: var(--text-brand);
 }
+.brand-logo { flex: none; width: 32px; height: 32px; object-fit: contain; display: block; } /* logo phòng khám (PNG nền trong suốt) đứng trước tên */
+.brand-logo--lg { width: 44px; height: 44px; }
 .topnav__brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topnav__tabs { display: flex; gap: 4px; flex: none; }
 .topnav__actions { display: flex; justify-content: flex-end; gap: 4px; flex: 1 1 0; min-width: max-content; }
@@ -394,9 +398,27 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 .search-zone, .picker-wrap { position: relative; }
-.patient-top > .search-zone { margin-bottom: var(--space-3); }
-@media (min-width: 1024px) { .patient-top > .search-zone { width: calc(100% / 3); } }
-.patient-top > .search-zone .field { padding-right: 44px; }
+.search-row { display: flex; align-items: stretch; gap: var(--space-2); margin-bottom: var(--space-3); }
+.search-row > .search-zone { flex: 1; min-width: 0; }
+@media (min-width: 1024px) { .search-row > .search-zone { flex: none; width: calc(100% / 3); } }
+
+/* ô lọc ngày khám (bên phải ô tìm kiếm): gõ tay hoặc chọn lịch như ô Ngày tái khám; PC rộng bằng ô Số điện thoại trong chi tiết, điện thoại chỉ còn icon lịch */
+.date-filter { flex: none; }
+.date-filter.is-active .field { border-color: var(--primary); }
+@media (min-width: 1024px) {
+  .date-filter { width: calc((100% - 28px - 5 * var(--col-gap, 12px)) / 6); min-width: 150px; }
+}
+@media (max-width: 1023px) {
+  .date-filter .date-field { width: var(--control-h); height: var(--control-h); border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--bg-control); }
+  .date-filter.is-active .date-field { border-color: var(--primary); }
+  .date-filter .field { display: none; }
+  .date-filter .date-pick-btn { right: 0; top: 0; transform: none; width: 100%; height: 100%; border-radius: inherit; }
+  /* vùng chạm của ô lịch thu vào 4px mỗi cạnh + khe 14px với ô tìm kiếm: chạm sát mép phải ô tìm kiếm không bị trình duyệt "hút" sang nút lịch */
+  .date-filter .date-native { right: 4px; top: 4px; transform: none; width: calc(100% - 8px); height: calc(100% - 8px); }
+  .search-row { gap: var(--space-2); }
+  .date-filter .date-pick-btn { color: var(--text); }
+}
+.patient-top .search-zone .field { padding-right: 48px; text-overflow: ellipsis; }
 .search-icon { position: absolute; right: 14px; top: 50%; margin-top: 0; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
 .searchbar { margin: var(--space-3) 0 var(--row-gap); justify-content: flex-start; }
 .suggest-box {
@@ -462,6 +484,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .pr-table { padding: 10px 14px; min-height: calc(2lh + 20px); } /* cùng padding với dòng dữ liệu mã; dòng ICD 1–2 dòng cao bằng nhau (2 dòng), từ 3 dòng thì cao hơn */
 /* chỉ hiện 5 bệnh nhân, còn lại cuộn trong khung (mỗi trang 10); chiều cao khung do JS tính theo 5 dòng đầu */
 #patientListBody { overflow-y: visible; }
+.patient-list.is-scroll #patientListBody { overflow-y: auto; overscroll-behavior: contain; } /* chế độ cuộn vô hạn: khung cao một trang, cuộn trong khung như Kho thuốc */
 .pr-table > div { min-width: 0; overflow-wrap: anywhere; }
 .patient-head > :last-child, .pr-table > :last-child { justify-self: end; text-align: right; }
 .pr-card { display: none; }
@@ -506,9 +529,20 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .follow-badge.neutral { background: var(--bg-subtle-3); color: var(--text-muted); font-style: italic; }
 
 /* thanh phân trang là dòng cuối của bảng */
-.pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--btn-gap); padding: var(--space-3) 14px; background: var(--bg-page); } /* viền trên do border-bottom của hàng bệnh nhân cuối đảm nhiệm */
+.pager { border-top: 1px solid var(--line); box-sizing: border-box; min-height: calc(var(--control-h) + 2 * var(--space-3) + 1px); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--btn-gap); padding: var(--space-3) 14px; background: var(--bg-page); } /* viền trên do border-bottom của hàng bệnh nhân cuối đảm nhiệm */
 .pager:empty { display: none; }
+#patientListBody > .patient-row:last-child { border-bottom: 0; } /* viền trên của thanh phân trang thay thế */
 .pager__range { color: var(--text-muted); font-size: var(--fs-sm); }
+/* công tắc Cuộn / Trang: hai nửa liền nhau, nửa đang dùng tô màu chủ đạo; số hồ sơ có bề rộng cố định nên công tắc không bị xê dịch */
+.pager__left { display: flex; align-items: center; gap: var(--space-3); }
+.pager__left .pager__range { min-width: 12ch; font-variant-numeric: tabular-nums; }
+.pager__mode { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-subtle); }
+.pager__mode-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--text-muted); font: inherit; font-size: var(--fs-sm); font-weight: var(--fw-medium); cursor: pointer; }
+.pager__mode-btn .icon { width: 14px; height: 14px; }
+.pager__mode-btn.is-on { background: var(--primary); color: var(--text-on-primary); }
+.pager__mode-btn:not(.is-on):hover { color: var(--text); }
+.pager__mode-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+@media (max-width: 767px) { .pager__mode-btn span { display: none; } .pager__mode-btn { padding: 0 10px; } .pager__left .pager__range { min-width: 10ch; } }
 .pager__list { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; margin-left: auto; }
 .pager__btn {
   display: inline-flex;
@@ -701,6 +735,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stock-pending__row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-base); }
 .stock-pending__row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .stock-list { border: 1px solid var(--line); border-radius: 14px; overflow-y: auto; background: var(--bg-page); }
+#stockTabBox .stock-list { overflow: clip; } /* cuộn theo trang nhưng vẫn cắt theo góc bo, không để nền hàng thò ra trên viền */
 .stock-list > .stock-head { position: sticky; top: 0; z-index: 1; }
 .stock-row { --ctl-h: var(--control-h-sm); }
 .stock-head, .stock-row {
@@ -719,7 +754,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stock-row__name small { display: block; color: var(--text-muted); font-weight: var(--fw-regular); font-size: var(--fs-sm); }
 .stock-row__qty, .stock-row__price { text-align: left; }
 .stock-row__lbl { display: none; }
-.badge-neg { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--text-danger); vertical-align: middle; color: var(--text-on-primary); font-size: var(--fs-xs); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: .04em; }
+.badge-neg { border: 0; font-family: inherit; cursor: pointer; display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--text-danger); vertical-align: middle; color: var(--text-on-primary); font-size: var(--fs-xs); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: .04em; }
 .stock-row.is-negative .stock-row__qty { color: var(--text-danger); font-weight: var(--fw-medium); }
 
 /* ---------- Money ---------- */
@@ -950,9 +985,22 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .pc__main { flex: 1; min-width: 0; }
   .pc__name { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-base); font-weight: var(--fw-medium); line-height: var(--lh-heading); white-space: nowrap; }
   .pc__nm-a { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+  /* đang tìm kiếm: hiện đủ họ tên, dài thì xuống dòng */
+  /* dòng chảy tự nhiên: tên dài xuống dòng, tuổi và badge bám ngay sau chữ cuối, chỉ xuống dòng khi hết chỗ */
+  .patient-list.is-searching .pc__name { display: block; white-space: normal; }
+  .patient-list.is-searching .pc__name > * { display: inline; vertical-align: middle; }
+  .patient-list.is-searching .pc__name > .pc__tags { display: inline-flex; margin-left: 0; vertical-align: baseline; } /* chữ badge cùng đường cơ sở với tên, kể cả khi xuống dòng */
+  .patient-list.is-searching .pc__name > .pc__age { vertical-align: baseline; }
+  .patient-list.is-searching .pc__nm-a { overflow: visible; overflow-wrap: anywhere; }
+  .patient-list.is-searching .pc__nm-b { margin-left: 0; }
+  .patient-list.is-searching .pc__nm-a::after { content: " "; }
+  .patient-list.is-searching .pc__age { margin-left: 0; }
+  /* khoảng cách bằng dấu cách (không dùng margin trái) để dòng bị xuống luôn sát lề trái theo tên */
+  .patient-list.is-searching .pc__nm-b::after, .patient-list.is-searching .pc__age::after { content: " "; }
   .pc__nm-b { flex: none; margin-left: -2px; }
   .pc__age { flex: none; color: var(--text-muted); font-size: var(--fs-sm); font-weight: 400; }
   .pc__name .follow-badge, .pc__name .visit-tag { flex: none; }
+  .pc__tags { display: inline-flex; align-items: center; gap: 6px; flex: none; } /* hai badge luôn đi cùng nhau, xuống dòng thì xuống cả hai */
   .pc__act { display: flex; gap: var(--space-2); }
   .pc__act .icon-btn { width: var(--ctl-h); height: var(--ctl-h); padding: 0; }
   .pc__act > :not(.pt-more) { display: none; }
@@ -1107,7 +1155,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .modal__foot #dmDeleteBtn { flex: 0 0 auto; }
 
   .auth__card { padding: 24px 18px; }
-  .auth__card { transform: translateY(var(--kb-shift, 0px)); transition: transform .3s ease; }
+  .auth__card { transform: translateY(var(--kb-shift, 0px)); transition: transform .25s ease-out; will-change: transform; }
 }
 
 /* ---------- Typography: tiện ích & chữ số ---------- */
@@ -1141,6 +1189,7 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
 .drug-name__idx { display: none; }
 .drug-badges { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
 .drug-badge { padding: 1px 8px; border-radius: 999px; font-size: var(--fs-xs); font-weight: var(--fw-medium); white-space: nowrap; }
+.drug-badge--btn { border: 0; font: inherit; font-size: var(--fs-xs); font-weight: var(--fw-medium); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .drug-badge--ok { background: var(--success-bg); color: var(--text-success); }
 .drug-badge--danger { background: var(--danger-bg-3); color: var(--text-danger); }
 .drug-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: var(--fs-sm); }
@@ -1337,3 +1386,106 @@ dialog.modal--full[open] { height: min(100vh - 32px, 1100px); height: min(100dvh
   .icd-row__name { resize: none; overflow: hidden; }
   .icd-foot .btn > span { display: none; }
 }
+
+/* điện thoại: thanh dưới bảng luôn nằm trên một hàng (số hồ sơ, công tắc, phân trang), nút nhỏ lại cho vừa màn 320px */
+@media (max-width: 767px) {
+  .pager { flex-wrap: nowrap; gap: 6px; padding: 8px; min-height: calc(32px + 17px); }
+  .pager__left { flex: none; gap: 6px; }
+  .pager__left .pager__range { min-width: 8ch; font-size: 12px; white-space: nowrap; }
+  .pager__mode-btn { min-height: 28px; padding: 0 6px; }
+  .pager__list { gap: 4px; }
+  .pager__btn { min-width: 32px; min-height: 32px; padding: 0 4px; }
+}
+
+/* huy hiệu tái khám: điện thoại viết tắt (HN = hôm nay, 5N = còn 5 ngày, Q5N = quá 5 ngày) */
+.fb-short { display: none; }
+@media (max-width: 767px) { .fb-full { display: none; } .fb-short { display: inline; } }
+
+/* ---------- Thống kê: ô bấm được + hộp chi tiết ---------- */
+.stat--click { cursor: pointer; transition: border-color .15s, background .15s; }
+.stat--click:hover { border-color: var(--field-border-focus); background: var(--bg-hover); }
+.stat--click:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.stats-range { display: grid; grid-template-columns: 1fr 1fr; gap: var(--col-gap); }
+.stats-metric { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-subtle); justify-self: start; width: fit-content; }
+.stats-empty { margin: 8px 0; text-align: center; }
+.stats-sum { margin: 0 0 8px; }
+.stats-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.stats-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--bg-page); }
+.stats-list li:last-child { border-bottom: 0; }
+.stats-list__name { min-width: 0; overflow-wrap: anywhere; font-weight: var(--fw-medium); }
+.stats-list__name small { display: block; font-weight: 400; font-size: var(--fs-sm); }
+.stats-total { display: flex; flex-wrap: wrap; gap: var(--col-gap); margin-top: var(--space-3); }
+.stats-total > div { flex: 1 1 120px; display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-subtle-2); }
+.stats-total strong { font-size: var(--fs-lg); }
+.stats-chart { width: 100%; height: auto; margin-top: var(--space-3); }
+.stats-bar { fill: var(--primary); }
+.stats-axis { fill: var(--text-muted); font-size: 10px; }
+.stats-base { stroke: var(--line); stroke-width: 1; }
+.modal--stats { width: min(680px, 100%); }
+/* chiều cao cố định theo khung: nội dung tải xong không làm hộp thoại giật/nhảy */
+dialog.modal--stats { min-height: 460px; }
+.modal--stats .modal__body { scrollbar-gutter: stable; }
+@media (max-width: 767px) { dialog.modal--stats { min-height: calc(min(72dvh, 600px) + 400px); } }
+
+/* hoạt ảnh mở hộp chi tiết thống kê: điện thoại trượt từ dưới lên, máy tính hiện dần; cột biểu đồ mọc lên từ đáy */
+@keyframes stats-sheet-in { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes stats-pop-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes stats-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stats-bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+dialog.modal--stats[open] { animation: stats-pop-in .22s cubic-bezier(.2, .8, .2, 1); }
+dialog.modal--stats[open]::backdrop { animation: stats-fade-in .22s ease-out; }
+@media (max-width: 767px) { dialog.modal--stats[open] { animation: stats-sheet-in .3s cubic-bezier(.2, .8, .2, 1); } }
+.stats-bar { transform-box: fill-box; transform-origin: bottom; animation: stats-bar-grow .45s cubic-bezier(.2, .8, .2, 1) backwards; }
+.stats-list li, .stats-total > div { animation: stats-fade-in .25s ease-out backwards; }
+@media (prefers-reduced-motion: reduce) {
+  dialog.modal--stats[open], dialog.modal--stats[open]::backdrop, .stats-bar, .stats-list li, .stats-total > div { animation: none; }
+}
+
+/* điện thoại: hộp biểu đồ (lượt khám / doanh thu tháng) mở full màn hình; bàn phím nhập ngày không làm hộp nhảy vì không còn nâng theo bàn phím */
+@media (max-width: 767px) {
+  dialog.modal--stats.is-chart, dialog.modal--stats.is-chart[open] {
+    width: 100%; height: 100%; max-width: 100%; max-height: 100%; min-height: 0;
+    margin: 0; padding-bottom: 0; border-radius: 0; transform: none; transition: none;
+  }
+  dialog.modal--stats.is-chart[open] { animation: stats-fade-in .2s ease-out; }
+  dialog.modal--stats.is-chart .modal__body { padding-bottom: calc(16px + var(--safe-b)); }
+}
+
+/* nút chuyển Lượt khám / Doanh thu trong hộp biểu đồ */
+.stats-metric { display: flex; width: 100%; padding: 3px; gap: 3px; border-radius: 12px; }
+.stats-metric__btn { flex: 1 1 0; min-height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text-muted); font: inherit; font-size: var(--fs-base); font-weight: var(--fw-medium); cursor: pointer; }
+.stats-metric__btn.is-on { background: var(--primary); color: var(--text-on-primary); }
+@media (min-width: 768px) { .stats-metric { width: fit-content; } .stats-metric__btn { flex: none; min-width: 120px; } }
+/* biểu đồ: cuộn ngang khi nhiều ngày, hiện đủ nhãn từng ngày */
+.stats-chart-wrap { overflow-x: auto; margin-top: var(--space-3); -webkit-overflow-scrolling: touch; }
+.stats-chart-wrap .stats-chart { margin-top: 0; max-width: none; flex: none; display: block; }
+.stats-axis { font-size: 10px; }
+.stats-axis--month { font-weight: var(--fw-bold); }
+
+/* hộp biểu đồ: cột lưới không bị biểu đồ rộng đẩy tràn ra ngoài khung (biểu đồ tự cuộn ngang bên trong) */
+.modal--stats .modal__body.stack { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; align-content: start; }
+.stats-chart-wrap { min-width: 0; max-width: 100%; }
+.stats-metric { align-self: start; }
+
+/* nút chuyển Lượt khám / Doanh thu: viên thuốc nhỏ gọn như ban đầu (cả điện thoại lẫn PC) */
+.stats-metric { display: inline-flex; width: fit-content; justify-self: start; padding: 2px; gap: 2px; border-radius: 999px; }
+.stats-metric__btn { flex: none; min-width: 0; min-height: 30px; padding: 0 12px; border-radius: 999px; font-size: var(--fs-sm); }
+@media (min-width: 768px) { .stats-metric { width: fit-content; } .stats-metric__btn { min-width: 0; } }
+.stats-chart-wrap { overscroll-behavior-x: contain; touch-action: pan-x pan-y; }
+
+/* biểu đồ: trục dọc cố định bên trái, phần cột cuộn ngang bên cạnh */
+.stats-chart-row { display: flex; align-items: flex-start; gap: 2px; margin-top: var(--space-3); min-width: 0; }
+.stats-chart-row .stats-chart-wrap { flex: 1 1 0; margin-top: 0; }
+.stats-yaxis { flex: none; display: block; }
+.stats-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; opacity: .7; }
+
+/* hộp biểu đồ: khoảng cách giữa các khối chỉ do khoảng cách lưới (stack) quyết định, bằng nhau từ ngày → nút chuyển → ô tổng → biểu đồ */
+.modal--stats .stats-total { margin-top: 0; }
+.modal--stats .stats-chart-row { margin-top: 0; }
+.modal--stats .stats-total > div { min-width: 0; }
+
+/* thêm khoảng trống giữa hai ô tổng và biểu đồ */
+.modal--stats .stats-chart-row { margin-top: var(--space-4, 16px); }
+
+/* popup Doanh thu hôm nay: khoảng trống giữa danh sách và hai ô tổng công khám / tổng doanh thu */
+.modal--stats .stats-list + .stats-total { margin-top: var(--space-4, 16px); }

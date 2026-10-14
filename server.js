@@ -73,7 +73,7 @@ app.use((req, res, next) => {
 const jsonParser = express.json({ limit: "2mb" });
 app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
 // chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
-const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png"];
+const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png", "clinic-logo.png"];
 PUBLIC_FILES.forEach((name) => {
   app.get(`/${name}`, (_req, res) => res.sendFile(path.join(__dirname, name)));
 });
@@ -542,6 +542,68 @@ app.get("/api/stats", async (_req, res, next) => {
   }
 });
 
+// chi tiết cho các ô thống kê: các lượt khám trong khoảng ngày [from, to] (giờ VN)
+app.get("/api/stats/visits", async (req, res, next) => {
+  try {
+    const from = String(req.query.from || "");
+    const to = String(req.query.to || "");
+    const okDay = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+    if (!okDay(from) || !okDay(to) || from > to) return res.status(400).json({ error: "Khoảng ngày không hợp lệ." });
+    if ((Date.parse(to) - Date.parse(from)) / 86400000 > 400) return res.status(400).json({ error: "Chọn tối đa khoảng 1 năm." });
+    // lấy dư 1 ngày mỗi đầu rồi lọc lại theo ngày giờ VN
+    const lo = new Date(Date.parse(from) - 86400000);
+    const hi = new Date(Date.parse(to) + 2 * 86400000);
+    const rows = await Visit.find(
+      { visitDate: { $gte: lo, $lt: hi } },
+      { patientId: 1, patientName: 1, visitNo: 1, visitDate: 1, serviceFee: 1, drugTotal: 1, totalMoney: 1, updatedAt: 1, createdAt: 1 }
+    ).sort({ visitDate: 1, visitNo: 1 }).lean();
+    const visits = rows
+      .map((visit) => ({
+        _id: visit._id,
+        patientId: visit.patientId,
+        patientName: visit.patientName,
+        visitNo: visit.visitNo,
+        day: vnDayKey(visit.visitDate),
+        serviceFee: Number(visit.serviceFee || 0),
+        drugTotal: Number(visit.drugTotal || 0),
+        totalMoney: Number(visit.totalMoney || 0),
+        updatedAt: visit.updatedAt || visit.createdAt || visit.visitDate
+      }))
+      .filter((visit) => visit.day >= from && visit.day <= to)
+      // mới cập nhật nhất lên đầu (các danh sách chi tiết trong ô thống kê)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    res.json({ visits });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// bệnh nhân có lịch hẹn hôm nay (cùng cách tính với ô "Lịch hẹn hôm nay") kèm đã đến hay chưa
+app.get("/api/stats/appointments", async (_req, res, next) => {
+  try {
+    const today = vnDayKey(new Date());
+    const visits = await Visit.find({}, { patientId: 1, patientName: 1, visitNo: 1, visitDate: 1, followUpDate: 1, updatedAt: 1 }).lean();
+    const byPatient = new Map();
+    visits.forEach((visit) => {
+      const key = String(visit.patientId);
+      if (!byPatient.has(key)) byPatient.set(key, []);
+      byPatient.get(key).push(visit);
+    });
+    const list = [];
+    byPatient.forEach((items, patientId) => {
+      const appointment = appointmentToday(items, today);
+      if (appointment) {
+        const touched = Math.max(...items.map((visit) => new Date(visit.updatedAt || visit.visitDate).getTime()));
+        list.push({ patientId, patientName: appointment.patientName, arrived: appointment.arrived, touched });
+      }
+    });
+    list.sort((a, b) => b.touched - a.touched); // mới cập nhật nhất lên đầu
+    res.json({ today, appointments: list });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/patients", async (req, res, next) => {
   try {
     const search = String(req.query.search || "").trim();
@@ -563,7 +625,9 @@ app.get("/api/patients", async (req, res, next) => {
             lastDiagnosis: { $first: "$diagnosis" },
             lastDoctor: { $first: "$doctor" },
             lastFollowUpDate: { $first: "$followUpDate" },
-            totalRevenue: { $sum: "$totalMoney" }
+            totalRevenue: { $sum: "$totalMoney" },
+            visitDates: { $push: "$visitDate" },
+            followUpDates: { $push: "$followUpDate" }
           }
         }
       ]);
@@ -580,7 +644,9 @@ app.get("/api/patients", async (req, res, next) => {
         lastDiagnosis: stat?.lastDiagnosis || "",
         lastDoctor: stat?.lastDoctor || "",
         lastFollowUpDate: stat?.lastFollowUpDate || null,
-        totalRevenue: stat?.totalRevenue || 0
+        totalRevenue: stat?.totalRevenue || 0,
+        visitDates: stat?.visitDates || [],
+        followUpDates: (stat?.followUpDates || []).filter(Boolean)
       };
     });
 
@@ -1348,6 +1414,26 @@ function buildPatientSearch(search) {
   };
 }
 
+// Lịch hẹn hôm nay của MỘT bệnh nhân (dùng chung cho ô số và danh sách chi tiết).
+// Xếp theo số lần khám (visitNo) vì ngày khám của các lần cũ có thể trùng nhau.
+// Lịch hẹn = lần khám gần nhất có ngày tái khám là hôm nay, miễn sau nó không có lần khám nào TRƯỚC hôm nay (lần đó đã hẹn lại ngày khác).
+// Đã đến = sau lần đặt hẹn đó có lượt khám vào hôm nay.
+function appointmentToday(items, today) {
+  const sorted = [...items].sort((a, b) => a.visitNo - b.visitNo);
+  for (let k = sorted.length - 1; k >= 0; k -= 1) {
+    const later = sorted.slice(k + 1);
+    if (later.some((visit) => vnDayKey(visit.visitDate) < today)) return null;
+    const visit = sorted[k];
+    if (visit.followUpDate && vnDayKey(visit.followUpDate) === today) {
+      return {
+        patientName: sorted[sorted.length - 1].patientName,
+        arrived: later.some((item) => vnDayKey(item.visitDate) === today)
+      };
+    }
+  }
+  return null;
+}
+
 function buildStats(totalPatients, visits, now) {
   const today = vnDayKey(now);
   const month = today.slice(0, 7);
@@ -1376,11 +1462,10 @@ function buildStats(totalPatients, visits, now) {
     items.sort((a, b) => new Date(a.visitDate) - new Date(b.visitDate) || a.visitNo - b.visitNo);
     if (vnMonthKey(items[0].visitDate) === month) patients.newThisMonth += 1;
 
-    // Lịch hẹn hôm nay: lấy từ lần khám gần nhất TRƯỚC hôm nay (lần khám hôm nay mang lịch hẹn mới)
-    const before = items.filter((visit) => vnDayKey(visit.visitDate) < today).pop();
-    if (before?.followUpDate && vnDayKey(before.followUpDate) === today) {
+    const appointment = appointmentToday(items, today);
+    if (appointment) {
       quick.appointmentsToday += 1;
-      if (items.some((visit) => vnDayKey(visit.visitDate) === today)) quick.appointmentsArrived += 1;
+      if (appointment.arrived) quick.appointmentsArrived += 1;
     }
 
     // Tái khám: có lượt khám nào SAU lượt này là "có quay lại"; chưa tới ngày hẹn và chưa quay lại thì chưa tính
