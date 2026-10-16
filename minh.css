@@ -740,7 +740,7 @@ input[type="date"].field::-webkit-date-and-time-value { text-align: left; }
 .stock-row { --ctl-h: var(--control-h-sm); }
 .stock-head, .stock-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 130px 124px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 110px 130px 124px;
   gap: 10px;
   align-items: center;
   padding: 10px 14px;
@@ -1489,3 +1489,95 @@ dialog.modal--stats[open]::backdrop { animation: stats-fade-in .22s ease-out; }
 
 /* popup Doanh thu hôm nay: khoảng trống giữa danh sách và hai ô tổng công khám / tổng doanh thu */
 .modal--stats .stats-list + .stats-total { margin-top: var(--space-4, 16px); }
+
+/* tab Bệnh nhân (chế độ cuộn): danh sách dài cả trang như tab Kho thuốc, không có khung cuộn riêng */
+.patient-list.is-flow #patientListBody { overflow: visible; max-height: none; }
+.patient-list.is-flow { overflow: clip; }
+/* chọn cách sắp xếp danh sách bệnh nhân */
+.patient-sort { height: 32px; padding: 0 28px 0 10px; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--bg-control); color: var(--text); font: inherit; font-size: var(--fs-sm); }
+.patient-sort:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+@media (max-width: 767px) { .patient-sort { max-width: 150px; } }
+
+@media (max-width: 767px) {
+  .patient-top .card-title h2 { white-space: nowrap; flex: none; }
+  .patient-top .row-actions #patientCountText { display: none; } /* số hồ sơ đã có ở thanh dưới bảng */
+  .patient-top .row-actions { width: auto; margin-left: auto; }
+}
+@media (max-width: 767px) { .patient-sort { max-width: 106px; padding: 0 20px 0 8px; font-size: 12px; text-overflow: ellipsis; } }
+
+.stock-count { font-size: var(--fs-base); font-weight: var(--fw-medium); }
+
+/* tab Kho thuốc: tổng số loại thuốc bên phải ô tìm kiếm (chỉ PC) */
+.stock-total { display: none; white-space: nowrap; font-weight: var(--fw-medium); }
+@media (min-width: 768px) { .code-toolbar .stock-total { display: inline; margin-right: auto; } }
+
+/* ô chọn sắp xếp: bỏ mũi tên gốc của trình duyệt, dùng mũi tên chevron riêng cho đều trên PC và điện thoại */
+.patient-sort {
+  -webkit-appearance: none; appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23939aa3' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center; background-size: 16px 16px;
+  cursor: pointer;
+}
+@media (max-width: 767px) { .patient-sort { padding: 0 28px 0 10px; background-position: right 8px center; } }
+
+@media (min-width: 1024px) {
+  /* PC: ô ngày giữ độ rộng cũ, nút tick nằm ngay bên phải (ô tìm kiếm chỉ chiếm 1/3 nên còn chỗ) */
+  .date-filter { position: relative; }
+  .date-filter__ok { position: absolute; left: calc(100% + 8px); top: 0; height: 100%; }
+}
+
+/* nút lọc ngày: bấm mở hộp "Từ ngày / Đến ngày". Điện thoại chỉ icon, PC có chữ và rộng bằng ô SĐT */
+.date-filter { display: block; position: static; }
+.date-filter__btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: var(--control-h); min-width: var(--control-h); min-height: var(--control-h); padding: 0; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--bg-control); color: var(--text); font: inherit; font-size: var(--fs-base); font-weight: var(--fw-medium); cursor: pointer; }
+.date-filter__btn:hover { background: var(--bg-hover); }
+.date-filter__btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.date-filter__btn .icon { width: 18px; height: 18px; flex: none; }
+.date-filter__text { display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.date-filter.is-active .date-filter__btn { border-color: var(--primary); background: var(--bg-brand-soft); }
+@media (min-width: 1024px) {
+  .date-filter { width: calc((100% - 28px - 5 * var(--col-gap, 12px)) / 6); min-width: 150px; }
+  .date-filter__btn { width: 100%; padding: 0 14px; justify-content: flex-start; }
+  .date-filter__text { display: inline; }
+}
+.date-filter__hint { margin: 0; font-size: var(--fs-sm); }
+dialog.modal--datefilter { width: min(480px, 100%); }
+.modal--datefilter .modal__body.stack { grid-template-columns: minmax(0, 1fr); }
+.modal--datefilter .modal__foot { justify-content: space-between; }
+
+/* hộp lọc ngày: ba lựa chọn Ngày khám / Ngày tái khám / Cả hai chia đều chiều ngang */
+.modal--datefilter .stats-metric { display: flex; width: 100%; border-radius: 12px; padding: 3px; gap: 3px; }
+.modal--datefilter .stats-metric__btn { flex: 1 1 0; min-width: 0; min-height: 38px; padding: 0 6px; border-radius: 10px; font-size: var(--fs-sm); white-space: nowrap; }
+
+/* popup lọc ngày: nút Xóa lọc đứng sát trái nút Lọc (dồn về bên phải); nút ngày trên PC đưa icon sang sát phải như các ô ngày khác */
+.modal--datefilter .modal__foot { justify-content: flex-end; }
+@media (min-width: 1024px) {
+  .date-filter__btn { justify-content: space-between; }
+  .date-filter__btn .icon { order: 2; }
+}
+
+/* tên thương mại: PC cột riêng; điện thoại chữ nhỏ ngay dưới tên hoạt chất */
+.stock-row__brand { min-width: 0; overflow-wrap: anywhere; color: var(--text-muted); font-size: var(--fs-sm); }
+.stock-row__name .stock-row__brand-sm { display: none; }
+@media (max-width: 767px) {
+  .stock-row__brand { display: none; }
+  .stock-row__name .stock-row__brand-sm { display: block; margin-top: 1px; color: var(--text-muted); font-weight: var(--fw-regular); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+}
+
+/* Cài đặt: thẻ đổi logo phòng khám */
+.logo-setting { display: flex; align-items: center; gap: var(--space-4); }
+.logo-preview { flex: none; width: 88px; height: 88px; object-fit: contain; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--bg-subtle-2); }
+.logo-setting__body { min-width: 0; display: grid; gap: var(--space-3); }
+.logo-setting__body p { margin: 0; font-size: var(--fs-sm); }
+@media (max-width: 767px) { .logo-setting { flex-direction: column; align-items: flex-start; } }
+
+/* thẻ logo: nút đứng sát nhau bên trái (PC); điện thoại mỗi nút chiếm 1/2 chiều ngang, cao bằng các nút khác */
+.logo-setting .row-actions { justify-content: flex-start; flex-wrap: nowrap; }
+@media (max-width: 767px) {
+  .logo-setting { align-items: stretch; }
+  .logo-setting__body { width: 100%; }
+  .logo-setting .row-actions .btn { flex: 1 1 0; min-width: 0; padding: 0 8px; gap: 6px; font-size: var(--fs-sm); white-space: nowrap; }
+}
+@media (max-width: 767px) { .logo-setting .row-actions .btn { min-height: 52px; } } /* cao bằng các nút ở thẻ Tài khoản / Cài đặt trên điện thoại */
+@media (max-width: 767px) { .logo-setting .row-actions .btn { font-size: var(--fs-base); padding: 0 6px; } } /* cỡ chữ bằng các nút khác */
+@media (max-width: 380px) { .logo-setting .row-actions .btn { font-size: 15px; padding: 0 4px; } } /* màn rất hẹp: giảm 1px để nhãn "Dùng logo mặc định" không tràn */

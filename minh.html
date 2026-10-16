@@ -147,6 +147,7 @@
               <div class="card-title">
                 <h2><button class="list-toggle" id="patientListToggle" type="button" aria-expanded="false" aria-controls="patientList"><span>Danh sách bệnh nhân</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></button></h2>
                 <div class="row-actions">
+                  <select class="patient-sort" id="patientSort" aria-label="Sắp xếp danh sách bệnh nhân"><option value="follow">Tái khám</option><option value="visit">Khám mới nhất</option></select>
                   <span class="muted" id="patientCountText">0 hồ sơ</span>
                 </div>
               </div>
@@ -157,7 +158,7 @@
                   <svg class="icon search-icon" aria-hidden="true"><use href="#i-search"/></svg>
                 </div>
                 <div class="date-filter" id="dateFilter">
-                  <input class="field" id="dateFilterInput" aria-label="Lọc theo ngày khám hoặc ngày tái khám" title="Lọc theo ngày khám hoặc ngày tái khám" autocomplete="off" />
+                  <button class="date-filter__btn" id="dateFilterBtn" type="button" aria-haspopup="dialog" aria-label="Lọc theo ngày khám hoặc ngày tái khám" title="Lọc theo ngày khám hoặc ngày tái khám"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg><span class="date-filter__text" id="dateFilterText">Ngày khám</span></button>
                 </div>
               </div>
 
@@ -328,7 +329,7 @@
 
         <section class="tab-panel hidden" id="panel-stock" data-panel="stock">
           <section class="card page-section">
-            <div class="card-title"><h2>Kho thuốc</h2></div>
+            <div class="card-title"><h2>Kho thuốc <span class="muted stock-count" id="stockCount"></span></h2></div>
             <div class="code-data" id="stockTabBox"></div>
           </section>
         </section>
@@ -426,6 +427,21 @@
             <div class="account-actions">
               <button class="btn ghost" type="button" data-app-action="change-password"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg><span>Đổi mật khẩu</span></button>
             </div>
+          </section>
+
+          <section class="card page-section logo-card">
+            <div class="card-title"><h2>Logo phòng khám</h2></div>
+            <div class="logo-setting">
+              <img class="logo-preview brand-logo" id="logoPreview" src="clinic-logo.png" alt="Logo phòng khám" />
+              <div class="logo-setting__body">
+                <p class="muted">Logo này hiện ở thanh trên, màn hình đăng nhập và đầu toa thuốc. Nên dùng ảnh PNG nền trong suốt, hình vuông.</p>
+                <div class="row-actions">
+                  <button class="btn primary" id="logoUploadBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Tải logo lên</span></button>
+                  <button class="btn" id="logoResetBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span>Dùng mặc định</span></button>
+                </div>
+              </div>
+            </div>
+            <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden />
           </section>
 
           <section class="card page-section settings-page">
@@ -531,6 +547,29 @@
         <button class="stats-metric__btn" type="button" data-metric="money">Doanh thu</button>
       </div>
       <div id="statsBody"></div>
+    </div>
+  </dialog>
+
+  <dialog id="dateFilterModal" class="modal modal--sheet modal--datefilter" aria-labelledby="dateFilterTitle">
+    <div class="modal__head">
+      <strong id="dateFilterTitle">Lọc theo ngày</strong>
+      <button class="icon-btn" type="button" data-close-dialog aria-label="Đóng" title="Đóng"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal__body stack">
+      <div class="stats-metric" id="dateModeGroup" role="group" aria-label="Lọc theo">
+        <button class="stats-metric__btn" type="button" data-date-mode="visit">Ngày khám</button>
+        <button class="stats-metric__btn" type="button" data-date-mode="follow">Ngày tái khám</button>
+        <button class="stats-metric__btn" type="button" data-date-mode="both">Cả hai</button>
+      </div>
+      <div class="stats-range">
+        <div><label class="label" for="dateFrom">Từ ngày</label><input class="field" id="dateFrom" autocomplete="off" /></div>
+        <div><label class="label" for="dateTo">Đến ngày</label><input class="field" id="dateTo" autocomplete="off" /></div>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <span class="modal__spacer"></span>
+      <button class="btn" id="dateFilterReset" type="button">Xóa lọc</button>
+      <button class="btn primary" id="dateFilterApply" type="button" aria-label="Áp dụng lọc"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Lọc</span></button>
     </div>
   </dialog>
 
@@ -734,6 +773,6 @@
 
   <script src="app-config.js"></script>
   <script src="icd-data.js"></script>
-  <script src="minh.js?v=52"></script>
+  <script src="minh.js?v=73"></script>
 </body>
 </html>

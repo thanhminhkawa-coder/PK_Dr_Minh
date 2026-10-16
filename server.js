@@ -73,7 +73,19 @@ app.use((req, res, next) => {
 const jsonParser = express.json({ limit: "2mb" });
 app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
 // chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
-const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png", "clinic-logo.png"];
+const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png"];
+// logo công khai (màn đăng nhập cũng cần): lấy từ DB nếu đã tải lên, không thì dùng file mặc định
+app.get("/clinic-logo.png", async (_req, res) => {
+  res.set("Cache-Control", "no-cache");
+  try {
+    const doc = await AppLogo.findOne({ key: "main" });
+    if (doc?.data) {
+      res.set("Content-Type", doc.contentType);
+      return res.send(doc.data);
+    }
+  } catch {}
+  res.sendFile(path.join(__dirname, "clinic-logo.png"));
+});
 PUBLIC_FILES.forEach((name) => {
   app.get(`/${name}`, (_req, res) => res.sendFile(path.join(__dirname, name)));
 });
@@ -155,6 +167,16 @@ const visitSchema = new mongoose.Schema(
 
 visitSchema.index({ patientId: 1, visitNo: 1 }, { unique: true });
 
+// logo phòng khám do người dùng tải lên (dùng cho thanh trên, màn đăng nhập và toa thuốc); chưa tải thì dùng file mặc định clinic-logo.png
+const logoSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, unique: true },
+    data: { type: Buffer, required: true },
+    contentType: { type: String, required: true }
+  },
+  { timestamps: true }
+);
+
 const settingsSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, unique: true, trim: true },
@@ -203,6 +225,7 @@ const Patient = mongoose.model("Patient", patientSchema);
 const Drug = mongoose.model("Drug", drugSchema);
 const Visit = mongoose.model("Visit", visitSchema);
 const Settings = mongoose.model("Settings", settingsSchema);
+const AppLogo = mongoose.model("AppLogo", logoSchema);
 
 const userSchema = new mongoose.Schema(
   {
@@ -433,6 +456,29 @@ authRouter.post("/forgot-password/reset", async (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api", requireAuth);
+
+// tải logo lên: ảnh được thu nhỏ ở trình duyệt trước khi gửi (PNG/JPEG/WebP, tối đa ~1MB sau giải mã)
+app.put("/api/logo", async (req, res, next) => {
+  try {
+    const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ""));
+    if (!match) return res.status(400).json({ error: "Ảnh logo không hợp lệ (chỉ nhận PNG, JPEG hoặc WebP)." });
+    const data = Buffer.from(match[2], "base64");
+    if (!data.length || data.length > 1024 * 1024) return res.status(400).json({ error: "Ảnh logo quá lớn (tối đa 1MB)." });
+    await AppLogo.findOneAndUpdate({ key: "main" }, { data, contentType: match[1] }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/logo", async (_req, res, next) => {
+  try {
+    await AppLogo.deleteOne({ key: "main" });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 function requireAuth(req, res, next) {
   const match = /^Bearer (.+)$/.exec(req.headers.authorization || "");
