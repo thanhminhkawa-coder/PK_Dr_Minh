@@ -431,15 +431,14 @@
 
           <section class="card page-section logo-card">
             <div class="card-title"><h2>Logo phòng khám</h2></div>
-            <div class="logo-setting">
-              <img class="logo-preview brand-logo" id="logoPreview" src="clinic-logo.png" alt="Logo phòng khám" />
-              <div class="logo-setting__body">
-                <p class="muted">Logo này hiện ở thanh trên, màn hình đăng nhập và đầu toa thuốc. Nên dùng ảnh PNG nền trong suốt, hình vuông.</p>
-                <div class="row-actions">
-                  <button class="btn primary" id="logoUploadBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Tải logo lên</span></button>
-                  <button class="btn" id="logoResetBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-refresh-cw"/></svg><span>Dùng mặc định</span></button>
-                </div>
-              </div>
+            <div class="logo-choices" id="logoChoices" role="group" aria-label="Chọn logo phòng khám">
+              <button class="logo-choice" type="button" data-logo-preset="original" aria-pressed="false" aria-label="Logo mặc định, màu gốc" title="Mặc định (màu gốc)"><img src="/logos/original.png" alt="" /></button>
+              <button class="logo-choice" type="button" data-logo-preset="teal" aria-pressed="false" aria-label="Logo màu theme" title="Màu theme"><img src="/logos/teal.png" alt="" /></button>
+              <button class="logo-choice" type="button" data-logo-preset="outline" aria-pressed="false" aria-label="Logo viền màu theme" title="Viền màu theme"><img src="/logos/outline.png" alt="" /></button>
+              <button class="logo-choice hidden" type="button" id="logoCustomChoice" data-logo-preset="custom" aria-pressed="true" aria-label="Logo bạn đã tải lên" title="Logo tải lên"><img class="brand-logo" src="clinic-logo.png" alt="" /></button>
+            </div>
+            <div class="row-actions logo-actions">
+              <button class="btn" id="logoUploadBtn" type="button"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg><span>Tải logo lên</span></button>
             </div>
             <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden />
           </section>
@@ -773,6 +772,6 @@
 
   <script src="app-config.js"></script>
   <script src="icd-data.js"></script>
-  <script src="minh.js?v=73"></script>
+  <script src="minh.js?v=78"></script>
 </body>
 </html>

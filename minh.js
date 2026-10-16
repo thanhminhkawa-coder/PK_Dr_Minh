@@ -707,7 +707,10 @@ function bindEvents() {
     event.target.value = "";
     if (file) uploadLogo(file).catch(handleError);
   });
-  document.getElementById("logoResetBtn").addEventListener("click", () => resetLogo().catch(handleError));
+  document.getElementById("logoChoices").addEventListener("click", (event) => {
+    const choice = event.target.closest("[data-logo-preset]");
+    if (choice && choice.dataset.logoPreset !== "custom") chooseLogoPreset(choice.dataset.logoPreset).catch(handleError);
+  });
   [refs.statsFrom, refs.statsTo].forEach(enhanceDateInput);
   refs.statsFrom.addEventListener("change", loadStatsChart);
   refs.statsTo.addEventListener("change", loadStatsChart);
@@ -1400,6 +1403,7 @@ function showTab(tab) {
   refs.saveFab.classList.toggle("hidden", tab !== "home");
   refs.newFab.classList.toggle("hidden", tab !== "home");
   if (tab === "stats" && accessToken) loadStats().catch(handleError);
+  if (tab === "clinic" && accessToken) loadLogoChoice().catch(() => {});
   if (tab === "stock") renderStockData();
   else if (tab === "home" && !refs.stockDataBox.classList.contains("hidden")) renderStockData();
   if (tab === "home") syncFollowDateWidth();
@@ -1626,13 +1630,32 @@ async function uploadLogo(file) {
     body: JSON.stringify({ dataUrl: canvas.toDataURL("image/png") })
   });
   applyLogo();
+  markLogoChoice("custom");
   showToast("Đã cập nhật logo phòng khám.", "success");
 }
 
-async function resetLogo() {
-  await fetchJson("/api/logo", { method: "DELETE" });
+// đánh dấu logo đang dùng trong thẻ Cài đặt; logo tự tải lên hiện thêm một ô riêng
+function markLogoChoice(preset) {
+  const current = preset || "original";
+  document.getElementById("logoCustomChoice").classList.toggle("hidden", current !== "custom");
+  document.querySelectorAll("#logoChoices [data-logo-preset]").forEach((btn) => {
+    const on = btn.dataset.logoPreset === current;
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+
+async function loadLogoChoice() {
+  const { preset } = await fetchJson("/api/logo");
+  markLogoChoice(preset);
+}
+
+// bấm vào một logo mặc định là dùng luôn, cập nhật thanh trên, đăng nhập và toa thuốc
+async function chooseLogoPreset(preset) {
+  await fetchJson("/api/logo", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preset }) });
   applyLogo();
-  showToast("Đã dùng lại logo mặc định.", "success");
+  markLogoChoice(preset);
+  showToast("Đã đổi logo phòng khám.", "success");
 }
 
 async function loadStats() {

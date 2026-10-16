@@ -1581,3 +1581,18 @@ dialog.modal--datefilter { width: min(480px, 100%); }
 @media (max-width: 767px) { .logo-setting .row-actions .btn { min-height: 52px; } } /* cao bằng các nút ở thẻ Tài khoản / Cài đặt trên điện thoại */
 @media (max-width: 767px) { .logo-setting .row-actions .btn { font-size: var(--fs-base); padding: 0 6px; } } /* cỡ chữ bằng các nút khác */
 @media (max-width: 380px) { .logo-setting .row-actions .btn { font-size: 15px; padding: 0 4px; } } /* màn rất hẹp: giảm 1px để nhãn "Dùng logo mặc định" không tràn */
+
+/* Cài đặt: chọn logo bằng cách bấm thẳng vào hình; logo đang dùng có viền màu chủ đạo */
+.logo-choices { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+.logo-choice { flex: none; width: 88px; height: 88px; padding: 10px; border: 2px solid var(--line); border-radius: 16px; background: var(--bg-subtle-2); cursor: pointer; display: grid; place-items: center; transition: border-color .15s, background .15s; }
+.logo-choice:hover { background: var(--bg-hover); }
+.logo-choice:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.logo-choice.is-on { border-color: var(--primary); background: var(--bg-brand-soft); }
+.logo-choice img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo-choice.hidden { display: none; }
+.logo-actions { justify-content: flex-start; }
+@media (max-width: 767px) {
+  .logo-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .logo-choice { width: 100%; height: auto; aspect-ratio: 1; }
+  .logo-actions .btn { width: 100%; min-height: 52px; }
+}

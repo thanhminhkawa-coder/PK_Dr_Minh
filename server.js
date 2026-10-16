@@ -75,6 +75,13 @@ app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(re
 // chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
 const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png"];
 // logo công khai (màn đăng nhập cũng cần): lấy từ DB nếu đã tải lên, không thì dùng file mặc định
+// ba logo mặc định để chọn trong Cài đặt (thư mục logos/)
+const LOGO_PRESETS = ["original", "teal", "outline"];
+app.get("/logos/:name", (req, res, next) => {
+  const name = String(req.params.name || "").replace(/\.png$/, "");
+  if (!LOGO_PRESETS.includes(name)) return next();
+  res.sendFile(path.join(__dirname, "logos", `${name}.png`));
+});
 app.get("/clinic-logo.png", async (_req, res) => {
   res.set("Cache-Control", "no-cache");
   try {
@@ -172,7 +179,8 @@ const logoSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, unique: true },
     data: { type: Buffer, required: true },
-    contentType: { type: String, required: true }
+    contentType: { type: String, required: true },
+    preset: { type: String, default: "custom" } // original | teal | outline | custom (ảnh tự tải lên)
   },
   { timestamps: true }
 );
@@ -457,15 +465,32 @@ authRouter.post("/forgot-password/reset", async (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api", requireAuth);
 
-// tải logo lên: ảnh được thu nhỏ ở trình duyệt trước khi gửi (PNG/JPEG/WebP, tối đa ~1MB sau giải mã)
+// logo đang dùng: preset (original | teal | outline) hoặc custom (ảnh tự tải lên)
+app.get("/api/logo", async (_req, res, next) => {
+  try {
+    const doc = await AppLogo.findOne({ key: "main" }, { preset: 1 }).lean();
+    res.json({ preset: doc ? doc.preset || "custom" : "original" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// chọn logo mặc định ({ preset }) hoặc tải ảnh lên ({ dataUrl }: PNG/JPEG/WebP, tối đa ~1MB sau giải mã, đã thu nhỏ ở trình duyệt)
 app.put("/api/logo", async (req, res, next) => {
   try {
+    const preset = String(req.body?.preset || "");
+    if (preset) {
+      if (!LOGO_PRESETS.includes(preset)) return res.status(400).json({ error: "Logo mặc định không hợp lệ." });
+      const data = fs.readFileSync(path.join(__dirname, "logos", `${preset}.png`));
+      await AppLogo.findOneAndUpdate({ key: "main" }, { data, contentType: "image/png", preset }, { upsert: true, new: true, setDefaultsOnInsert: true });
+      return res.json({ ok: true, preset });
+    }
     const match = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ""));
     if (!match) return res.status(400).json({ error: "Ảnh logo không hợp lệ (chỉ nhận PNG, JPEG hoặc WebP)." });
     const data = Buffer.from(match[2], "base64");
     if (!data.length || data.length > 1024 * 1024) return res.status(400).json({ error: "Ảnh logo quá lớn (tối đa 1MB)." });
-    await AppLogo.findOneAndUpdate({ key: "main" }, { data, contentType: match[1] }, { upsert: true, new: true, setDefaultsOnInsert: true });
-    res.json({ ok: true });
+    await AppLogo.findOneAndUpdate({ key: "main" }, { data, contentType: match[1], preset: "custom" }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    res.json({ ok: true, preset: "custom" });
   } catch (error) {
     next(error);
   }
