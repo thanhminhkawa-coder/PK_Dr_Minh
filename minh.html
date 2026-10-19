@@ -255,7 +255,10 @@
               <div class="card-title">
                 <h2>Lần khám</h2>
               </div>
-              <div class="visit-picker" id="visitPicker" role="radiogroup" aria-label="Chọn lần khám"></div>
+              <div class="visit-row">
+                <div class="visit-picker" id="visitPicker" role="radiogroup" aria-label="Chọn lần khám"></div>
+                <button class="btn small" id="deleteVisitBtn" disabled type="button" title="Xóa lần khám đang chọn" aria-label="Xóa lần khám đang chọn"><svg class="icon" aria-hidden="true"><use href="#i-trash-2"/></svg><span>Xóa lần khám</span></button>
+              </div>
               <div class="visit-meta">
                 <div class="visit-date">
                   <label class="label" for="visitDate">Ngày khám</label>
@@ -772,6 +775,6 @@
 
   <script src="app-config.js"></script>
   <script src="icd-data.js"></script>
-  <script src="minh.js?v=78"></script>
+  <script src="minh.js?v=81"></script>
 </body>
 </html>

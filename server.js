@@ -916,6 +916,38 @@ app.put("/api/visits/:id", async (req, res, next) => {
   }
 });
 
+// xóa một lần khám (không hoàn kho), các lần khám sau tự tụt số (xóa lần 2 trong 1-2-3-4-5 thì 3,4,5 thành 2,3,4)
+app.delete("/api/visits/:id", async (req, res, next) => {
+  const session = await mongoose.startSession();
+
+  try {
+    let result = null;
+
+    await session.withTransaction(async () => {
+      const visit = await Visit.findById(req.params.id).session(session).lean();
+      if (!visit) {
+        throw createHttpError(404, "Khong tim thay luot kham de xoa.");
+      }
+
+      // không hoàn lại thuốc vào kho (theo yêu cầu): kho giữ nguyên số hiện tại
+      await Visit.deleteOne({ _id: visit._id }, { session });
+
+      // đánh lại số từng lần theo thứ tự tăng dần (chỉ số duy nhất patientId+visitNo nên không đổi hàng loạt một lượt)
+      const later = await Visit.find({ patientId: visit.patientId, visitNo: { $gt: visit.visitNo } }, { visitNo: 1 }).sort({ visitNo: 1 }).session(session).lean();
+      for (const item of later) {
+        await Visit.updateOne({ _id: item._id }, { $set: { visitNo: item.visitNo - 1 } }, { session });
+      }
+      result = { ok: true, patientId: visit.patientId, remaining: await Visit.countDocuments({ patientId: visit.patientId }).session(session) };
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  } finally {
+    await session.endSession();
+  }
+});
+
 app.post("/api/visits/:id/print", async (req, res, next) => {
   try {
     const printedAt = new Date();

@@ -768,6 +768,7 @@ function bindEvents() {
     if (event.key === "Enter") { event.preventDefault(); refs.dateFilterApply.click(); }
   }));
   refs.visitPicker.addEventListener("click", handleVisitPickerClick);
+  document.getElementById("deleteVisitBtn").addEventListener("click", () => deleteSelectedVisit().catch(handleError));
   refs.visitPicker.addEventListener("keydown", handleVisitPickerKeydown);
   [refs.visitDate, refs.followDate].forEach(enhanceDateInput);
   syncFollowDateWidth();
@@ -2184,6 +2185,10 @@ function renderVisitPicker() {
   });
   if (isDraft) chips.push(`<button type="button" class="visit-chip is-draft" role="radio" aria-checked="true" tabindex="0" title="Lần khám mới (chưa lưu)">L${draftNo}</button>`);
   else chips.push('<button type="button" class="visit-chip visit-chip--add" tabindex="-1" aria-label="Tạo lần khám mới" title="Tạo lần khám mới"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>');
+  // luôn hiện nút; lần khám mới chưa lưu (bản nháp) thì mờ đi vì chưa có gì để xóa
+  const deleteBtn = document.getElementById("deleteVisitBtn");
+  deleteBtn.disabled = isDraft;
+  deleteBtn.title = isDraft ? "Chọn một lần khám đã lưu (L1, L2…) để xóa" : "Xóa lần khám đang chọn";
   const hadFocus = refs.visitPicker.contains(document.activeElement);
   refs.visitPicker.innerHTML = chips.join("");
   if (hadFocus) refs.visitPicker.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
@@ -4426,6 +4431,24 @@ async function saveEncounter() {
     state.saving = false;
     updateSaveButtons();
   }
+}
+
+// xóa lần khám đang chọn: các lần sau tự tụt số, kho thuốc giữ nguyên
+async function deleteSelectedVisit() {
+  const visit = findHistoryVisit(state.editingVisitId);
+  if (!visit) return;
+  const total = state.selectedPatientDetail?.visits?.length || 0;
+  const lines = [`Xóa lần khám L${visit.visitNo} (${formatDate(visit.visitDate)})?`];
+  if (total === 1) lines.push("Đây là lần khám duy nhất, hồ sơ bệnh nhân vẫn được giữ lại.");
+  lines.push("Không thể hoàn tác.");
+  if (!window.confirm(lines.join("\n"))) return;
+  const patientId = state.selectedPatientId;
+  await fetchJson(`/api/visits/${visit._id}`, { method: "DELETE" });
+  state.editingVisitId = "";
+  showToast(`Đã xóa lần khám L${visit.visitNo}.`, "success");
+  await Promise.all([loadStats(), loadDrugs()]);
+  await loadPatients();
+  if (state.selectedPatientId !== patientId) await selectPatient(patientId, true);
 }
 
 async function deletePatient(patientId) {

@@ -1596,3 +1596,13 @@ dialog.modal--datefilter { width: min(480px, 100%); }
   .logo-choice { width: 100%; height: auto; aspect-ratio: 1; }
   .logo-actions .btn { width: 100%; min-height: 52px; }
 }
+
+/* nút Xóa lần khám: cùng hàng với các ô L1…Ln, sát phải; điện thoại chỉ còn icon */
+.visit-row { display: flex; align-items: flex-start; gap: var(--space-3); } /* nút xóa luôn ở dòng đầu, kể cả khi các ô L xuống nhiều dòng */
+.visit-row .visit-picker { flex: 1 1 auto; min-width: 0; }
+.visit-row #deleteVisitBtn { flex: none; margin-left: auto; }
+.visit-row #deleteVisitBtn.hidden { display: none; }
+@media (max-width: 767px) {
+  .visit-row #deleteVisitBtn { width: var(--control-h); padding: 0; }
+  .visit-row #deleteVisitBtn span { display: none; }
+}
