@@ -575,7 +575,37 @@ function recordRateHit(key) {
   rateBuckets.set(key, hits);
 }
 
+// "Tên <email@x.com>" hoặc chỉ "email@x.com" -> { name, email }
+function parseMailAddress(value) {
+  const text = String(value || "").trim();
+  const match = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(text);
+  return match ? { name: match[1].trim() || undefined, email: match[2].trim() } : { email: text };
+}
+
+// Gửi qua API HTTPS của Brevo (cổng 443). Render gói miễn phí chặn cổng SMTP 25/465/587 nên không gửi bằng SMTP được.
+async function sendMailViaBrevo({ to, subject, text, html }) {
+  const sender = parseMailAddress(process.env.MAIL_FROM || process.env.SMTP_USER);
+  if (!sender.email) throw new Error("Thiếu MAIL_FROM (địa chỉ người gửi đã xác nhận trong Brevo).");
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      sender: { name: sender.name || "PK Dr. Minh", email: sender.email },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html || undefined
+    }),
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Brevo ${response.status}: ${detail.slice(0, 300)}`);
+  }
+}
+
 async function sendMail({ to, subject, text, html, devNote }) {
+  if (process.env.BREVO_API_KEY) return sendMailViaBrevo({ to, subject, text, html });
   if (!process.env.SMTP_HOST) {
     console.log(`[dev] Chưa cấu hình SMTP. ${devNote}`);
     return;
@@ -1198,7 +1228,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { User, Session, connectWithFallback, BCRYPT_COST, MIN_PASSWORD_LENGTH, buildStats };
+module.exports = { User, Session, connectWithFallback, BCRYPT_COST, MIN_PASSWORD_LENGTH, buildStats, sendMail, parseMailAddress };
 
 async function aggregateRevenue(match, format) {
   return Visit.aggregate([

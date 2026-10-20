@@ -24,6 +24,7 @@ Một web service Render chạy Express, phục vụ cả giao diện tĩnh (`mi
 | `SMTP_USER` | như trên | Địa chỉ Gmail gửi thư |
 | `SMTP_PASS` | như trên | **App Password** của Gmail (mục 4), không phải mật khẩu đăng nhập Gmail |
 | `MAIL_FROM` | không | `"PK Dr. Minh <your-account@gmail.com>"`. Bỏ trống thì dùng `SMTP_USER`. |
+| `BREVO_API_KEY` | không | **Dùng khi chạy trên Render gói miễn phí** (Render chặn cổng SMTP). Có biến này thì app gửi mail qua API HTTPS của Brevo thay vì SMTP; khi đó `MAIL_FROM` phải là địa chỉ người gửi đã xác nhận trong Brevo. |
 | `CORS_ORIGINS` | không | Không cần khi giao diện và API cùng domain. |
 | `PORT` | không | Render tự đặt. |
 
