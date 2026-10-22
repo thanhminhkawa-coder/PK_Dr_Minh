@@ -8,6 +8,11 @@
   <meta name="theme-color" content="#242528" media="(prefers-color-scheme: dark)" />
   <!-- đặt theme trước khi CSS tải để không nháy trắng; lựa chọn lưu ở localStorage "pk-theme" (light | dark | system) -->
   <script>try{var t=localStorage.getItem("pk-theme")||"system";document.documentElement.dataset.theme=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light"}catch(e){}</script>
+  <!-- cài ra màn hình chính như ứng dụng: mở lại thì vào đúng cửa sổ cũ thay vì mỗi lần một tab mới -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="PK Dr. Minh" />
   <link rel="stylesheet" href="minh.css" />
 </head>
 <body>

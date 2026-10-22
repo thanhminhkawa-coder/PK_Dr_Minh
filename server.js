@@ -73,7 +73,7 @@ app.use((req, res, next) => {
 const jsonParser = express.json({ limit: "2mb" });
 app.use((req, res, next) => (req.path === "/api/import" ? next() : jsonParser(req, res, next)));
 // chỉ phục vụ đúng các file giao diện, không phục vụ cả thư mục dự án (server.js, backup/, scripts/...)
-const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png"];
+const PUBLIC_FILES = ["minh.html", "minh.css", "minh.js", "icd-data.js", "app-config.js", "doctor-logo.png", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 // logo công khai (màn đăng nhập cũng cần): lấy từ DB nếu đã tải lên, không thì dùng file mặc định
 // ba logo mặc định để chọn trong Cài đặt (thư mục logos/)
 const LOGO_PRESETS = ["original", "teal", "outline"];
